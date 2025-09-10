@@ -37,4 +37,20 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
+
+    // POCINJU LINIJE KOJE TREBA DA DODAS ---------------------------
+
+    // Firebase BOM (Bill of Materials) - on upravlja verzijama ostalih Firebase biblioteka
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+
+    // Firebase biblioteke koje su ti potrebne
+    implementation("com.google.firebase:firebase-auth")       // Za registraciju i prijavu
+    implementation("com.google.firebase:firebase-firestore")  // Za online bazu podataka
+
+    // Room biblioteke za lokalnu bazu podataka
+    def room_version = "2.6.1" // Uvek proveri najnoviju verziju
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
+
+    // KRAJ LINIJA KOJE DODAJES ------------------------------------
 }
