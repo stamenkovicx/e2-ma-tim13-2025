@@ -18,6 +18,7 @@ public class RegistrationActivity extends AppCompatActivity {
     private EditText etEmail, etUsername, etPassword, etConfirmPassword;
     private Button btnRegister;
     private ImageView avatar1, avatar2, avatar3, avatar4, avatar5;
+    private ImageView currentSelectedAvatarView;
     private String selectedAvatar = "";
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
@@ -45,11 +46,11 @@ public class RegistrationActivity extends AppCompatActivity {
         avatar5 = findViewById(R.id.avatar5);
 
         // Postavljanje listenera za odabir avatara
-        avatar1.setOnClickListener(v -> selectedAvatar = "avatar1");
-        avatar2.setOnClickListener(v -> selectedAvatar = "avatar2");
-        avatar3.setOnClickListener(v -> selectedAvatar = "avatar3");
-        avatar4.setOnClickListener(v -> selectedAvatar = "avatar4");
-        avatar5.setOnClickListener(v -> selectedAvatar = "avatar5");
+        avatar1.setOnClickListener(v -> handleAvatarSelection(avatar1, "avatar1"));
+        avatar2.setOnClickListener(v -> handleAvatarSelection(avatar2, "avatar2"));
+        avatar3.setOnClickListener(v -> handleAvatarSelection(avatar3, "avatar3"));
+        avatar4.setOnClickListener(v -> handleAvatarSelection(avatar4, "avatar4"));
+        avatar5.setOnClickListener(v -> handleAvatarSelection(avatar5, "avatar5"));
 
         btnRegister.setOnClickListener(v -> {
             String email = etEmail.getText().toString().trim();
@@ -101,5 +102,16 @@ public class RegistrationActivity extends AppCompatActivity {
                         });
             }
         });
+    }
+
+    private void handleAvatarSelection(ImageView avatarView, String avatarName) {
+        if (currentSelectedAvatarView != null) {
+            currentSelectedAvatarView.setBackground(null);
+        }
+
+        avatarView.setBackgroundResource(R.drawable.selected_avatar_border);
+
+        selectedAvatar = avatarName;
+        currentSelectedAvatarView = avatarView;
     }
 }
