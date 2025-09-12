@@ -12,11 +12,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
-            android:name=".presentation.ui.registration.HomeActivity"
+            android:name=".presentation.ui.ProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".presentation.ui.registration.RegistrationActivity"
-            android:exported="false"></activity>
+            android:name=".presentation.ui.HomeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".presentation.ui.RegistrationActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

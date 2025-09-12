@@ -1,12 +1,20 @@
 package com.example.myapplication.domain.models;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class User {
     private String username;
     private String email;
     private String password;
     private String avatar;
     private int xp;
-    private int pp;
+    private int level;
+    private String title;
+    private int powerPoints;
+    private int coins;
+    private List<String> badges;
+    private List<String> equipment;
 
     public User(String username, String email, String password, String avatar) {
         this.username = username;
@@ -14,7 +22,26 @@ public class User {
         this.password = password;
         this.avatar = avatar;
         this.xp = 0;
-        this.pp = 0;
+        this.level = 1; // Pocetni nivo
+        this.title = "Beginner"; // Pocetna titula
+        this.powerPoints = 100; // Pocetni poeni snage
+        this.coins = 0; // Pocetni novcici
+        this.badges = new ArrayList<>();
+        this.equipment = new ArrayList<>();
+    }
+
+    public User(String username, String email, String password, String avatar, int level, String title, int powerPoints, int xp, int coins) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.avatar = avatar;
+        this.level = level;
+        this.title = title;
+        this.powerPoints = powerPoints;
+        this.xp = xp;
+        this.coins = coins;
+        this.badges = new ArrayList<>();
+        this.equipment = new ArrayList<>();
     }
 
     public String getUsername() {
@@ -56,11 +83,51 @@ public class User {
         this.xp = xp;
     }
 
-    public int getPp() {
-        return pp;
+    public int getLevel() {
+        return level;
     }
 
-    public void setPp(int pp) {
-        this.pp = pp;
+    public void setLevel(int level) {
+        this.level = level;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public int getPowerPoints() {
+        return powerPoints;
+    }
+
+    public void setPowerPoints(int powerPoints) {
+        this.powerPoints = powerPoints;
+    }
+
+    public int getCoins() {
+        return coins;
+    }
+
+    public void setCoins(int coins) {
+        this.coins = coins;
+    }
+
+    public List<String> getBadges() {
+        return badges;
+    }
+
+    public void setBadges(List<String> badges) {
+        this.badges = badges;
+    }
+
+    public List<String> getEquipment() {
+        return equipment;
+    }
+
+    public void setEquipment(List<String> equipment) {
+        this.equipment = equipment;
     }
 }

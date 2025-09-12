@@ -1,4 +1,4 @@
-package com.example.myapplication.presentation.ui.registration;
+package com.example.myapplication.presentation.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
@@ -12,6 +12,7 @@ import com.example.myapplication.R;
 public class HomeActivity extends AppCompatActivity {
 
     private Button btnLogout;
+    private Button btnProfile;
     private FirebaseAuth mAuth;
 
     @Override
@@ -23,6 +24,8 @@ public class HomeActivity extends AppCompatActivity {
 
         btnLogout = findViewById(R.id.btnLogout);
 
+        btnProfile = findViewById(R.id.btnProfile);
+
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
 
@@ -30,6 +33,11 @@ public class HomeActivity extends AppCompatActivity {
             Intent intent = new Intent(HomeActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
+        });
+
+        btnProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, ProfileActivity.class);
+            startActivity(intent);
         });
     }
 }
