@@ -1,5 +1,6 @@
 package com.example.myapplication.presentation.ui.registration;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -7,6 +8,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.domain.models.User;
@@ -85,6 +87,9 @@ public class RegistrationActivity extends AppCompatActivity {
                                                         if (isAdded) {
                                                             Toast.makeText(RegistrationActivity.this, "Registration successful! Please verify your email.", Toast.LENGTH_LONG).show();
                                                             // logika za prelazak na drugu stranicu
+                                                            Intent intent = new Intent(RegistrationActivity.this, MainActivity.class);
+                                                            startActivity(intent);
+                                                            finish();
                                                         } else {
                                                             Toast.makeText(RegistrationActivity.this, "Registration failed.", Toast.LENGTH_SHORT).show();
                                                         }
