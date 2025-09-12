@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">My Application</string>
+    <string name="login_title">Login to your account</string>
+    <string name="register_title">Create your account</string>
+    <string name="login_button">Login</string>
+    <string name="register_link">Don\'t have an account? Register</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="welcome_message">Welcome! You are logged in.</string>
+    <string name="logout_button">Logout</string>
 </resources>
