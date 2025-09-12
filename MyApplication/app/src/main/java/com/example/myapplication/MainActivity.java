@@ -7,8 +7,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.example.myapplication.presentation.ui.registration.HomeActivity;
-import com.example.myapplication.presentation.ui.registration.RegistrationActivity;
+import com.example.myapplication.presentation.ui.HomeActivity;
+import com.example.myapplication.presentation.ui.RegistrationActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -21,16 +21,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
         mAuth = FirebaseAuth.getInstance();
-
         // PROVJERA STATUSA KORISNIKA
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
             finish();
+            return;
         }
+
+        setContentView(R.layout.activity_main);
 
         // Povezivanje elemenata iz XML-a
         etEmail = findViewById(R.id.etLoginEmail);
