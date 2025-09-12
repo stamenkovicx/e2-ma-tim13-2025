@@ -25,6 +25,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
+import android.widget.LinearLayout;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -32,6 +35,8 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView tvProfileUsername, tvLevel, tvTitle, tvPowerPoints, tvXP, tvCoins;
     private Button btnChangePassword;
     private ImageView ivQRCode;
+    private LinearLayout llBadgesContainer;
+    private LinearLayout llEquipmentContainer;
 
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
@@ -55,6 +60,8 @@ public class ProfileActivity extends AppCompatActivity {
         tvCoins = findViewById(R.id.tvCoins);
         btnChangePassword = findViewById(R.id.btnChangePassword);
         ivQRCode = findViewById(R.id.ivQRCode);
+        llBadgesContainer = findViewById(R.id.llBadgesContainer);
+        llEquipmentContainer = findViewById(R.id.llEquipmentContainer);
 
         // Ucitavanje korisnickih podataka
         loadUserProfileData();
@@ -96,8 +103,10 @@ public class ProfileActivity extends AppCompatActivity {
                 // Generisanje i prikaz QR koda
                 generateQRCode(qrData);
 
-                // Ovdje ce kasnije ici logika za prikaz bedzeva i opreme
-
+                // Bedzevi i oprema
+                List<String> userBadges = user.getBadges();
+                List<String> userEquipment = user.getEquipment();
+                displayBadgesAndEquipment(userBadges, userEquipment);
             } else {
                 Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
             }
@@ -171,6 +180,35 @@ public class ProfileActivity extends AppCompatActivity {
                             Toast.makeText(ProfileActivity.this, "Wrong old password.", Toast.LENGTH_SHORT).show();
                         }
                     });
+        }
+    }
+
+    private void displayBadgesAndEquipment(List<String> badges, List<String> equipment) {
+        llBadgesContainer.removeAllViews();
+        llEquipmentContainer.removeAllViews();
+
+        for (String badgeName : badges) {
+            ImageView badgeView = new ImageView(this);
+            int resourceId = getResources().getIdentifier(badgeName, "drawable", getPackageName());
+            if (resourceId != 0) {
+                badgeView.setImageResource(resourceId);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
+                params.setMargins(0, 0, 16, 0);
+                badgeView.setLayoutParams(params);
+                llBadgesContainer.addView(badgeView);
+            }
+        }
+
+        for (String equipmentName : equipment) {
+            ImageView equipmentView = new ImageView(this);
+            int resourceId = getResources().getIdentifier(equipmentName, "drawable", getPackageName());
+            if (resourceId != 0) {
+                equipmentView.setImageResource(resourceId);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
+                params.setMargins(0, 0, 16, 0);
+                equipmentView.setLayoutParams(params);
+                llEquipmentContainer.addView(equipmentView);
+            }
         }
     }
 }
