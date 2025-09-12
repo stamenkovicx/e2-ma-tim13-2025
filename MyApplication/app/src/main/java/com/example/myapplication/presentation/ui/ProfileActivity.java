@@ -18,6 +18,14 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
 import android.graphics.Bitmap;
+import android.app.AlertDialog;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
+
 public class ProfileActivity extends AppCompatActivity {
 
     private ImageView ivProfileAvatar;
@@ -50,6 +58,12 @@ public class ProfileActivity extends AppCompatActivity {
 
         // Ucitavanje korisnickih podataka
         loadUserProfileData();
+
+        btnChangePassword = findViewById(R.id.btnChangePassword);
+
+        btnChangePassword.setOnClickListener(v -> {
+            showChangePasswordDialog();
+        });
     }
 
     private void loadUserProfileData() {
@@ -101,6 +115,62 @@ public class ProfileActivity extends AppCompatActivity {
             ivQRCode.setImageBitmap(bitmap);
         } catch (WriterException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void showChangePasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_change_password, null);
+        builder.setView(dialogView);
+
+        final EditText etOldPassword = dialogView.findViewById(R.id.etOldPassword);
+        final EditText etNewPassword = dialogView.findViewById(R.id.etNewPassword);
+        final EditText etConfirmNewPassword = dialogView.findViewById(R.id.etConfirmNewPassword);
+        Button btnSave = dialogView.findViewById(R.id.btnSave);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+
+        btnSave.setOnClickListener(v -> {
+            String oldPassword = etOldPassword.getText().toString();
+            String newPassword = etNewPassword.getText().toString();
+            String confirmNewPassword = etConfirmNewPassword.getText().toString();
+
+            if (newPassword.isEmpty() || confirmNewPassword.isEmpty()) {
+                Toast.makeText(ProfileActivity.this, "New password cannot be empty.", Toast.LENGTH_SHORT).show();
+            } else if (!newPassword.equals(confirmNewPassword)) {
+                Toast.makeText(ProfileActivity.this, "New passwords do not match.", Toast.LENGTH_SHORT).show();
+            } else {
+                changePassword(oldPassword, newPassword, dialog);
+            }
+        });
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    private void changePassword(String oldPassword, String newPassword, final AlertDialog dialog) {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            AuthCredential credential = EmailAuthProvider.getCredential(user.getEmail(), oldPassword);
+
+            user.reauthenticate(credential)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            user.updatePassword(newPassword)
+                                    .addOnCompleteListener(updateTask -> {
+                                        if (updateTask.isSuccessful()) {
+                                            Toast.makeText(ProfileActivity.this, "Password successfully updated.", Toast.LENGTH_SHORT).show();
+                                            dialog.dismiss();
+                                        } else {
+                                            Toast.makeText(ProfileActivity.this, "Error updating password.", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                        } else {
+                            Toast.makeText(ProfileActivity.this, "Wrong old password.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
         }
     }
 }
