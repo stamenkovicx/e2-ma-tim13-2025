@@ -1,13 +1,18 @@
 package com.example.myapplication.presentation.ui;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.myapplication.R;
 import com.example.myapplication.domain.models.Task;
+
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
@@ -15,9 +20,11 @@ import java.util.Locale;
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
     private List<Task> tasks;
+    private Context context;
 
-    public TaskAdapter(List<Task> tasks) {
+    public TaskAdapter(List<Task> tasks, Context context) {
         this.tasks = tasks;
+        this.context = context;
     }
 
     @NonNull
@@ -36,6 +43,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
 
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         holder.tvTaskTime.setText(timeFormat.format(task.getExecutionTime()));
+
+        // Dodaj klik listener na celu stavku
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, TaskDetailsActivity.class);
+            intent.putExtra("task", (Serializable) task); // Pošalji ceo Task objekat
+            context.startActivity(intent);
+        });
     }
 
     @Override

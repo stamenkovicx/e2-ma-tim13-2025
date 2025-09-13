@@ -70,7 +70,14 @@ public class TaskListFragment extends Fragment {
 
     private void loadAllTasks() {
         List<Task> allTasks = taskRepository.getAllTasks();
-        updateTaskList(allTasks);
+        if (taskAdapter == null) {
+            if (getContext() != null) {
+                taskAdapter = new TaskAdapter(allTasks, getContext());
+                rvAllTasks.setAdapter(taskAdapter);
+            }
+        } else {
+            taskAdapter.updateTasks(allTasks);
+        }
     }
 
     private void loadTasks(String filter) {
@@ -95,8 +102,10 @@ public class TaskListFragment extends Fragment {
 
     private void updateTaskList(List<Task> tasks) {
         if (taskAdapter == null) {
-            taskAdapter = new TaskAdapter(tasks);
-            rvAllTasks.setAdapter(taskAdapter);
+            if (getContext() != null) {
+                taskAdapter = new TaskAdapter(tasks, getContext());
+                rvAllTasks.setAdapter(taskAdapter);
+            }
         } else {
             taskAdapter.updateTasks(tasks);
         }

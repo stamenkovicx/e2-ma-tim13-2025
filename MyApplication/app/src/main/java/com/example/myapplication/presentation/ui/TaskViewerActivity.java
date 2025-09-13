@@ -37,9 +37,6 @@ public class TaskViewerActivity extends AppCompatActivity {
                         case 1:
                             tab.setText("Kalendar");
                             break;
-                        case 2:
-                            tab.setText("Pojedinačni zadatak");
-                            break;
                     }
                 }).attach();
     }
@@ -58,9 +55,6 @@ public class TaskViewerActivity extends AppCompatActivity {
                     return new TaskListFragment(); // Prikazuje listu svih zadataka
                 case 1:
                     return new TaskCalendarFragment();
-                case 2:
-                    // Prazan fragment za sada
-                    return new Fragment();
                 default:
                     return new Fragment();
             }
@@ -68,7 +62,7 @@ public class TaskViewerActivity extends AppCompatActivity {
 
         @Override
         public int getItemCount() {
-            return 3; // Broj tabova
+            return 2; // Broj tabova
         }
     }
 }
