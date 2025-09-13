@@ -44,12 +44,16 @@
             android:text="@string/profile_username"
             android:textColor="@color/text_color_primary"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGoToShop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Shop"
-            android:layout_marginTop="16dp"/>
+            android:text="@string/shop"
+            android:layout_marginTop="16dp"
+            app:icon="@drawable/baseline_add_shopping_cart_24"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
         <TextView
             android:id="@+id/tvProfileStats"
@@ -172,12 +176,16 @@
             android:gravity="left"
             android:layout_marginTop="8dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnChangePassword"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/profile_change_password"
-            android:layout_marginTop="32dp" />
+            android:layout_marginTop="16dp"
+            app:icon="@drawable/outline_edit_24"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
         <ImageView
             android:id="@+id/ivQRCode"

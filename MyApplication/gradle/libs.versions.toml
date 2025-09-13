@@ -13,6 +13,7 @@ constraintlayout = "2.2.1"
 firebase-bom = "34.2.0"
 firebase-analytics = "23.0.0"
 firebaseAuth = "24.0.1"
+materialVersion = "1.13.0"
 zxingAndroidEmbedded = "4.3.0"
 zxingCore = "3.5.3"
 
@@ -30,6 +31,7 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebase-analytics" }
 google-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+material-v1130 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" } # Ispravno referenciranje
 

@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -12,6 +13,7 @@ import android.widget.Toast;
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.domain.models.User;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.zxing.BarcodeFormat;
@@ -42,7 +44,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
-    private Button btnGoToShop;
+    private MaterialButton btnGoToShop;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

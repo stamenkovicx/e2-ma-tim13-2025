@@ -46,5 +46,5 @@ dependencies {
     implementation libs.zxing.android.embedded
     implementation libs.cardview
     implementation libs.gson
-
+    implementation libs.material.v1130
 }
