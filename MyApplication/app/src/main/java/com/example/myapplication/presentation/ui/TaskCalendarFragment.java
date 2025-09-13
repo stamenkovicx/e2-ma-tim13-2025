@@ -1,6 +1,5 @@
 package com.example.myapplication.presentation.ui;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,7 +15,6 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -70,7 +68,7 @@ public class TaskCalendarFragment extends Fragment {
                 .collect(Collectors.toList());
 
         if (taskAdapter == null) {
-            taskAdapter = new TaskAdapter(tasksForDate);
+            taskAdapter = new TaskAdapter(tasksForDate, getContext()); // Dodaj 'getContext()'
             rvTasks.setAdapter(taskAdapter);
         } else {
             taskAdapter.updateTasks(tasksForDate);
