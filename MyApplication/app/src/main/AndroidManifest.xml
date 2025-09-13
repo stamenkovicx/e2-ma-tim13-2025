@@ -29,6 +29,8 @@
         <activity
             android:name=".presentation.ui.CreateTaskActivity"
             android:exported="false" />
+        <activity android:name=".presentation.ui.TaskViewerActivity"
+            android:exported="false"/>
         <activity
             android:name=".MainActivity"
             android:exported="true">
