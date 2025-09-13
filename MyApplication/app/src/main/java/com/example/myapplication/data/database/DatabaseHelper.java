@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.graphics.Color;
 
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
@@ -20,7 +21,7 @@ import com.example.myapplication.data.repository.ItemRepository;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "MyProjectDatabase.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 5;
 
     public static final String TABLE_USERS = "users";
     public static final String COLUMN_ID = "_id";
@@ -34,6 +35,31 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_XP = "xp";
     public static final String COLUMN_COINS = "coins";
     public static final String COLUMN_EQUIPMENT = "equipment";
+
+    //******************************************************************************//
+    // Dodaj nove konstante ispod postojećih (npr. posle COLUMN_EQUIPMENT)
+    public static final String TABLE_TASKS = "tasks";
+    public static final String COLUMN_TASK_ID = "_id";
+    public static final String COLUMN_TASK_NAME = "name";
+    public static final String COLUMN_TASK_DESCRIPTION = "description";
+    public static final String COLUMN_TASK_CATEGORY_ID = "category_id";
+    public static final String COLUMN_TASK_FREQUENCY = "frequency";
+    public static final String COLUMN_TASK_INTERVAL = "interval";
+    public static final String COLUMN_TASK_INTERVAL_UNIT = "interval_unit";
+    public static final String COLUMN_TASK_START_DATE = "start_date";
+    public static final String COLUMN_TASK_END_DATE = "end_date";
+    public static final String COLUMN_TASK_EXECUTION_TIME = "execution_time";
+    public static final String COLUMN_TASK_DIFFICULTY = "difficulty";
+    public static final String COLUMN_TASK_IMPORTANCE = "importance";
+    public static final String COLUMN_TASK_XP_VALUE = "xp_value";
+
+    //*******************************************************************//
+    public static final String TABLE_CATEGORIES = "categories";
+    public static final String COLUMN_CATEGORY_ID = "_id";
+    public static final String COLUMN_CATEGORY_NAME = "name";
+    public static final String COLUMN_CATEGORY_COLOR = "color";
+
+    //*******************************************************************//
 
     private static final String SQL_CREATE_USERS_TABLE =
             "CREATE TABLE " + TABLE_USERS + " (" +
@@ -49,6 +75,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_COINS + " INTEGER," +
                     COLUMN_EQUIPMENT + " TEXT)";
 
+    private static final String SQL_CREATE_TASKS_TABLE =
+            "CREATE TABLE " + TABLE_TASKS + " ("
+                    + COLUMN_TASK_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_TASK_NAME + " TEXT NOT NULL,"
+                    + COLUMN_TASK_DESCRIPTION + " TEXT,"
+                    + COLUMN_TASK_CATEGORY_ID + " INTEGER NOT NULL,"
+                    + COLUMN_TASK_FREQUENCY + " TEXT NOT NULL,"
+                    + COLUMN_TASK_INTERVAL + " INTEGER,"
+                    + COLUMN_TASK_INTERVAL_UNIT + " TEXT,"
+                    + COLUMN_TASK_START_DATE + " TEXT,"
+                    + COLUMN_TASK_END_DATE + " TEXT,"
+                    + COLUMN_TASK_EXECUTION_TIME + " TEXT,"
+                    + COLUMN_TASK_DIFFICULTY + " TEXT NOT NULL,"
+                    + COLUMN_TASK_IMPORTANCE + " TEXT NOT NULL,"
+                    + COLUMN_TASK_XP_VALUE + " INTEGER NOT NULL);";
+
+
+    private static final String SQL_CREATE_CATEGORIES_TABLE =
+            "CREATE TABLE " + TABLE_CATEGORIES + " ("
+                    + COLUMN_CATEGORY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + COLUMN_CATEGORY_NAME + " TEXT NOT NULL,"
+                    + COLUMN_CATEGORY_COLOR + " INTEGER NOT NULL);";
+
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
@@ -56,11 +105,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_USERS_TABLE);
+        db.execSQL(SQL_CREATE_TASKS_TABLE);
+        db.execSQL(SQL_CREATE_CATEGORIES_TABLE);
+
+        onCreateCategories(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_TASKS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CATEGORIES); // Dodaj ovu liniju
         onCreate(db);
     }
 
@@ -198,5 +253,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
         }
         return userEquipment;
+    }
+
+
+    private void onCreateCategories(SQLiteDatabase db) {
+        ContentValues values = new ContentValues();
+
+        // Hard-kodovane kategorije sa realnim bojama
+        values.put(COLUMN_CATEGORY_NAME, "Zdravlje");
+        values.put(COLUMN_CATEGORY_COLOR, Color.RED);
+        db.insert(TABLE_CATEGORIES, null, values);
+
+        values.clear();
+        values.put(COLUMN_CATEGORY_NAME, "Ucenje");
+        values.put(COLUMN_CATEGORY_COLOR, Color.BLUE);
+        db.insert(TABLE_CATEGORIES, null, values);
+
+        values.clear();
+        values.put(COLUMN_CATEGORY_NAME, "Sredjivanje");
+        values.put(COLUMN_CATEGORY_COLOR, Color.GREEN);
+        db.insert(TABLE_CATEGORIES, null, values);
     }
 }
