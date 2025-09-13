@@ -130,4 +130,11 @@ public class User {
     public void setEquipment(List<String> equipment) {
         this.equipment = equipment;
     }
+
+    public void addEquipment(String equipmentId) {
+        if (this.equipment == null) {
+            this.equipment = new ArrayList<>();
+        }
+        this.equipment.add(equipmentId);
+    }
 }

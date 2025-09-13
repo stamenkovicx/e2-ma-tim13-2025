@@ -6,11 +6,16 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import com.example.myapplication.domain.models.User;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "MyProjectDatabase.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     public static final String TABLE_USERS = "users";
     public static final String COLUMN_ID = "_id";
@@ -23,6 +28,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_POWER_POINTS = "power_points";
     public static final String COLUMN_XP = "xp";
     public static final String COLUMN_COINS = "coins";
+    public static final String COLUMN_EQUIPMENT = "equipment";
 
     // SQL izraz za kreiranje tabele "users"
     private static final String SQL_CREATE_USERS_TABLE =
@@ -36,7 +42,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_TITLE + " TEXT," +
                     COLUMN_POWER_POINTS + " INTEGER," +
                     COLUMN_XP + " INTEGER," +
-                    COLUMN_COINS + " INTEGER)";
+                    COLUMN_COINS + " INTEGER," +
+                    COLUMN_EQUIPMENT + " TEXT)"; // Nova kolona
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -66,6 +73,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN_POWER_POINTS, user.getPowerPoints());
         cv.put(COLUMN_XP, user.getXp());
         cv.put(COLUMN_COINS, user.getCoins());
+        cv.put(COLUMN_EQUIPMENT, new Gson().toJson(user.getEquipment()));
 
         long insert = db.insert(TABLE_USERS, null, cv);
         db.close();
@@ -73,7 +81,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return insert != -1;
     }
 
-    // Provjera da li vec postoji korisnik sa odredjenim email-om
     public boolean checkUser(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
         String[] columns = { COLUMN_EMAIL };
@@ -101,7 +108,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_TITLE,
                 COLUMN_POWER_POINTS,
                 COLUMN_XP,
-                COLUMN_COINS
+                COLUMN_COINS,
+                COLUMN_EQUIPMENT
         };
         String selection = COLUMN_EMAIL + " = ?";
         String[] selectionArgs = {email};
@@ -109,34 +117,61 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.query(TABLE_USERS, columns, selection, selectionArgs, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
-            int idIndex = cursor.getColumnIndex(COLUMN_ID);
-            int usernameIndex = cursor.getColumnIndex(COLUMN_USERNAME);
-            int emailIndex = cursor.getColumnIndex(COLUMN_EMAIL);
-            int passwordIndex = cursor.getColumnIndex(COLUMN_PASSWORD);
-            int avatarIndex = cursor.getColumnIndex(COLUMN_AVATAR);
-            int levelIndex = cursor.getColumnIndex(COLUMN_LEVEL);
-            int titleIndex = cursor.getColumnIndex(COLUMN_TITLE);
-            int powerPointsIndex = cursor.getColumnIndex(COLUMN_POWER_POINTS);
-            int xpIndex = cursor.getColumnIndex(COLUMN_XP);
-            int coinsIndex = cursor.getColumnIndex(COLUMN_COINS);
+            int idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID);
+            int usernameIndex = cursor.getColumnIndexOrThrow(COLUMN_USERNAME);
+            int emailIndex = cursor.getColumnIndexOrThrow(COLUMN_EMAIL);
+            int passwordIndex = cursor.getColumnIndexOrThrow(COLUMN_PASSWORD);
+            int avatarIndex = cursor.getColumnIndexOrThrow(COLUMN_AVATAR);
+            int levelIndex = cursor.getColumnIndexOrThrow(COLUMN_LEVEL);
+            int titleIndex = cursor.getColumnIndexOrThrow(COLUMN_TITLE);
+            int powerPointsIndex = cursor.getColumnIndexOrThrow(COLUMN_POWER_POINTS);
+            int xpIndex = cursor.getColumnIndexOrThrow(COLUMN_XP);
+            int coinsIndex = cursor.getColumnIndexOrThrow(COLUMN_COINS);
+            int equipmentIndex = cursor.getColumnIndexOrThrow(COLUMN_EQUIPMENT);
 
-            int id = (idIndex != -1) ? cursor.getInt(idIndex) : 0;
-            String username = (usernameIndex != -1) ? cursor.getString(usernameIndex) : "";
-            String userEmail = (emailIndex != -1) ? cursor.getString(emailIndex) : "";
-            String userPassword = (passwordIndex != -1) ? cursor.getString(passwordIndex) : "";
-            String userAvatar = (avatarIndex != -1) ? cursor.getString(avatarIndex) : "";
-            int level = (levelIndex != -1) ? cursor.getInt(levelIndex) : 1;
-            String title = (titleIndex != -1) ? cursor.getString(titleIndex) : "Beginner";
-            int powerPoints = (powerPointsIndex != -1) ? cursor.getInt(powerPointsIndex) : 100;
-            int xp = (xpIndex != -1) ? cursor.getInt(xpIndex) : 0;
-            int coins = (coinsIndex != -1) ? cursor.getInt(coinsIndex) : 0;
+            // Čitanje podataka
+            String username = cursor.getString(usernameIndex);
+            String userEmail = cursor.getString(emailIndex);
+            String userPassword = cursor.getString(passwordIndex);
+            String userAvatar = cursor.getString(avatarIndex);
+            int level = cursor.getInt(levelIndex);
+            String title = cursor.getString(titleIndex);
+            int powerPoints = cursor.getInt(powerPointsIndex);
+            int xp = cursor.getInt(xpIndex);
+            int coins = cursor.getInt(coinsIndex);
+            String equipmentJson = cursor.getString(equipmentIndex);
 
-            user = new User(username, userEmail, userPassword, userAvatar, level, title, powerPoints, xp, coins);        }
+            // Kreiranje User objekta
+            user = new User(username, userEmail, userPassword, userAvatar, level, title, powerPoints, xp, coins);
+
+            // Postavljanje opreme iz JSON-a
+            List<String> equipment = new Gson().fromJson(equipmentJson, new TypeToken<List<String>>(){}.getType());
+            user.setEquipment(equipment);
+        }
 
         if (cursor != null) {
             cursor.close();
         }
-        db.close();
+        //db.close();
         return user;
+    }
+
+    public void updateUser(User user) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+
+        values.put(COLUMN_USERNAME, user.getUsername());
+        values.put(COLUMN_EMAIL, user.getEmail());
+        values.put(COLUMN_PASSWORD, user.getPassword());
+        values.put(COLUMN_AVATAR, user.getAvatar());
+        values.put(COLUMN_LEVEL, user.getLevel());
+        values.put(COLUMN_TITLE, user.getTitle());
+        values.put(COLUMN_POWER_POINTS, user.getPowerPoints());
+        values.put(COLUMN_XP, user.getXp());
+        values.put(COLUMN_COINS, user.getCoins());
+        values.put(COLUMN_EQUIPMENT, new Gson().toJson(user.getEquipment()));
+
+        db.update(TABLE_USERS, values, "email = ?", new String[]{user.getEmail()});
+        db.close();
     }
 }

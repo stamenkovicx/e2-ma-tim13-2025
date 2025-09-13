@@ -1,6 +1,8 @@
 package com.example.myapplication.presentation.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -40,6 +42,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
+    private Button btnGoToShop;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +73,13 @@ public class ProfileActivity extends AppCompatActivity {
 
         btnChangePassword.setOnClickListener(v -> {
             showChangePasswordDialog();
+        });
+
+        btnGoToShop = findViewById(R.id.btnGoToShop);
+
+        btnGoToShop.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, ShopActivity.class);
+            startActivity(intent);
         });
     }
 

@@ -44,6 +44,13 @@
             android:text="@string/profile_username"
             android:textColor="@color/text_color_primary"/>
 
+        <Button
+            android:id="@+id/btnGoToShop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Shop"
+            android:layout_marginTop="16dp"/>
+
         <TextView
             android:id="@+id/tvProfileStats"
             android:layout_width="match_parent"
