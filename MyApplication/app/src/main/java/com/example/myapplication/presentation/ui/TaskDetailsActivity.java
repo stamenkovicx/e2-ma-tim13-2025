@@ -1,5 +1,6 @@
 package com.example.myapplication.presentation.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -54,9 +55,11 @@ public class TaskDetailsActivity extends AppCompatActivity {
             displayTaskDetails(task);
         }
 
-        // Dugmad su ostavljena bez logike za sada
+
         btnEdit.setOnClickListener(v -> {
-            // Logika za izmenu zadatka (biće implementirana kasnije)
+            Intent intent = new Intent(this, EditTaskActivity.class);
+            intent.putExtra("task", task);
+            startActivity(intent);
         });
 
         btnDelete.setOnClickListener(v -> {
@@ -101,6 +104,19 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 finish(); // Vrati se na prethodni ekran
             } else {
                 Toast.makeText(this, "Greška prilikom brisanja zadatka.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (task != null) {
+            // Ponovo učitaj zadatak iz baze da bi dobio najnovije podatke
+            Task updatedTask = taskRepository.getTaskById(task.getId());
+            if (updatedTask != null) {
+                this.task = updatedTask;
+                displayTaskDetails(this.task);
             }
         }
     }
