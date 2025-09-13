@@ -55,8 +55,7 @@ public class TaskViewerActivity extends AppCompatActivity {
         public Fragment createFragment(int position) {
             switch (position) {
                 case 0:
-                    // Prazan fragment za sada
-                    return new Fragment();
+                    return new TaskListFragment(); // Prikazuje listu svih zadataka
                 case 1:
                     return new TaskCalendarFragment();
                 case 2:
