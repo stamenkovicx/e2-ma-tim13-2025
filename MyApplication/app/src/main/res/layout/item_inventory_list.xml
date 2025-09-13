@@ -31,7 +31,7 @@
                 android:layout_gravity="top|end"
                 android:layout_margin="4dp"
                 android:src="@drawable/active_status_indicator"
-                android:visibility="gone"/>
+                android:visibility="gone" />
 
         </FrameLayout>
 
@@ -66,7 +66,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Activate"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

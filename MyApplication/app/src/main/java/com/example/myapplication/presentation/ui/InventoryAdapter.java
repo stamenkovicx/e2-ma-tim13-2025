@@ -7,27 +7,34 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.DatabaseHelper;
+import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
+import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.List;
 
 public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.ViewHolder> {
 
     private Context context;
-    private List<Equipment> equipmentList;
+    private List<UserEquipment> userEquipmentList;
     private OnInventoryActionListener listener;
 
     public interface OnInventoryActionListener {
-        void onActivateClick(Equipment equipment);
+        void onActivateClick(UserEquipment userEquipment);
     }
 
-    public InventoryAdapter(Context context, List<Equipment> equipmentList, OnInventoryActionListener listener) {
+    public InventoryAdapter(Context context, List<UserEquipment> userEquipmentList, OnInventoryActionListener listener) {
         this.context = context;
-        this.equipmentList = equipmentList;
+        this.userEquipmentList = userEquipmentList;
         this.listener = listener;
     }
 
@@ -40,49 +47,54 @@ public class InventoryAdapter extends RecyclerView.Adapter<InventoryAdapter.View
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Equipment equipment = equipmentList.get(position);
+        UserEquipment userEquipment = userEquipmentList.get(position);
 
-        holder.tvItemName.setText(equipment.getName());
-        holder.tvItemDescription.setText(equipment.getDescription());
+        // Dohvatanje Equipment objekta iz ItemRepository-a
+        Equipment equipment = ItemRepository.getEquipmentById(userEquipment.getEquipmentId());
 
-        // Postavi sliku
-        int imageResId = context.getResources().getIdentifier(equipment.getIconResourceId(), "drawable", context.getPackageName());
-        if (imageResId != 0) {
-            holder.ivItemImage.setImageResource(imageResId);
-        } else {
-            holder.ivItemImage.setImageResource(R.drawable.ic_launcher_foreground); // Rezervna slika
-        }
+        if (equipment != null) {
+            holder.tvItemName.setText(equipment.getName());
+            holder.tvItemDescription.setText(equipment.getDescription());
 
-        // Logika za prikaz stanja
-        if (equipment.isActive()) {
-            holder.ivActiveStatus.setVisibility(View.VISIBLE);
-            holder.btnActivate.setEnabled(false); // Onemoguci dugme ako je vec aktivirano
-
-            // Prikazi trajanje samo za odjecu i napitke
-            if (equipment.getType() == EquipmentType.CLOTHING || equipment.getDuration() > 0) {
-                holder.tvItemDuration.setVisibility(View.VISIBLE);
-                holder.tvItemDuration.setText("Preostalo: " + equipment.getDuration() + " borbi");
+            // Postavi sliku na osnovu IconResourceId iz Equipment klase
+            int imageResId = context.getResources().getIdentifier(equipment.getIconResourceId(), "drawable", context.getPackageName());
+            if (imageResId != 0) {
+                holder.ivItemImage.setImageResource(imageResId);
             } else {
+                holder.ivItemImage.setImageResource(R.drawable.ic_launcher_foreground);
+            }
+
+            // Logika za prikaz stanja
+            if (userEquipment.isActive()) {
+                holder.ivActiveStatus.setVisibility(View.VISIBLE);
+                holder.btnActivate.setVisibility(View.GONE); // Sakrij dugme ako je aktivno
+
+                // Prikazi trajanje samo za opremu s trajanjem
+                if (equipment.getDuration() > 0) {
+                    holder.tvItemDuration.setVisibility(View.VISIBLE);
+                    holder.tvItemDuration.setText("Remaining: " + userEquipment.getDuration() + " fight(s)");
+                } else {
+                    holder.tvItemDuration.setVisibility(View.GONE);
+                }
+
+            } else {
+                holder.ivActiveStatus.setVisibility(View.GONE);
+                holder.btnActivate.setVisibility(View.VISIBLE); // Prikazi dugme
                 holder.tvItemDuration.setVisibility(View.GONE);
             }
 
-        } else {
-            holder.ivActiveStatus.setVisibility(View.GONE);
-            holder.btnActivate.setEnabled(true);
-            holder.tvItemDuration.setVisibility(View.GONE);
+            // Klik na dugme Activate
+            holder.btnActivate.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onActivateClick(userEquipment);
+                }
+            });
         }
-
-        // Klik na dugme Activate
-        holder.btnActivate.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onActivateClick(equipment);
-            }
-        });
     }
 
     @Override
     public int getItemCount() {
-        return equipmentList.size();
+        return userEquipmentList.size();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

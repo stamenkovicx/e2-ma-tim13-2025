@@ -14,6 +14,7 @@ import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
 import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -26,19 +27,20 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
     private RecyclerView rvClothing;
     private RecyclerView rvWeapons;
     private Button btnBackToProfile;
+    private DatabaseHelper databaseHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inventory);
 
-        // Povezivanje UI elemenata
+        databaseHelper = new DatabaseHelper(this);
+
         rvPotions = findViewById(R.id.rvPotions);
         rvClothing = findViewById(R.id.rvClothing);
         rvWeapons = findViewById(R.id.rvWeapons);
         btnBackToProfile = findViewById(R.id.btnBackToProfile);
 
-        // Učitavanje i prikaz opreme
         loadUserEquipment();
 
         btnBackToProfile.setOnClickListener(v -> finish());
@@ -47,59 +49,74 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
     private void loadUserEquipment() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) {
-            // Ako korisnik nije ulogovan, vratite se na početni ekran
-            Toast.makeText(this, "Korisnik nije ulogovan.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        DatabaseHelper databaseHelper = new DatabaseHelper(this);
-        // Pretpostavimo da getUserEquipment() metoda u DatabaseHelperu vraća svu opremu za tog korisnika.
-        List<Equipment> userEquipment = databaseHelper.getUserEquipment(currentUser.getEmail());
+        User user = databaseHelper.getUser(currentUser.getEmail());
+        if (user == null) {
+            Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
-        List<Equipment> potions = new ArrayList<>();
-        List<Equipment> clothing = new ArrayList<>();
-        List<Equipment> weapons = new ArrayList<>();
+        List<UserEquipment> allUserEquipment = user.getUserEquipmentList();
 
-        for (Equipment item : userEquipment) {
-            if (item.getType() == EquipmentType.POTION) {
-                potions.add(item);
-            } else if (item.getType() == EquipmentType.CLOTHING) {
-                clothing.add(item);
-            } else if (item.getType() == EquipmentType.WEAPON) {
-                weapons.add(item);
+        List<UserEquipment> potions = new ArrayList<>();
+        List<UserEquipment> clothing = new ArrayList<>();
+        List<UserEquipment> weapons = new ArrayList<>();
+
+        for (UserEquipment item : allUserEquipment) {
+            Equipment equipmentDetails = ItemRepository.getEquipmentById(item.getEquipmentId());
+            if (equipmentDetails != null) {
+                if (equipmentDetails.getType() == EquipmentType.POTION) {
+                    potions.add(item);
+                } else if (equipmentDetails.getType() == EquipmentType.CLOTHING) {
+                    clothing.add(item);
+                } else if (equipmentDetails.getType() == EquipmentType.WEAPON) {
+                    weapons.add(item);
+                }
             }
         }
 
-        // Postavljanje RecyclerView-a za napitke
         rvPotions.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         InventoryAdapter potionsAdapter = new InventoryAdapter(this, potions, this);
         rvPotions.setAdapter(potionsAdapter);
 
-        // Postavljanje RecyclerView-a za odjecu
         rvClothing.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         InventoryAdapter clothingAdapter = new InventoryAdapter(this, clothing, this);
         rvClothing.setAdapter(clothingAdapter);
 
-        // Postavljanje RecyclerView-a za oruzje
         rvWeapons.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         InventoryAdapter weaponsAdapter = new InventoryAdapter(this, weapons, this);
         rvWeapons.setAdapter(weaponsAdapter);
     }
 
     @Override
-    public void onActivateClick(Equipment equipment) {
-        // Ovde ide logika za aktivaciju opreme
-        // Na primer, možete dodati bonus na korisnikove atribute
-        if (equipment.getType() == EquipmentType.POTION) {
-            Toast.makeText(this, "Napitak '" + equipment.getName() + "' je aktiviran!", Toast.LENGTH_SHORT).show();
-        } else if (equipment.getType() == EquipmentType.CLOTHING) {
-            Toast.makeText(this, "Odeća '" + equipment.getName() + "' je aktivirana!", Toast.LENGTH_SHORT).show();
-        } else if (equipment.getType() == EquipmentType.WEAPON) {
-            Toast.makeText(this, "Oružje '" + equipment.getName() + "' je aktivirano!", Toast.LENGTH_SHORT).show();
+    public void onActivateClick(UserEquipment userEquipment) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        User user = databaseHelper.getUser(currentUser.getEmail());
+        if (user == null) return;
+
+        for (UserEquipment item : user.getUserEquipmentList()) {
+            if (item.getEquipmentId() == userEquipment.getEquipmentId()) {
+                item.setActive(true);
+                break;
+            }
         }
 
-        // U stvarnoj implementaciji, trebalo bi da ažurirate stanje opreme u bazi
-        // npr. databaseHelper.activateEquipment(equipment.getId());
+        databaseHelper.updateUser(user);
+
+        // Prikaz poruke
+        Equipment equipmentDetails = ItemRepository.getEquipmentById(userEquipment.getEquipmentId());
+        if (equipmentDetails != null) {
+            Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been activated!", Toast.LENGTH_SHORT).show();
+        }
+
+        // Ponovo ucitavanje opreme da bi se azurirao prikaz
+        loadUserEquipment();
     }
 }
