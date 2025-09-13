@@ -72,6 +72,7 @@ public class TaskListFragment extends Fragment {
         List<Task> allTasks = taskRepository.getAllTasks();
         if (taskAdapter == null) {
             if (getContext() != null) {
+
                 taskAdapter = new TaskAdapter(allTasks, getContext());
                 rvAllTasks.setAdapter(taskAdapter);
             }
@@ -114,7 +115,6 @@ public class TaskListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Osveži listu kada se fragment vrati u prvi plan
         loadAllTasks();
     }
 }

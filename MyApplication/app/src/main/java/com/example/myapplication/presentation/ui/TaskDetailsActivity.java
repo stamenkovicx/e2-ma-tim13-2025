@@ -4,9 +4,13 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
 
 import java.text.SimpleDateFormat;
@@ -19,11 +23,15 @@ public class TaskDetailsActivity extends AppCompatActivity {
     private TextView tvTaskName, tvTaskDescription, tvCategory, tvFrequency, tvDates, tvExecutionTime, tvDifficulty, tvImportance;
     private View vCategoryColor;
     private Button btnEdit, btnDelete;
+    private TaskRepository taskRepository;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_task_details);
+
+        taskRepository = new TaskRepositorySQLiteImpl(this);
 
         // Preuzmi Task objekat iz Intent-a
         if (getIntent().getSerializableExtra("task") != null) {
@@ -52,7 +60,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
         });
 
         btnDelete.setOnClickListener(v -> {
-            // Logika za brisanje zadatka (biće implementirana kasnije)
+            deleteTask();
         });
     }
 
@@ -81,5 +89,19 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         tvDifficulty.setText(String.format("Težina: %s (%d XP)", task.getDifficulty().getSerbianName(), task.getDifficulty().getXpValue()));
         tvImportance.setText(String.format("Bitnost: %s (%d XP)", task.getImportance().getSerbianName(), task.getImportance().getXpValue()));
+    }
+    private void deleteTask() {
+        if (task != null) {
+            // Prema specifikaciji, nije moguće obrisati završene zadatke
+            // Moramo proveriti status zadatka
+            // (Za sada pretpostavljamo da ne postoji status, pa se brišu svi)
+            int rowsDeleted = taskRepository.deleteTask(task.getId());
+            if (rowsDeleted > 0) {
+                Toast.makeText(this, "Zadatak uspešno obrisan.", Toast.LENGTH_SHORT).show();
+                finish(); // Vrati se na prethodni ekran
+            } else {
+                Toast.makeText(this, "Greška prilikom brisanja zadatka.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }
