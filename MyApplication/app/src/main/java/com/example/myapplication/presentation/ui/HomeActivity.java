@@ -13,6 +13,8 @@ public class HomeActivity extends AppCompatActivity {
 
     private Button btnLogout;
     private Button btnProfile;
+    private Button btnCreateTask;
+
     private FirebaseAuth mAuth;
 
     @Override
@@ -25,6 +27,8 @@ public class HomeActivity extends AppCompatActivity {
         btnLogout = findViewById(R.id.btnLogout);
 
         btnProfile = findViewById(R.id.btnProfile);
+
+
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -39,5 +43,12 @@ public class HomeActivity extends AppCompatActivity {
             Intent intent = new Intent(HomeActivity.this, ProfileActivity.class);
             startActivity(intent);
         });
+
+        Button btnGoToCreateTask = findViewById(R.id.btnGoToCreateTask);
+        btnGoToCreateTask.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, CreateTaskActivity.class);
+            startActivity(intent);
+        });
+
     }
 }
