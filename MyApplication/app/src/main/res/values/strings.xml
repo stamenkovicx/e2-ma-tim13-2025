@@ -24,4 +24,10 @@
     <string name="profile_qr_code">QR Code</string>
 
     <string name="shop">Shop</string>
+    <string-array name="task_filter_options">
+        <item>Svi zadaci</item>
+        <item>Jednokratni</item>
+        <item>Ponavljajući</item>
+    </string-array>
+
 </resources>
