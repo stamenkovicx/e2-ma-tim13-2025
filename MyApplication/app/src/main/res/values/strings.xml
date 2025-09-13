@@ -22,4 +22,6 @@
     <string name="profile_equipment">Equipment:</string>
     <string name="profile_change_password">Change Password</string>
     <string name="profile_qr_code">QR Code</string>
+
+    <string name="shop">Shop</string>
 </resources>

@@ -44,5 +44,7 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation libs.zxing.core
     implementation libs.zxing.android.embedded
-
+    implementation libs.cardview
+    implementation libs.gson
+    implementation libs.material.v1130
 }
