@@ -32,6 +32,14 @@
         android:layout_marginBottom="16dp"/>
 
     <Button
+        android:id="@+id/btnGoToTaskViewer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="View tasks"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
         android:id="@+id/btnLogout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
