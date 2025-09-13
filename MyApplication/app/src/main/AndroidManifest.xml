@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
+            android:name=".presentation.ui.InventoryActivity"
+            android:exported="false" />
+        <activity
             android:name=".presentation.ui.ShopActivity"
             android:exported="false" />
         <activity

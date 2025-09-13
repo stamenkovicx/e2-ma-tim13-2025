@@ -5,12 +5,17 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+
+import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import com.example.myapplication.data.repository.ItemRepository;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -30,7 +35,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_COINS = "coins";
     public static final String COLUMN_EQUIPMENT = "equipment";
 
-    // SQL izraz za kreiranje tabele "users"
     private static final String SQL_CREATE_USERS_TABLE =
             "CREATE TABLE " + TABLE_USERS + " (" +
                     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -43,7 +47,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_POWER_POINTS + " INTEGER," +
                     COLUMN_XP + " INTEGER," +
                     COLUMN_COINS + " INTEGER," +
-                    COLUMN_EQUIPMENT + " TEXT)"; // Nova kolona
+                    COLUMN_EQUIPMENT + " TEXT)";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -73,11 +77,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN_POWER_POINTS, user.getPowerPoints());
         cv.put(COLUMN_XP, user.getXp());
         cv.put(COLUMN_COINS, user.getCoins());
-        cv.put(COLUMN_EQUIPMENT, new Gson().toJson(user.getEquipment()));
+
+        Type type = new TypeToken<List<UserEquipment>>() {}.getType();
+        String equipmentJson = new Gson().toJson(user.getUserEquipmentList(), type);
+        cv.put(COLUMN_EQUIPMENT, equipmentJson);
 
         long insert = db.insert(TABLE_USERS, null, cv);
         db.close();
-
         return insert != -1;
     }
 
@@ -129,7 +135,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             int coinsIndex = cursor.getColumnIndexOrThrow(COLUMN_COINS);
             int equipmentIndex = cursor.getColumnIndexOrThrow(COLUMN_EQUIPMENT);
 
-            // Čitanje podataka
             String username = cursor.getString(usernameIndex);
             String userEmail = cursor.getString(emailIndex);
             String userPassword = cursor.getString(passwordIndex);
@@ -141,18 +146,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             int coins = cursor.getInt(coinsIndex);
             String equipmentJson = cursor.getString(equipmentIndex);
 
-            // Kreiranje User objekta
             user = new User(username, userEmail, userPassword, userAvatar, level, title, powerPoints, xp, coins);
 
-            // Postavljanje opreme iz JSON-a
-            List<String> equipment = new Gson().fromJson(equipmentJson, new TypeToken<List<String>>(){}.getType());
-            user.setEquipment(equipment);
+            Type type = new TypeToken<List<UserEquipment>>() {}.getType();
+            List<UserEquipment> userEquipmentList = new Gson().fromJson(equipmentJson, type);
+            if (userEquipmentList != null) {
+                user.setUserEquipmentList(userEquipmentList);
+            }
         }
 
         if (cursor != null) {
             cursor.close();
         }
-        //db.close();
         return user;
     }
 
@@ -169,9 +174,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_POWER_POINTS, user.getPowerPoints());
         values.put(COLUMN_XP, user.getXp());
         values.put(COLUMN_COINS, user.getCoins());
-        values.put(COLUMN_EQUIPMENT, new Gson().toJson(user.getEquipment()));
+
+        Type type = new TypeToken<List<UserEquipment>>() {}.getType();
+        String equipmentJson = new Gson().toJson(user.getUserEquipmentList(), type);
+        values.put(COLUMN_EQUIPMENT, equipmentJson);
 
         db.update(TABLE_USERS, values, "email = ?", new String[]{user.getEmail()});
         db.close();
+    }
+
+    public List<Equipment> getUserEquipment(String userEmail) {
+        List<Equipment> userEquipment = new ArrayList<>();
+        User user = getUser(userEmail);
+
+        if (user != null && user.getUserEquipmentList() != null) {
+            for (UserEquipment item : user.getUserEquipmentList()) {
+                Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
+                if (equipment != null) {
+                    equipment.setActive(item.isActive());
+                    equipment.setDuration(item.getDuration());
+                    userEquipment.add(equipment);
+                }
+            }
+        }
+        return userEquipment;
     }
 }

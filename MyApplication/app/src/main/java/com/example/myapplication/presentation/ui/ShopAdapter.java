@@ -16,6 +16,7 @@ import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -128,16 +129,22 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
 
                 if (user.getCoins() >= finalCost) {
                     user.setCoins(user.getCoins() - finalCost);
-                    // Dodaj item u korpu
-                    user.addEquipment(item.getIconResourceId());
+                    Equipment purchasedItem = ItemRepository.getEquipmentByResourceId(item.getIconResourceId());
+                    if (purchasedItem != null) {
+                        UserEquipment newUserEquipment = new UserEquipment(
+                                purchasedItem.getId(),
+                                false,
+                                purchasedItem.getDuration()
+                        );
+                        // Dodajte novi objekat u listu korisničke opreme
+                        user.addEquipment(newUserEquipment);
+                        databaseHelper.updateUser(user);
 
-                    databaseHelper.updateUser(user);
-
-                    if (listener != null) {
-                        listener.onCoinsUpdated(user.getCoins());
+                        if (listener != null) {
+                            listener.onCoinsUpdated(user.getCoins());
+                        }
+                        Toast.makeText(context, "You successfully bought " + item.getName() + "!", Toast.LENGTH_SHORT).show();
                     }
-
-                    Toast.makeText(context, "You successfully bought " + item.getName() + "!", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(context, "Not enough coins!", Toast.LENGTH_SHORT).show();
                 }

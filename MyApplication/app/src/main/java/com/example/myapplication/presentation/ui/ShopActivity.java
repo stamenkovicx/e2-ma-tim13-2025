@@ -37,11 +37,9 @@ public class ShopActivity extends AppCompatActivity implements ShopAdapter.OnSho
         tvUserCoins = findViewById(R.id.tvUserCoins);
         btnBackToProfile = findViewById(R.id.btnBackToProfile);
 
+        updateCoinsDisplay();
         // Postavljanje lista za prodavnicu
         setupShopLists();
-
-        // Prikaz novcica korisnika (za sada je hardkodovano)
-        tvUserCoins.setText("500");
 
         btnBackToProfile.setOnClickListener(v -> finish());
     }

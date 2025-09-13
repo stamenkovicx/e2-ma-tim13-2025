@@ -24,27 +24,27 @@ public class ItemRepository {
         List<Equipment> allEquipment = new ArrayList<>();
         // POTIONS (Napici)
         // Napitak za jednokratnu snagu (+20% PP)
-        allEquipment.add(new Equipment("Minor Potion of Power", "A one-time potion that increases power by 20%.", "potion_power_minor", EquipmentType.POTION, 0.20));
+        allEquipment.add(new Equipment(1,"Minor Potion of Power", "A one-time potion that increases power by 20%.", "potion_power_minor", EquipmentType.POTION, 0.20, 1));
         // Napitak za jednokratnu snagu (+40% PP)
-        allEquipment.add(new Equipment("Greater Potion of Power", "A one-time potion that increases power by 40%.", "potion_power_greater", EquipmentType.POTION, 0.40));
+        allEquipment.add(new Equipment(2,"Greater Potion of Power", "A one-time potion that increases power by 40%.", "potion_power_greater", EquipmentType.POTION, 0.40, 1));
         // Napitak za trajno povecanje snage (+5% PP)
-        allEquipment.add(new Equipment("Elixir of Might", "A potion that permanently increases power by 5%.", "elixir_might", EquipmentType.POTION, 0.05));
+        allEquipment.add(new Equipment(3,"Elixir of Might", "A potion that permanently increases power by 5%.", "elixir_might", EquipmentType.POTION, 0.05, 0));
         // Napitak za trajno povecanje snage (+10% PP)
-        allEquipment.add(new Equipment("Elixir of Greatness", "A potion that permanently increases power by 10%.", "elixir_greatness", EquipmentType.POTION, 0.10));
+        allEquipment.add(new Equipment(4,"Elixir of Greatness", "A potion that permanently increases power by 10%.", "elixir_greatness", EquipmentType.POTION, 0.10, 0));
 
         // CLOTHING (Odjeca)
         // Rukavice (+10% povecanje snage)
-        allEquipment.add(new Equipment("Gloves of Strength", "Gloves that increase power by 10% for two battles.", "clothing_gloves", EquipmentType.CLOTHING, 0.10));
+        allEquipment.add(new Equipment(5,"Gloves of Strength", "Gloves that increase power by 10% for two battles.", "clothing_gloves", EquipmentType.CLOTHING, 0.10, 2));
         // Stit (+10% povecanje sanse uspjesnog napada)
-        allEquipment.add(new Equipment("Shield of Fortune", "A shield that increases successful attack chance by 10% for two battles.", "clothing_shield", EquipmentType.CLOTHING, 0.10));
+        allEquipment.add(new Equipment(6,"Shield of Fortune", "A shield that increases successful attack chance by 10% for two battles.", "clothing_shield", EquipmentType.CLOTHING, 0.10, 2));
         // Cizme (+40% povecanja broja napada)
-        allEquipment.add(new Equipment("Boots of Swiftness", "Boots that give a 40% chance for an extra attack.", "clothing_boots", EquipmentType.CLOTHING, 0.40));
+        allEquipment.add(new Equipment(7,"Boots of Swiftness", "Boots that give a 40% chance for an extra attack.", "clothing_boots", EquipmentType.CLOTHING, 0.40, 2));
 
         // WEAPONS (Oruzje)
         // Mac (+5% trajno povecanje snage)
-        allEquipment.add(new Equipment("Iron Sword", "A sturdy sword that permanently increases power by 5%.", "weapon_sword", EquipmentType.WEAPON, 0.05));
+        allEquipment.add(new Equipment(8,"Iron Sword", "A sturdy sword that permanently increases power by 5%.", "weapon_sword", EquipmentType.WEAPON, 0.05, 0));
         // Luk i strijela (+5% stalno povecanje dobijenog novca)
-        allEquipment.add(new Equipment("Bow and Arrow", "Increases gained coins by 5%.", "weapon_bow", EquipmentType.WEAPON, 0.05));
+        allEquipment.add(new Equipment(9,"Bow and Arrow", "Increases gained coins by 5%.", "weapon_bow", EquipmentType.WEAPON, 0.05, 0));
 
         ALL_EQUIPMENT = Collections.unmodifiableList(allEquipment);
     }
@@ -65,6 +65,15 @@ public class ItemRepository {
     public static Equipment getEquipmentByResourceId(String resourceId) {
         for (Equipment equipment : ALL_EQUIPMENT) {
             if (equipment.getIconResourceId().equals(resourceId)) {
+                return equipment;
+            }
+        }
+        return null;
+    }
+
+    public static Equipment getEquipmentById(int id) {
+        for (Equipment equipment : getAllEquipment()) {
+            if (equipment.getId() == id) {
                 return equipment;
             }
         }

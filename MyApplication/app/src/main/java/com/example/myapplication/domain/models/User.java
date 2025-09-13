@@ -14,7 +14,7 @@ public class User {
     private int powerPoints;
     private int coins;
     private List<String> badges;
-    private List<String> equipment;
+    private List<UserEquipment> userEquipmentList;
 
     public User(String username, String email, String password, String avatar) {
         this.username = username;
@@ -22,12 +22,12 @@ public class User {
         this.password = password;
         this.avatar = avatar;
         this.xp = 0;
-        this.level = 1; // Pocetni nivo
-        this.title = "Beginner"; // Pocetna titula
-        this.powerPoints = 100; // Pocetni poeni snage
-        this.coins = 0; // Pocetni novcici
+        this.level = 1;
+        this.title = "Beginner";
+        this.powerPoints = 100;
+        this.coins = 0;
         this.badges = new ArrayList<>();
-        this.equipment = new ArrayList<>();
+        this.userEquipmentList = new ArrayList<>();
     }
 
     public User(String username, String email, String password, String avatar, int level, String title, int powerPoints, int xp, int coins) {
@@ -41,7 +41,7 @@ public class User {
         this.xp = xp;
         this.coins = coins;
         this.badges = new ArrayList<>();
-        this.equipment = new ArrayList<>();
+        this.userEquipmentList = new ArrayList<>();
     }
 
     public String getUsername() {
@@ -123,18 +123,18 @@ public class User {
         this.badges = badges;
     }
 
-    public List<String> getEquipment() {
-        return equipment;
+    public List<UserEquipment> getUserEquipmentList() {
+        return userEquipmentList;
     }
 
-    public void setEquipment(List<String> equipment) {
-        this.equipment = equipment;
+    public void setUserEquipmentList(List<UserEquipment> userEquipmentList) {
+        this.userEquipmentList = userEquipmentList;
     }
 
-    public void addEquipment(String equipmentId) {
-        if (this.equipment == null) {
-            this.equipment = new ArrayList<>();
+    public void addEquipment(UserEquipment equipment) {
+        if (this.userEquipmentList == null) {
+            this.userEquipmentList = new ArrayList<>();
         }
-        this.equipment.add(equipmentId);
+        this.userEquipmentList.add(equipment);
     }
 }

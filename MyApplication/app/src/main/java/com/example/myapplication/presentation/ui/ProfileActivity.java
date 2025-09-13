@@ -12,7 +12,10 @@ import android.widget.Toast;
 
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.DatabaseHelper;
+import com.example.myapplication.data.repository.ItemRepository;
+import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -45,6 +48,7 @@ public class ProfileActivity extends AppCompatActivity {
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
     private MaterialButton btnGoToShop;
+    private Button btnInventory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +87,13 @@ public class ProfileActivity extends AppCompatActivity {
             Intent intent = new Intent(ProfileActivity.this, ShopActivity.class);
             startActivity(intent);
         });
+
+        btnInventory = findViewById(R.id.btnInventory);
+
+        btnInventory.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, InventoryActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void loadUserProfileData() {
@@ -117,7 +128,8 @@ public class ProfileActivity extends AppCompatActivity {
 
                 // Bedzevi i oprema
                 List<String> userBadges = user.getBadges();
-                List<String> userEquipment = user.getEquipment();
+                List<UserEquipment> userEquipment = user.getUserEquipmentList();
+
                 displayBadgesAndEquipment(userBadges, userEquipment);
             } else {
                 Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
@@ -195,7 +207,7 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    private void displayBadgesAndEquipment(List<String> badges, List<String> equipment) {
+    private void displayBadgesAndEquipment(List<String> badges, List<UserEquipment> userEquipmentList) {
         llBadgesContainer.removeAllViews();
         llEquipmentContainer.removeAllViews();
 
@@ -211,15 +223,21 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        for (String equipmentName : equipment) {
-            ImageView equipmentView = new ImageView(this);
-            int resourceId = getResources().getIdentifier(equipmentName, "drawable", getPackageName());
-            if (resourceId != 0) {
-                equipmentView.setImageResource(resourceId);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
-                params.setMargins(0, 0, 16, 0);
-                equipmentView.setLayoutParams(params);
-                llEquipmentContainer.addView(equipmentView);
+        // NOVI KOD ZA OPREMU
+        for (UserEquipment item : userEquipmentList) {
+            // Pronađite Equipment objekat po ID-u iz repozitorijuma
+            Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
+            if (equipment != null) {
+                ImageView equipmentView = new ImageView(this);
+                // Dohvatite resourceId iz Equipment objekta
+                int resourceId = getResources().getIdentifier(equipment.getIconResourceId(), "drawable", getPackageName());
+                if (resourceId != 0) {
+                    equipmentView.setImageResource(resourceId);
+                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
+                    params.setMargins(0, 0, 16, 0);
+                    equipmentView.setLayoutParams(params);
+                    llEquipmentContainer.addView(equipmentView);
+                }
             }
         }
     }

@@ -55,6 +55,14 @@
             app:iconPadding="8dp"
             app:iconTint="?attr/colorOnPrimary" />
 
+        <Button
+            android:id="@+id/btnInventory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Inventar"
+            android:layout_marginTop="16dp"
+            android:padding="12dp"/>
+
         <TextView
             android:id="@+id/tvProfileStats"
             android:layout_width="match_parent"
