@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">Questify</string>
     <string name="login_title">Login to your account</string>
     <string name="register_title">Create your account</string>
     <string name="login_button">Login</string>
