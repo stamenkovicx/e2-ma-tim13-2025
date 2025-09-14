@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -16,6 +17,8 @@ import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Category;
+import com.skydoves.colorpickerview.ColorPickerDialog;
+import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,40 +71,42 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
     }
 
     private void showColorPicker(Category category) {
-        // filtriraj boje koje nisu zauzete
-        List<Integer> freeColors = new ArrayList<>();
-        for (int color : availableColors) {
-            boolean taken = false;
-            for (Category c : categories) {
-                if (c.getColor() == color && c.getId() != category.getId()) {
-                    taken = true;
-                    break;
-                }
-            }
-            if (!taken) freeColors.add(color);
-        }
-
-        String[] colorNames = new String[freeColors.size()];
-        for (int i = 0; i < freeColors.size(); i++) {
-            colorNames[i] = String.format("#%06X", (0xFFFFFF & freeColors.get(i)));
-        }
-
-        new AlertDialog.Builder(context)
+        new ColorPickerDialog.Builder(context)
                 .setTitle("Izaberite boju")
-                .setItems(colorNames, (dialog, which) -> {
-                    // Menjamo boju kategorije na izabranu
-                    category.setColor(freeColors.get(which));
+                .setPositiveButton("OK", (ColorEnvelopeListener) (envelope, fromUser) -> {
+                    int chosenColor = envelope.getColor();
 
-                    // Ovdje je update u bazi za kategoriju
+                    // Provera da li je boja već zauzeta
+                    boolean taken = false;
+                    for (Category c : categories) {
+                        if (c.getColor() == chosenColor && c.getId() != category.getId()) {
+                            taken = true;
+                            break;
+                        }
+                    }
+
+                    if (taken) {
+                        Toast.makeText(context, "Ova boja je već zauzeta!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    // Menjamo boju kategorije
+                    category.setColor(chosenColor);
+
+                    // Update u bazi
                     repository.updateCategory(category);
 
-                    // Ovdje je update boje svih zadataka te kategorije
+                    // Update boje svih zadataka te kategorije
                     TaskRepository taskRepo = new TaskRepositorySQLiteImpl(context);
                     taskRepo.updateTasksColor(category.getId(), category.getColor());
 
                     // Osvežavamo prikaz
                     notifyDataSetChanged();
-                }).show();
+                })
+                .setNegativeButton("Otkaži", (dialogInterface, i) -> dialogInterface.dismiss())
+                .attachAlphaSlideBar(false)   // bez providnosti
+                .attachBrightnessSlideBar(true) // sa osvetljenošću
+                .show();
     }
 
     public void updateCategories(List<Category> newCategories) {
