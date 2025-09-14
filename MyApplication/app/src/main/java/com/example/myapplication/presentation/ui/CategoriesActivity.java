@@ -58,6 +58,10 @@ public class CategoriesActivity extends AppCompatActivity {
             new ColorPickerDialog.Builder(this)
                     .setTitle("Izaberite boju")
                     .setPositiveButton("OK", (ColorEnvelopeListener) (envelope, fromUser) -> {
+                        // Postavi boju na dugme
+                        btnSelectColor.setBackgroundColor(envelope.getColor());
+                        // Ukloni sliku
+                        btnSelectColor.setImageResource(0); // Ovo postavlja sliku na null
                         selectedColor = envelope.getColor();
                     })
                     .setNegativeButton("Otkaži", (dialogInterface, i) -> dialogInterface.dismiss())
