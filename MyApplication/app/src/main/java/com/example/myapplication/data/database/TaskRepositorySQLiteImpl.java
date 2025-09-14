@@ -230,4 +230,17 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             return null;
         }
     }
+
+    @Override
+    public int updateTasksColor(int categoryId, int newColor) {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(DatabaseHelper.COLUMN_TASK_CATEGORY_COLOR, newColor);
+
+        int updatedRows = db.update(DatabaseHelper.TABLE_TASKS, cv,
+                DatabaseHelper.COLUMN_TASK_CATEGORY_ID + " = ?",
+                new String[]{String.valueOf(categoryId)});
+        db.close();
+        return updatedRows;
+    }
 }

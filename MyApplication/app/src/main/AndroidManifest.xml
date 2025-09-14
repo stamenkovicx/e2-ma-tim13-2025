@@ -35,6 +35,8 @@
             android:exported="false"/>/>
         <activity android:name=".presentation.ui.EditTaskActivity"
             android:exported="false" />
+        <activity android:name=".presentation.ui.CategoriesActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

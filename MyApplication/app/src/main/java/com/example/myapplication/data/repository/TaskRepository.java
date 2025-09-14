@@ -11,4 +11,7 @@ public interface TaskRepository {
     List<Task> getAllTasks();
     int updateTask(Task task);
     int deleteTask(long taskId);
+
+    int updateTasksColor(int categoryId, int newColor);
+
 }

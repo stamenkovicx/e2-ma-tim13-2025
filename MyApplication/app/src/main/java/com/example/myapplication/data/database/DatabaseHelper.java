@@ -56,6 +56,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_TASK_XP_VALUE = "xp_value";
     public static final String COLUMN_TASK_STATUS = "status";
     public static final String COLUMN_TASK_COMPLETION_DATE = "completion_date";
+    public static final String COLUMN_TASK_CATEGORY_COLOR = "category_color";
+
 
     //*******************************************************************//
     public static final String TABLE_CATEGORIES = "categories";
@@ -67,9 +69,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String SQL_CREATE_USERS_TABLE =
             "CREATE TABLE " + TABLE_USERS + " (" +
-               //     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                     COLUMN_USERNAME + " TEXT," +
-                    COLUMN_EMAIL + " TEXT PRIMARY KEY," + // email kao jedinstveni primarni ključ
+                    COLUMN_EMAIL + " TEXT UNIQUE," + // email jedinstven, ali ne primarni ključ
                     COLUMN_PASSWORD + " TEXT," +
                     COLUMN_AVATAR + " TEXT," +
                     COLUMN_LEVEL + " INTEGER," +
@@ -95,7 +97,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_TASK_IMPORTANCE + " TEXT NOT NULL,"
                     + COLUMN_TASK_XP_VALUE + " INTEGER NOT NULL,"
                     + COLUMN_TASK_STATUS + " TEXT NOT NULL,"
-                    + COLUMN_TASK_COMPLETION_DATE + " TEXT);";
+                    + COLUMN_TASK_COMPLETION_DATE + " TEXT,"
+                    + COLUMN_TASK_CATEGORY_COLOR + " INTEGER)";
+    ;
 
 
     private static final String SQL_CREATE_CATEGORIES_TABLE =

@@ -15,6 +15,8 @@ public class HomeActivity extends AppCompatActivity {
     private Button btnProfile;
     private Button btnGoToCreateTask;
     private Button btnGoToTaskViewer;
+    private Button btnManageCategories; // dodaj ovo među ostala dugmad
+
 
 
     private FirebaseAuth mAuth;
@@ -28,8 +30,9 @@ public class HomeActivity extends AppCompatActivity {
 
         btnLogout = findViewById(R.id.btnLogout);
         btnProfile = findViewById(R.id.btnProfile);
-        btnGoToCreateTask = findViewById(R.id.btnGoToCreateTask); // Povezi dugme
-        btnGoToTaskViewer = findViewById(R.id.btnGoToTaskViewer); // Povezi dugme
+        btnGoToCreateTask = findViewById(R.id.btnGoToCreateTask);
+        btnGoToTaskViewer = findViewById(R.id.btnGoToTaskViewer);
+        btnManageCategories = findViewById(R.id.btnManageCategories);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -52,6 +55,10 @@ public class HomeActivity extends AppCompatActivity {
 
         btnGoToTaskViewer.setOnClickListener(v -> {
             Intent intent = new Intent(HomeActivity.this, TaskViewerActivity.class);
+            startActivity(intent);
+        });
+        btnManageCategories.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, CategoriesActivity.class);
             startActivity(intent);
         });
     }
