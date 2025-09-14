@@ -37,4 +37,9 @@ public class Category implements Serializable {
     public void setColor(int color) {
         this.color = color;
     }
+
+    @Override
+    public String toString() {
+        return name; // Ovo omogućava Spinner-u da prikaže ime kategorije
+    }
 }

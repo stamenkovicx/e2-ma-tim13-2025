@@ -16,6 +16,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
+import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.domain.models.Category;
@@ -39,6 +41,8 @@ public class CreateTaskActivity extends AppCompatActivity {
     private RadioGroup rgFrequency;
     private LinearLayout recurringGroup;
     private Button btnCreateTask;
+    private CategoryRepository categoryRepository;
+
 
     // Repozitorijum za zadatke
     private TaskRepository taskRepository;
@@ -80,9 +84,9 @@ public class CreateTaskActivity extends AppCompatActivity {
         importanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spImportance.setAdapter(importanceAdapter);
 
-        // Inicijalizacija spiner-a za kategorije. Pretpostavlja se da imamo listu kategorija.
-        // U realnom projektu, kategorije bi se dobavile iz baze podataka (sekcija 3).
-        List<Category> categories = getDummyCategories();
+        categoryRepository = new CategoryRepositorySQLiteImpl(this);
+
+        List<Category> categories = categoryRepository.getAllCategories();
         ArrayAdapter<Category> categoryAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, categories);
         categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
