@@ -12,6 +12,7 @@ import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
+import com.example.myapplication.domain.models.TaskStatus;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -60,6 +61,8 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             cv.put(DatabaseHelper.COLUMN_TASK_IMPORTANCE,
                     task.getImportance() != null ? task.getImportance().name() : "UNKNOWN");
             cv.put(DatabaseHelper.COLUMN_TASK_XP_VALUE, task.getXpValue());
+            cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
+            cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, formatDate(task.getCompletionDate()));
 
             insert = db.insert(DatabaseHelper.TABLE_TASKS, null, cv);
             if (insert == -1) {
@@ -133,6 +136,8 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         cv.put(DatabaseHelper.COLUMN_TASK_DIFFICULTY, task.getDifficulty().name());
         cv.put(DatabaseHelper.COLUMN_TASK_IMPORTANCE, task.getImportance().name());
         cv.put(DatabaseHelper.COLUMN_TASK_XP_VALUE, task.getXpValue());
+        cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
+        cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, formatDate(task.getCompletionDate()));
 
         int update = db.update(DatabaseHelper.TABLE_TASKS, cv,
                 DatabaseHelper.COLUMN_TASK_ID + " = ?",
@@ -157,7 +162,6 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         String description = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_DESCRIPTION));
         int categoryId = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_CATEGORY_ID));
 
-
         Category category = getCategoryById(categoryId);
 
         String frequency = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_FREQUENCY));
@@ -170,12 +174,24 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
 
         String difficultyStr = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_DIFFICULTY));
         String importanceStr = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_IMPORTANCE));
+        String statusStr = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_STATUS));
+        String completionDateStr = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE));
 
         DifficultyType difficulty = DifficultyType.valueOf(difficultyStr);
         ImportanceType importance = ImportanceType.valueOf(importanceStr);
 
-        return new Task(id, name, description, category, frequency, interval, intervalUnit, startDate, endDate, executionTime, difficulty, importance);
+        TaskStatus status = TaskStatus.valueOf(statusStr != null ? statusStr : "AKTIVAN");
+        Date completionDate = parseDate(completionDateStr);
+
+        return new Task(
+                id, name, description, category,
+                frequency, interval, intervalUnit,
+                startDate, endDate, executionTime,
+                difficulty, importance,
+                status, completionDate
+        );
     }
+
 
     private Category getCategoryById(int categoryId) {
         return categoryRepository.getCategoryById(categoryId);
