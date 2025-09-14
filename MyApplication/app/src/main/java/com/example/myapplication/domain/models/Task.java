@@ -3,11 +3,7 @@ package com.example.myapplication.domain.models;
 import java.io.Serializable;
 import java.util.Date;
 
-/*
-  Predstavlja jedan zadatak u aplikaciji.
-  Zadatak može biti jednokratan ili ponavljajući i ima svojstva kao što su naziv,
-  opis, težina, bitnost i povezani datumi.
-*/
+
 public class Task implements Serializable {
     private int id;
     private String name;
@@ -23,6 +19,10 @@ public class Task implements Serializable {
     private ImportanceType importance;
     private int xpValue;
 
+    private TaskStatus status;
+    private Date completionDate;
+
+    // Konstruktor za kreiranje NOVOG zadatka
     public Task(int id, String name, String description, Category category, String frequency, int interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, DifficultyType difficulty, ImportanceType importance) {
         this.id = id;
         this.name = name;
@@ -37,6 +37,27 @@ public class Task implements Serializable {
         this.difficulty = difficulty;
         this.importance = importance;
         this.xpValue = calculateTaskXP(difficulty, importance);
+        this.status = TaskStatus.AKTIVAN;
+        this.completionDate = null;
+    }
+
+    // Konstruktor za UCITAVANJE zadatka iz baze
+    public Task(int id, String name, String description, Category category, String frequency, int interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, DifficultyType difficulty, ImportanceType importance, TaskStatus status, Date completionDate) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.category = category;
+        this.frequency = frequency;
+        this.interval = interval;
+        this.intervalUnit = intervalUnit;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.executionTime = executionTime;
+        this.difficulty = difficulty;
+        this.importance = importance;
+        this.xpValue = calculateTaskXP(difficulty, importance);
+        this.status = status;
+        this.completionDate = completionDate;
     }
 
     // Pomoćna privatna funkcija za izračunavanje XP vrednosti na osnovu težine i bitnosti.
@@ -147,5 +168,20 @@ public class Task implements Serializable {
 
     public void setXpValue(int xpValue) {
         this.xpValue = xpValue;
+    }
+    public TaskStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaskStatus status) {
+        this.status = status;
+    }
+
+    public Date getCompletionDate() {
+        return completionDate;
+    }
+
+    public void setCompletionDate(Date completionDate) {
+        this.completionDate = completionDate;
     }
 }

@@ -22,6 +22,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "MyProjectDatabase.db";
     private static final int DATABASE_VERSION = 5;
+    private Context context;
+
 
     public static final String TABLE_USERS = "users";
     public static final String COLUMN_ID = "_id";
@@ -52,6 +54,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_TASK_DIFFICULTY = "difficulty";
     public static final String COLUMN_TASK_IMPORTANCE = "importance";
     public static final String COLUMN_TASK_XP_VALUE = "xp_value";
+    public static final String COLUMN_TASK_STATUS = "status";
+    public static final String COLUMN_TASK_COMPLETION_DATE = "completion_date";
 
     //*******************************************************************//
     public static final String TABLE_CATEGORIES = "categories";
@@ -63,9 +67,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String SQL_CREATE_USERS_TABLE =
             "CREATE TABLE " + TABLE_USERS + " (" +
-                    COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+               //     COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                     COLUMN_USERNAME + " TEXT," +
-                    COLUMN_EMAIL + " TEXT," +
+                    COLUMN_EMAIL + " TEXT PRIMARY KEY," + // email kao jedinstveni primarni ključ
                     COLUMN_PASSWORD + " TEXT," +
                     COLUMN_AVATAR + " TEXT," +
                     COLUMN_LEVEL + " INTEGER," +
@@ -89,7 +93,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_TASK_EXECUTION_TIME + " TEXT,"
                     + COLUMN_TASK_DIFFICULTY + " TEXT NOT NULL,"
                     + COLUMN_TASK_IMPORTANCE + " TEXT NOT NULL,"
-                    + COLUMN_TASK_XP_VALUE + " INTEGER NOT NULL);";
+                    + COLUMN_TASK_XP_VALUE + " INTEGER NOT NULL,"
+                    + COLUMN_TASK_STATUS + " TEXT NOT NULL,"
+                    + COLUMN_TASK_COMPLETION_DATE + " TEXT);";
 
 
     private static final String SQL_CREATE_CATEGORIES_TABLE =
@@ -100,6 +106,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        this.context = context;
+    }
+
+    public Context getContext() {
+        return context;
     }
 
     @Override
@@ -178,7 +189,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.query(TABLE_USERS, columns, selection, selectionArgs, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
-            int idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID);
+         //   int idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID);
             int usernameIndex = cursor.getColumnIndexOrThrow(COLUMN_USERNAME);
             int emailIndex = cursor.getColumnIndexOrThrow(COLUMN_EMAIL);
             int passwordIndex = cursor.getColumnIndexOrThrow(COLUMN_PASSWORD);
@@ -189,6 +200,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             int xpIndex = cursor.getColumnIndexOrThrow(COLUMN_XP);
             int coinsIndex = cursor.getColumnIndexOrThrow(COLUMN_COINS);
             int equipmentIndex = cursor.getColumnIndexOrThrow(COLUMN_EQUIPMENT);
+
 
             String username = cursor.getString(usernameIndex);
             String userEmail = cursor.getString(emailIndex);
