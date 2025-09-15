@@ -87,6 +87,7 @@ public class RegistrationActivity extends AppCompatActivity {
                                                         if (isAdded) {
                                                             Toast.makeText(RegistrationActivity.this, "Registration successful! Please verify your email.", Toast.LENGTH_LONG).show();
                                                             // logika za prelazak na drugu stranicu
+                                                            mAuth.signOut();
                                                             Intent intent = new Intent(RegistrationActivity.this, MainActivity.class);
                                                             startActivity(intent);
                                                             finish();
