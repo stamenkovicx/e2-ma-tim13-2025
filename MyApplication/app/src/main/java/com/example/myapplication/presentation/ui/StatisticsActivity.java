@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
 // Uvezite klase potrebne za grafikone
+import com.example.myapplication.domain.models.DifficultyType;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.charts.LineChart;
@@ -54,12 +55,14 @@ public class StatisticsActivity extends AppCompatActivity {
         int longestStreak = taskRepository.getLongestConsecutiveDays();
         double averageXp = taskRepository.getAverageDifficultyXp();
 
+        binding.tvDifficultySummary.setText(getDifficultySummaryText(averageXp));
+
         binding.tvTotalActiveDays.setText(String.valueOf(totalActiveDays));
         binding.tvLongestStreak.setText(String.valueOf(longestStreak));
 
         setupPieChart();
         setupBarChart();
-        //setupAverageXpLineChart();
+        setupAverageXpLineChart();
         setupXpLast7DaysChart();
     }
 
@@ -147,49 +150,123 @@ public class StatisticsActivity extends AppCompatActivity {
     }
 
     private void setupXpLast7DaysChart() {
-        // Dohvatanje ukupnog XP-a po danu iz baze
-        Map<String, Double> xpPerDay = taskRepository.getAverageXpLast7Days();
+        // Dohvatanje ukupnog XP-a po danu iz baze (zadnjih 7 dana)
+        Map<String, Double> xpPerDay = taskRepository.getXpLast7Days();
 
         List<Entry> entries = new ArrayList<>();
         List<String> dates = new ArrayList<>(xpPerDay.keySet());
 
-        // Priprema podataka za grafikon
+        // Priprema podataka za grafikon (Entry(xIndex, yValue))
         for (int i = 0; i < dates.size(); i++) {
             Double xpValue = xpPerDay.get(dates.get(i));
-            if (xpValue != null) {
-                entries.add(new Entry(i, xpValue.floatValue()));
-            } else {
-                entries.add(new Entry(i, 0.0f));
-            }
+            entries.add(new Entry(i, xpValue != null ? xpValue.floatValue() : 0f));
         }
 
-        LineDataSet dataSet = new LineDataSet(entries, "Total XP Gained");
-        dataSet.setColor(Color.parseColor("#4CAF50")); // Zelena boja
-        dataSet.setValueTextColor(Color.BLACK);
+        LineDataSet dataSet = new LineDataSet(entries, "XP per day (last 7 days)");
+        dataSet.setColor(Color.parseColor("#4CAF50"));
         dataSet.setCircleColor(Color.parseColor("#4CAF50"));
         dataSet.setLineWidth(2f);
         dataSet.setDrawValues(true);
         dataSet.setValueTextSize(10f);
 
         LineData lineData = new LineData(dataSet);
-
-        // Povezivanje podataka sa grafikonom, koristeći ispravan ID iz XML-a
         binding.chartXpLast7Days.setData(lineData);
 
-        // Konfiguracija X-ose (datumi)
+        // X osa: datumi
         binding.chartXpLast7Days.getXAxis().setValueFormatter(new IndexAxisValueFormatter(dates));
         binding.chartXpLast7Days.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
         binding.chartXpLast7Days.getXAxis().setGranularity(1f);
         binding.chartXpLast7Days.getXAxis().setDrawGridLines(false);
         binding.chartXpLast7Days.getXAxis().setLabelCount(dates.size());
+        binding.chartXpLast7Days.getXAxis().setLabelRotationAngle(-45f);
 
-        // Konfiguracija Y-ose
+        // Y osa: ukupni XP, minimalno 0
         binding.chartXpLast7Days.getAxisLeft().setAxisMinimum(0f);
         binding.chartXpLast7Days.getAxisRight().setEnabled(false);
 
-        // Opšte postavke grafikona
+        // Opšte postavke
         binding.chartXpLast7Days.getDescription().setEnabled(false);
-        binding.chartXpLast7Days.animateX(1500);
+        binding.chartXpLast7Days.animateX(1200);
         binding.chartXpLast7Days.invalidate();
+    }
+
+    private void setupAverageXpLineChart() {
+        Map<String, Double> avgDifficultyXpPerDay = taskRepository.getAverageDifficultyXpLast7Days();
+
+        List<Entry> entries = new ArrayList<>();
+        List<String> dates = new ArrayList<>(avgDifficultyXpPerDay.keySet());
+
+        for (int i = 0; i < dates.size(); i++) {
+            Double value = avgDifficultyXpPerDay.get(dates.get(i));
+            entries.add(new Entry(i, value != null ? value.floatValue() : 0f));
+        }
+
+        LineDataSet dataSet = new LineDataSet(entries, "Average Difficulty XP");
+        dataSet.setColor(Color.parseColor("#FF9800"));
+        dataSet.setCircleColor(Color.parseColor("#FF9800"));
+        dataSet.setLineWidth(2f);
+        dataSet.setValueTextSize(10f);
+
+        LineData lineData = new LineData(dataSet);
+        binding.chartAverageDifficultyXp.setData(lineData);
+
+        binding.chartAverageDifficultyXp.getAxisLeft().setAxisMinimum(1f);
+        binding.chartAverageDifficultyXp.getAxisLeft().setAxisMaximum(25f);
+
+        LimitLine veryEasy = new LimitLine(1f, "Very Easy");
+        veryEasy.setLineColor(Color.GREEN);
+        veryEasy.setLineWidth(1f);
+
+        LimitLine easy = new LimitLine(3f, "Easy");
+        easy.setLineColor(Color.BLUE);
+        easy.setLineWidth(1f);
+
+        LimitLine hard = new LimitLine(7f, "Hard");
+        hard.setLineColor(Color.MAGENTA);
+        hard.setLineWidth(1f);
+
+        LimitLine extreme = new LimitLine(20f, "Extremely Hard");
+        extreme.setLineColor(Color.RED);
+        extreme.setLineWidth(1f);
+
+        binding.chartAverageDifficultyXp.getAxisLeft().addLimitLine(veryEasy);
+        binding.chartAverageDifficultyXp.getAxisLeft().addLimitLine(easy);
+        binding.chartAverageDifficultyXp.getAxisLeft().addLimitLine(hard);
+        binding.chartAverageDifficultyXp.getAxisLeft().addLimitLine(extreme);
+
+        binding.chartAverageDifficultyXp.getXAxis().setValueFormatter(new IndexAxisValueFormatter(dates));
+        binding.chartAverageDifficultyXp.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        binding.chartAverageDifficultyXp.getXAxis().setGranularity(1f);
+
+        binding.chartAverageDifficultyXp.getAxisRight().setEnabled(false);
+        binding.chartAverageDifficultyXp.getDescription().setEnabled(false);
+        binding.chartAverageDifficultyXp.animateX(1500);
+        binding.chartAverageDifficultyXp.invalidate();
+    }
+
+    private String getDifficultySummaryText(double avgDifficultyXp) {
+        DifficultyType closest = DifficultyType.VERY_EASY;
+        double minDiff = Double.MAX_VALUE;
+
+        for (DifficultyType type : DifficultyType.values()) {
+            double diff = Math.abs(avgDifficultyXp - type.getXpValue());
+            if (diff < minDiff) {
+                minDiff = diff;
+                closest = type;
+            }
+        }
+
+        switch (closest) {
+            case VERY_EASY:
+                return "The user mostly completes very easy tasks.";
+            case EASY:
+                return "The user mostly completes easy tasks.";
+            case HARD:
+                return "The user mostly completes hard tasks.";
+            case EXTREMELY_HARD:
+                return "The user mostly completes extremely hard tasks.";
+            default:
+                return "The user has a mixed difficulty task pattern.";
+        }
     }
 }

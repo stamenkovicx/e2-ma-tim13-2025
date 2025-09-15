@@ -429,48 +429,77 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return averageXp;
     }
 
-    // Broj xp osvojenih u posljednjih 7 dana
-    public Map<String, Double> getAverageXpLast7Days() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Map<String, Double> averageXpPerDay = new LinkedHashMap<>();
 
-        // Inicijalizuje mapu za poslednjih 7 dana na 0.0 XP-a
+
+    public Map<String, Double> getAverageDifficultyXpLast7Days() {
+        Map<String, Double> result = new LinkedHashMap<>();
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        // SQL: grupisi po datumu zavrsetka i izracunaj prosjek XP težine
+        String query = "SELECT strftime('%Y-%m-%d', completion_date/1000, 'unixepoch') AS day, " +
+                "AVG(CASE difficulty " +
+                "       WHEN 'VERY_EASY' THEN 1 " +
+                "       WHEN 'EASY' THEN 3 " +
+                "       WHEN 'HARD' THEN 7 " +
+                "       WHEN 'EXTREMELY_HARD' THEN 20 " +
+                "   END) AS avg_difficulty_xp " +
+                "FROM tasks " +
+                "WHERE status = 'URAĐEN' " +
+                "AND completion_date >= date('now', '-7 days') " +
+                "GROUP BY day " +
+                "ORDER BY day ASC";
+
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String day = cursor.getString(cursor.getColumnIndexOrThrow("day"));
+                double avgXp = cursor.getDouble(cursor.getColumnIndexOrThrow("avg_difficulty_xp"));
+                result.put(day, avgXp);
+            }
+            cursor.close();
+        }
+
+        db.close();
+        return result;
+    }
+
+    public Map<String, Double> getXpLast7Days() {
+        Map<String, Double> xpPerDay = new LinkedHashMap<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
         for (int i = 6; i >= 0; i--) {
             Calendar cal = Calendar.getInstance();
             cal.add(Calendar.DATE, -i);
-            averageXpPerDay.put(dateFormat.format(cal.getTime()), 0.0);
+            xpPerDay.put(dateFormat.format(cal.getTime()), 0.0);
         }
 
-        // SQL upit za sumu XP-a i broj zadataka, grupisano po datumu
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
         String query = "SELECT " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + ", " +
-                "SUM(" + DatabaseHelper.COLUMN_TASK_XP_VALUE + "), " +
-                "COUNT(" + DatabaseHelper.COLUMN_TASK_ID + ") " +
+                "SUM(" + DatabaseHelper.COLUMN_TASK_XP_VALUE + ") AS total_xp " +
                 "FROM " + DatabaseHelper.TABLE_TASKS +
                 " WHERE " + DatabaseHelper.COLUMN_TASK_STATUS + " = ? " +
-                " AND " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + " BETWEEN date('now', '-7 days') AND date('now') " +
+                " AND " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + " BETWEEN date('now','-6 days') AND date('now') " +
                 " GROUP BY " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE +
                 " ORDER BY " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + " ASC";
 
         Cursor cursor = db.rawQuery(query, new String[]{TaskStatus.URAĐEN.name()});
 
-        if (cursor.moveToFirst()) {
-            do {
-                String date = cursor.getString(0);
-                double totalXp = cursor.getDouble(1);
-                int taskCount = cursor.getInt(2);
-
-                if (taskCount > 0) {
-                    double averageXp = totalXp / taskCount;
-                    if (averageXpPerDay.containsKey(date)) {
-                        averageXpPerDay.put(date, averageXp);
-                    }
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String day = cursor.getString(0);
+                double totalXp = cursor.isNull(1) ? 0.0 : cursor.getDouble(1);
+                if (xpPerDay.containsKey(day)) {
+                    xpPerDay.put(day, totalXp);
+                } else {
+                    xpPerDay.put(day, totalXp);
                 }
-            } while (cursor.moveToNext());
+            }
+            cursor.close();
         }
-        cursor.close();
         db.close();
-        return averageXpPerDay;
+        return xpPerDay;
     }
 
     // TO DO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:
