@@ -25,13 +25,40 @@ public class UserRepositorySQLiteImpl {
         User user = dbHelper.getUser(userEmail);
         if (user == null) return;
 
-        int newXp = user.getXp() + task.getXpValue();
-        user.setXp(newXp);
+        int baseXpForDifficulty = task.getDifficulty().getXpValue();
+        int baseXpForImportance = task.getImportance().getXpValue();
+
+        int dynamicXpFromDifficulty = LevelingSystemHelper.getXpForDifficulty(baseXpForDifficulty, user.getLevel());
+        int dynamicXpFromImportance = LevelingSystemHelper.getXpForImportance(baseXpForImportance, user.getLevel());
+
+        int totalXpGained = dynamicXpFromDifficulty + dynamicXpFromImportance;
+
+        user.setXp(user.getXp() + totalXpGained);
+
+        while (true) {
+            int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+
+            if (user.getXp() < requiredXp) {
+                break;
+            }
+
+            int newLevel = user.getLevel() + 1;
+            user.setLevel(newLevel);
+
+            int remainingXp = user.getXp() - requiredXp;
+            user.setXp(remainingXp);
+
+            String newTitle = LevelingSystemHelper.getTitleForLevel(newLevel);
+            user.setTitle(newTitle);
+
+            int ppGained = LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel);
+            user.setPowerPoints(user.getBasePowerPoints() + ppGained);
+        }
+
         dbHelper.updateUser(user);
 
         task.setStatus(TaskStatus.URAĐEN);
         TaskRepositorySQLiteImpl taskRepo = new TaskRepositorySQLiteImpl(dbHelper.getContext());
         taskRepo.updateTask(task);
     }
-
 }

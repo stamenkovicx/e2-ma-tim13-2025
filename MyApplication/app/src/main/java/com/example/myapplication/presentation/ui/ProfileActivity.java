@@ -50,7 +50,7 @@ public class ProfileActivity extends AppCompatActivity {
     private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
     private MaterialButton btnGoToShop;
-    private Button btnInventory, btnTestXp;
+    private Button btnInventory;
     private ProgressBar xpProgressBar;
     private TextView tvXpProgress;
 
@@ -99,25 +99,6 @@ public class ProfileActivity extends AppCompatActivity {
         btnInventory.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, InventoryActivity.class);
             startActivity(intent);
-        });
-
-        btnTestXp = findViewById(R.id.btnTestXp);
-        btnTestXp.setOnClickListener(v -> {
-            // Dobijte trenutnog korisnika iz baze
-            FirebaseUser currentUser = mAuth.getCurrentUser();
-            if (currentUser == null) {
-                Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            User user = databaseHelper.getUser(currentUser.getEmail());
-            if (user != null) {
-                // Simulacija dobijanja XP-a
-                user.addXp(150); // Testirajte sa vrednostima
-                databaseHelper.updateUser(user);
-                loadUserProfileData(); // Ponovo ucitajte podatke da se UI azurira
-                Toast.makeText(this, "XP gained and profile updated!", Toast.LENGTH_SHORT).show();
-            }
         });
     }
 
