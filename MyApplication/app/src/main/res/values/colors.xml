@@ -7,4 +7,6 @@
     <color name="red">#800000</color>
     <color name="blue">#000080</color>
     <color name="green">#008000</color>
+
+    <color name="purple_progress">#631194</color>
 </resources>

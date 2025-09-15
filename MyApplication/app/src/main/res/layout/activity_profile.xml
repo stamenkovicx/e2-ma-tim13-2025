@@ -63,6 +63,14 @@
             android:layout_marginTop="16dp"
             android:padding="12dp"/>
 
+        <Button
+            android:id="@+id/btnTestXp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test XP"
+            android:layout_marginTop="16dp"
+            android:padding="12dp"/>
+
         <TextView
             android:id="@+id/tvProfileStats"
             android:layout_width="match_parent"
@@ -126,6 +134,24 @@
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/profile_xp" android:textSize="16sp"/>
             <TextView android:id="@+id/tvXP" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="16sp" android:textStyle="bold"/>
         </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/xpProgressBar"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="@color/purple_progress"/>
+
+        <TextView
+            android:id="@+id/tvXpProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:text="0/200 XP"
+            android:textSize="14sp" />
 
         <View
             android:layout_width="match_parent"
