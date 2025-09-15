@@ -30,4 +30,6 @@
         <item>Ponavljajući</item>
     </string-array>
 
+    <string name="view_statistics">View statistics</string>
+
 </resources>
