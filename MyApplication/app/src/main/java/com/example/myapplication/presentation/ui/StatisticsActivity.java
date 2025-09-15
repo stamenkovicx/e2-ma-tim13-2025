@@ -59,7 +59,8 @@ public class StatisticsActivity extends AppCompatActivity {
 
         setupPieChart();
         setupBarChart();
-       // setupLineChart();
+        //setupAverageXpLineChart();
+        setupXpLast7DaysChart();
     }
 
     private void setupPieChart() {
@@ -143,5 +144,52 @@ public class StatisticsActivity extends AppCompatActivity {
             return Color.parseColor("#4CAF50");
         }
         return Color.GRAY;
+    }
+
+    private void setupXpLast7DaysChart() {
+        // Dohvatanje ukupnog XP-a po danu iz baze
+        Map<String, Double> xpPerDay = taskRepository.getAverageXpLast7Days();
+
+        List<Entry> entries = new ArrayList<>();
+        List<String> dates = new ArrayList<>(xpPerDay.keySet());
+
+        // Priprema podataka za grafikon
+        for (int i = 0; i < dates.size(); i++) {
+            Double xpValue = xpPerDay.get(dates.get(i));
+            if (xpValue != null) {
+                entries.add(new Entry(i, xpValue.floatValue()));
+            } else {
+                entries.add(new Entry(i, 0.0f));
+            }
+        }
+
+        LineDataSet dataSet = new LineDataSet(entries, "Total XP Gained");
+        dataSet.setColor(Color.parseColor("#4CAF50")); // Zelena boja
+        dataSet.setValueTextColor(Color.BLACK);
+        dataSet.setCircleColor(Color.parseColor("#4CAF50"));
+        dataSet.setLineWidth(2f);
+        dataSet.setDrawValues(true);
+        dataSet.setValueTextSize(10f);
+
+        LineData lineData = new LineData(dataSet);
+
+        // Povezivanje podataka sa grafikonom, koristeći ispravan ID iz XML-a
+        binding.chartXpLast7Days.setData(lineData);
+
+        // Konfiguracija X-ose (datumi)
+        binding.chartXpLast7Days.getXAxis().setValueFormatter(new IndexAxisValueFormatter(dates));
+        binding.chartXpLast7Days.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        binding.chartXpLast7Days.getXAxis().setGranularity(1f);
+        binding.chartXpLast7Days.getXAxis().setDrawGridLines(false);
+        binding.chartXpLast7Days.getXAxis().setLabelCount(dates.size());
+
+        // Konfiguracija Y-ose
+        binding.chartXpLast7Days.getAxisLeft().setAxisMinimum(0f);
+        binding.chartXpLast7Days.getAxisRight().setEnabled(false);
+
+        // Opšte postavke grafikona
+        binding.chartXpLast7Days.getDescription().setEnabled(false);
+        binding.chartXpLast7Days.animateX(1500);
+        binding.chartXpLast7Days.invalidate();
     }
 }

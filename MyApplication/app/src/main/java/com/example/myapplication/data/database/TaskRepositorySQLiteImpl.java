@@ -145,7 +145,18 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         cv.put(DatabaseHelper.COLUMN_TASK_IMPORTANCE, task.getImportance().name());
         cv.put(DatabaseHelper.COLUMN_TASK_XP_VALUE, task.getXpValue());
         cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
-        cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, formatDate(task.getCompletionDate()));
+        // Logika za postavljanje completion_date
+        cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
+
+        if (task.getStatus() == TaskStatus.URAĐEN) {
+            // AKO JE STATUS URADJEN, ZAPISUJEMO DANASNJI DATUM
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            String currentDate = dateFormat.format(new Date());
+            cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, currentDate);
+        } else {
+            // U svim ostalim slucajevima, completion_date je NULL
+            cv.putNull(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE);
+        }
 
         int update = db.update(DatabaseHelper.TABLE_TASKS, cv,
                 DatabaseHelper.COLUMN_TASK_ID + " = ?",
