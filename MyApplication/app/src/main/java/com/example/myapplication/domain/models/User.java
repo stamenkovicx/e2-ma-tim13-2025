@@ -1,5 +1,8 @@
 package com.example.myapplication.domain.models;
 
+import com.example.myapplication.data.database.LevelingSystemHelper;
+import com.example.myapplication.data.repository.ItemRepository;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,9 +25,9 @@ public class User {
         this.password = password;
         this.avatar = avatar;
         this.xp = 0;
-        this.level = 1;
+        this.level = 0;
         this.title = "Beginner";
-        this.powerPoints = 100;
+        this.powerPoints = 0;
         this.coins = 0;
         this.badges = new ArrayList<>();
         this.userEquipmentList = new ArrayList<>();
@@ -99,10 +102,24 @@ public class User {
         this.title = title;
     }
 
-    public int getPowerPoints() {
-        return powerPoints;
+     // Vraca osnovni Power Points bez bonusa od opreme.
+    public int getBasePowerPoints() {
+        return this.powerPoints;
     }
 
+     // Izracunava ukupne Power Points sabiranjem osnovnih PP-a i bonusa od aktivne opreme.
+    public int getTotalPowerPoints() {
+        int totalPower = this.powerPoints;
+        for (UserEquipment item : this.userEquipmentList) {
+            if (item.isActive()) {
+                Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
+                if (equipment != null) {
+                    totalPower += (int) equipment.getBonusValue();
+                }
+            }
+        }
+        return totalPower;
+    }
     public void setPowerPoints(int powerPoints) {
         this.powerPoints = powerPoints;
     }
@@ -136,5 +153,36 @@ public class User {
             this.userEquipmentList = new ArrayList<>();
         }
         this.userEquipmentList.add(equipment);
+    }
+
+    // METODE ZA RUKOVANJE XP-om I AŽURIRANJE STATISTIKE
+
+     // Dodaje XP korisniku i provjerava da li je doslo do promjene nivoa.
+    public void addXp(int amount) {
+        // Dodavanje XP-a
+        this.xp += amount;
+
+        // Provjera da li je korisnik presao na sledeci nivo
+        int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+
+        while (this.xp >= requiredXp) {
+            // Povecanje nivoa
+            this.level++;
+            // Azuriranje titule
+            this.title = LevelingSystemHelper.getTitleForLevel(this.level);
+            // Dodavanje Power Points-a
+            this.powerPoints += LevelingSystemHelper.getPowerPointsRewardForLevel(this.level);
+
+            // Oduzimanje potrosenog XP-a za prelazak na novi nivo
+            this.xp -= requiredXp;
+
+            // Azuriranje requiredXp za sledecu iteraciju
+            if (this.level > 0) {
+                requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+            } else {
+                // Ako je korisnik i dalje na nivou 0, sprijeciti beskonacnu petlju
+                break;
+            }
+        }
     }
 }

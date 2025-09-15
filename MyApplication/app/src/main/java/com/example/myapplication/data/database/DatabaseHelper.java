@@ -144,7 +144,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN_AVATAR, user.getAvatar());
         cv.put(COLUMN_LEVEL, user.getLevel());
         cv.put(COLUMN_TITLE, user.getTitle());
-        cv.put(COLUMN_POWER_POINTS, user.getPowerPoints());
+        cv.put(COLUMN_POWER_POINTS, user.getBasePowerPoints());
         cv.put(COLUMN_XP, user.getXp());
         cv.put(COLUMN_COINS, user.getCoins());
 
@@ -242,7 +242,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_AVATAR, user.getAvatar());
         values.put(COLUMN_LEVEL, user.getLevel());
         values.put(COLUMN_TITLE, user.getTitle());
-        values.put(COLUMN_POWER_POINTS, user.getPowerPoints());
+        values.put(COLUMN_POWER_POINTS, user.getBasePowerPoints());
         values.put(COLUMN_XP, user.getXp());
         values.put(COLUMN_COINS, user.getCoins());
 

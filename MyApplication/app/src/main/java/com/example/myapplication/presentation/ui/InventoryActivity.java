@@ -101,22 +101,44 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
         User user = databaseHelper.getUser(currentUser.getEmail());
         if (user == null) return;
 
+        // Bonus od opreme
+        Equipment equipmentDetails = ItemRepository.getEquipmentById(userEquipment.getEquipmentId());
+        if (equipmentDetails == null) {
+            Toast.makeText(this, "Equipment details not found.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Provjera da li je oprema trenutno aktivna
+        boolean isNowActive = !userEquipment.isActive();
+
+        UserEquipment foundItem = null;
         for (UserEquipment item : user.getUserEquipmentList()) {
             if (item.getEquipmentId() == userEquipment.getEquipmentId()) {
-                item.setActive(true);
+                foundItem = item;
                 break;
             }
         }
 
-        databaseHelper.updateUser(user);
+        if (foundItem != null) {
+            foundItem.setActive(isNowActive);
 
-        // Prikaz poruke
-        Equipment equipmentDetails = ItemRepository.getEquipmentById(userEquipment.getEquipmentId());
-        if (equipmentDetails != null) {
-            Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been activated!", Toast.LENGTH_SHORT).show();
+            // Azuriranje PP-a
+            double bonusPercentage = equipmentDetails.getBonusValue();
+            int currentPowerPoints = user.getBasePowerPoints();
+
+            if (isNowActive) {
+                int bonusToAdd = (int) (currentPowerPoints * bonusPercentage);
+                user.setPowerPoints(currentPowerPoints + bonusToAdd);
+                Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been activated! Power has increased.", Toast.LENGTH_SHORT).show();
+            } else {
+                int bonusToRemove = (int) (currentPowerPoints * bonusPercentage);
+                user.setPowerPoints(currentPowerPoints - bonusToRemove);
+                Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been deactivated! Power has been restored to normal.", Toast.LENGTH_SHORT).show();
+            }
+
+            databaseHelper.updateUser(user);
+
+            loadUserEquipment();
         }
-
-        // Ponovo ucitavanje opreme da bi se azurirao prikaz
-        loadUserEquipment();
     }
 }

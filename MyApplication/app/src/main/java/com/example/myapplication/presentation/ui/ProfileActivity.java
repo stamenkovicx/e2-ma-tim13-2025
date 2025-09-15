@@ -7,11 +7,13 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.DatabaseHelper;
+import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
@@ -49,6 +51,8 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private MaterialButton btnGoToShop;
     private Button btnInventory;
+    private ProgressBar xpProgressBar;
+    private TextView tvXpProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,9 +75,11 @@ public class ProfileActivity extends AppCompatActivity {
         ivQRCode = findViewById(R.id.ivQRCode);
         llBadgesContainer = findViewById(R.id.llBadgesContainer);
         llEquipmentContainer = findViewById(R.id.llEquipmentContainer);
+        xpProgressBar = findViewById(R.id.xpProgressBar);
+        tvXpProgress = findViewById(R.id.tvXpProgress);
 
         // Ucitavanje korisnickih podataka
-        loadUserProfileData();
+        // loadUserProfileData();
 
         btnChangePassword = findViewById(R.id.btnChangePassword);
 
@@ -96,6 +102,13 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Učitavanje korisnickih podataka svaki put kad se aktivnost ponovo prikaze
+        loadUserProfileData();
+    }
+
     private void loadUserProfileData() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
@@ -105,8 +118,9 @@ public class ProfileActivity extends AppCompatActivity {
             User user = databaseHelper.getUser(email);
 
             if (user != null) {
-                // Prikaz imena
-                tvProfileUsername.setText(user.getUsername());
+                // Prikaz imena - username + title
+                String userDisplayName = user.getUsername() + " (" + user.getTitle() + ")";
+                tvProfileUsername.setText(userDisplayName);
 
                 // Prikaz avatara
                 int avatarResourceId = getResources().getIdentifier(user.getAvatar(), "drawable", getPackageName());
@@ -115,7 +129,7 @@ public class ProfileActivity extends AppCompatActivity {
                 // Prikaz ostalih podataka
                 tvLevel.setText(String.valueOf(user.getLevel()));
                 tvTitle.setText(user.getTitle());
-                tvPowerPoints.setText(String.valueOf(user.getPowerPoints()));
+                tvPowerPoints.setText(String.valueOf(user.getTotalPowerPoints()));
                 tvXP.setText(String.valueOf(user.getXp()));
                 tvCoins.setText(String.valueOf(user.getCoins()));
 
@@ -131,6 +145,12 @@ public class ProfileActivity extends AppCompatActivity {
                 List<UserEquipment> userEquipment = user.getUserEquipmentList();
 
                 displayBadgesAndEquipment(userBadges, userEquipment);
+
+                int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+                int currentXp = user.getXp();
+                xpProgressBar.setMax(requiredXp);
+                xpProgressBar.setProgress(currentXp);
+                tvXpProgress.setText(currentXp + " / " + requiredXp + " XP");
             } else {
                 Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
             }
