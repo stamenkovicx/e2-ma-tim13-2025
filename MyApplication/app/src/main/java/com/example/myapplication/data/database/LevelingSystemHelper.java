@@ -78,4 +78,55 @@ public class LevelingSystemHelper {
         }
         return calculatedXp;
     }
+
+    // Izracunava konacnu XP vrijednost na osnovu osnovnog XP-a i nivoa korisnika
+    public static int calculateFinalXp(ImportanceType importance, DifficultyType difficulty, int userLevel) {
+
+        // Osnovne vrijednosti XP-a za bitnost, prije nego sto se primijeni bonus
+        int baseXpForImportance;
+        switch (importance) {
+            case NORMAL:
+                baseXpForImportance = 1;
+                break;
+            case IMPORTANT:
+                baseXpForImportance = 3;
+                break;
+            case EXTREMELY_IMPORTANT:
+                baseXpForImportance = 10;
+                break;
+            case SPECIAL:
+                baseXpForImportance = 100;
+                break;
+            default:
+                baseXpForImportance = 0;
+        }
+
+        // Osnovne vrijednosti XP-a za tezinu, pijre nego sto se primijeni bonus
+        int baseXpForDifficulty;
+        switch (difficulty) {
+            case VERY_EASY:
+                baseXpForDifficulty = 1;
+                break;
+            case EASY:
+                baseXpForDifficulty = 3;
+                break;
+            case HARD:
+                baseXpForDifficulty = 7;
+                break;
+            case EXTREMELY_HARD:
+                baseXpForDifficulty = 20;
+                break;
+            default:
+                baseXpForDifficulty = 0;
+        }
+
+        // Racunanje finalne vrijednosti XP-a za bitnost
+        int finalXpImportance = getXpForImportance(baseXpForImportance, userLevel);
+
+        // Racunanje finalne vrijednosti XP-a za tezinu
+        int finalXpDifficulty = getXpForDifficulty(baseXpForDifficulty, userLevel);
+
+        // Konacan XP - zbir finalnih vrijednosti za bitnost i tezinu
+        return finalXpImportance + finalXpDifficulty;
+    }
 }

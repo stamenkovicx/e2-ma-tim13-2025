@@ -468,6 +468,9 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         Map<String, Double> xpPerDay = new LinkedHashMap<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
+        int userLevel = getUserLevel();
+
+        // Inicijalizacija mape sa 0 XP za posljednjih 7 dana
         for (int i = 6; i >= 0; i--) {
             Calendar cal = Calendar.getInstance();
             cal.add(Calendar.DATE, -i);
@@ -476,30 +479,67 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
 
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
+        // Upit za dohvatanje zavrsenih zadataka u posljednjih 7 dana
         String query = "SELECT " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + ", " +
-                "SUM(" + DatabaseHelper.COLUMN_TASK_XP_VALUE + ") AS total_xp " +
-                "FROM " + DatabaseHelper.TABLE_TASKS +
+                DatabaseHelper.COLUMN_TASK_IMPORTANCE + ", " +
+                DatabaseHelper.COLUMN_TASK_DIFFICULTY + " FROM " + DatabaseHelper.TABLE_TASKS +
                 " WHERE " + DatabaseHelper.COLUMN_TASK_STATUS + " = ? " +
                 " AND " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + " BETWEEN date('now','-6 days') AND date('now') " +
-                " GROUP BY " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE +
                 " ORDER BY " + DatabaseHelper.COLUMN_TASK_COMPLETION_DATE + " ASC";
 
         Cursor cursor = db.rawQuery(query, new String[]{TaskStatus.URAĐEN.name()});
 
         if (cursor != null) {
+            // Iteriranje kroz svaki zadatak i dodavanje XP-a u mapu
             while (cursor.moveToNext()) {
                 String day = cursor.getString(0);
-                double totalXp = cursor.isNull(1) ? 0.0 : cursor.getDouble(1);
-                if (xpPerDay.containsKey(day)) {
-                    xpPerDay.put(day, totalXp);
-                } else {
-                    xpPerDay.put(day, totalXp);
-                }
+                String importanceStr = cursor.getString(1);
+                String difficultyStr = cursor.getString(2);
+
+                // Konvertovanje stringova u enum tipove
+                ImportanceType importance = ImportanceType.valueOf(importanceStr);
+                DifficultyType difficulty = DifficultyType.valueOf(difficultyStr);
+
+                // Racunanje konacne XP vrijednosti za jedan zadatak
+                int finalXp = LevelingSystemHelper.calculateFinalXp(importance, difficulty, userLevel);
+
+                // Dodavanje izračunate vrijednosti u mapu
+                double currentXp = xpPerDay.getOrDefault(day, 0.0);
+                xpPerDay.put(day, currentXp + finalXp);
             }
             cursor.close();
         }
         db.close();
         return xpPerDay;
+    }
+
+    public int getUserLevel() {
+        // Dohvatanje ukupne osnovne XP vrijednosti iz baze podataka
+        int totalBaseXp = getTotalBaseXp();
+        int currentLevel = 0;
+
+        // Iteriranje kroz nivoe dok se ne pronađe odgovarajuci
+        while (totalBaseXp >= LevelingSystemHelper.getRequiredXpForNextLevel(currentLevel)) {
+            currentLevel++;
+        }
+
+        return currentLevel;
+    }
+    private int getTotalBaseXp() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        int totalXp = 0;
+
+        String query = "SELECT SUM(" + DatabaseHelper.COLUMN_TASK_XP_VALUE + ") FROM " + DatabaseHelper.TABLE_TASKS +
+                " WHERE " + DatabaseHelper.COLUMN_TASK_STATUS + " = ?";
+
+        Cursor cursor = db.rawQuery(query, new String[]{TaskStatus.URAĐEN.name()});
+
+        if (cursor.moveToFirst()) {
+            totalXp = cursor.getInt(0);
+        }
+        cursor.close();
+        db.close();
+        return totalXp;
     }
 
     // TO DO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:
