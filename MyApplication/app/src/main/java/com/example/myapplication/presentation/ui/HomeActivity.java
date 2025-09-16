@@ -11,13 +11,8 @@ import com.example.myapplication.R;
 
 public class HomeActivity extends AppCompatActivity {
 
-    private Button btnLogout;
-    private Button btnProfile;
-    private Button btnGoToCreateTask;
-    private Button btnGoToTaskViewer;
-    private Button btnManageCategories; // dodaj ovo među ostala dugmad
-
-
+    private Button btnLogout, btnProfile, btnGoToCreateTask, btnGoToTaskViewer, btnManageCategories,
+            btnViewStatistics;
 
     private FirebaseAuth mAuth;
 
@@ -33,6 +28,7 @@ public class HomeActivity extends AppCompatActivity {
         btnGoToCreateTask = findViewById(R.id.btnGoToCreateTask);
         btnGoToTaskViewer = findViewById(R.id.btnGoToTaskViewer);
         btnManageCategories = findViewById(R.id.btnManageCategories);
+        btnViewStatistics = findViewById(R.id.btnViewStatistics);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -59,6 +55,10 @@ public class HomeActivity extends AppCompatActivity {
         });
         btnManageCategories.setOnClickListener(v -> {
             Intent intent = new Intent(HomeActivity.this, CategoriesActivity.class);
+            startActivity(intent);
+        });
+        btnViewStatistics.setOnClickListener(v-> {
+            Intent intent = new Intent(HomeActivity.this, StatisticsActivity.class);
             startActivity(intent);
         });
     }
