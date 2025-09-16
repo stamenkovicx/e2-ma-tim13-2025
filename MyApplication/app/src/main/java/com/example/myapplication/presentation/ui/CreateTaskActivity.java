@@ -209,7 +209,13 @@ public class CreateTaskActivity extends AppCompatActivity {
                 Toast.makeText(this, "Neispravan format za ponavljajući zadatak.", Toast.LENGTH_SHORT).show();
                 return;
             }
+        } else {
+            // Jednokratni zadatak: start i end date = današnji datum
+            Calendar calendar = Calendar.getInstance();
+            startDate = calendar.getTime();
+            endDate = calendar.getTime();
         }
+
 
         Date executionTime = null;
         try {
