@@ -6,10 +6,13 @@ import android.graphics.Color;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
-// Uvezite klase potrebne za grafikone
+
 import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.DifficultyType;
+import com.example.myapplication.domain.models.User;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.charts.LineChart;
@@ -35,11 +38,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import com.github.mikephil.charting.data.Entry;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class StatisticsActivity extends AppCompatActivity {
 
     private ActivityStatisticsBinding binding;
     private TaskRepositorySQLiteImpl taskRepository;
+    private UserRepository userRepository;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,26 +54,48 @@ public class StatisticsActivity extends AppCompatActivity {
         binding = ActivityStatisticsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+
         CategoryRepository categoryRepository = new CategoryRepositorySQLiteImpl(this);
         taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
+        userRepository = new UserRepositoryFirebaseImpl();
+        mAuth = FirebaseAuth.getInstance();
 
         loadStatistics();
     }
 
     private void loadStatistics() {
-        int totalActiveDays = taskRepository.getTotalActiveDays();
-        int longestStreak = taskRepository.getLongestConsecutiveDays();
-        double averageXp = taskRepository.getAverageDifficultyXp();
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            userRepository.getUserById(currentUser.getUid(), new UserRepository.OnCompleteListener<User>() {
+                @Override
+                public void onSuccess(User user) {
+                    if (user != null) {
+                        int totalActiveDays = taskRepository.getTotalActiveDays();
+                        int longestStreak = taskRepository.getLongestConsecutiveDays();
+                        double averageXp = taskRepository.getAverageDifficultyXp();
 
-        binding.tvDifficultySummary.setText(getDifficultySummaryText(averageXp));
+                        binding.tvDifficultySummary.setText(getDifficultySummaryText(averageXp));
+                        binding.tvTotalActiveDays.setText(String.valueOf(totalActiveDays));
+                        binding.tvLongestStreak.setText(String.valueOf(longestStreak));
 
-        binding.tvTotalActiveDays.setText(String.valueOf(totalActiveDays));
-        binding.tvLongestStreak.setText(String.valueOf(longestStreak));
+                        setupPieChart();
+                        setupBarChart();
+                        setupAverageXpLineChart();
 
-        setupPieChart();
-        setupBarChart();
-        setupAverageXpLineChart();
-        setupXpLast7DaysChart();
+                        setupXpLast7DaysChart(user.getLevel());
+                    } else {
+                        // poruka ako korisnik nije pronađen u bazi
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    // poruka o grešci pri dohvatanju podataka
+                }
+            });
+        } else {
+            // poruka ako korisnik nije prijavljen
+        }
     }
 
     private void setupPieChart() {
@@ -152,9 +181,9 @@ public class StatisticsActivity extends AppCompatActivity {
         return Color.GRAY;
     }
 
-    private void setupXpLast7DaysChart() {
+    private void setupXpLast7DaysChart(int userLevel) {
         // Dohvatanje ukupnog XP-a po danu iz baze (zadnjih 7 dana)
-        Map<String, Double> xpPerDay = taskRepository.getXpLast7Days();
+        Map<String, Double> xpPerDay = taskRepository.getXpLast7Days(userLevel);
 
         List<Entry> entries = new ArrayList<>();
         List<String> dates = new ArrayList<>(xpPerDay.keySet());

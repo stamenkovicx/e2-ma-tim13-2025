@@ -63,4 +63,6 @@ public class UserRepositorySQLiteImpl {
         TaskRepositorySQLiteImpl taskRepo = new TaskRepositorySQLiteImpl(dbHelper.getContext(), categoryRepo);
         taskRepo.updateTask(task);
     }
+
+    // obrisati ovo skroz ??
 }

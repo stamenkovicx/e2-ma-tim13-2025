@@ -1,10 +1,16 @@
 package com.example.myapplication.data.database;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -14,13 +20,17 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class UserRepositoryFirebaseImpl implements UserRepository {
     private FirebaseFirestore db;
+    private CollectionReference usersCollection;
 
     public UserRepositoryFirebaseImpl() {
         this.db = FirebaseFirestore.getInstance();
+        this.usersCollection = db.collection("users");
     }
 
     @Override
@@ -166,15 +176,21 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
 
     @Override
     public void searchUsers(String username, UserRepository.OnCompleteListener<List<User>> onCompleteListener) {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
         db.collection("users")
-                .whereEqualTo("username", username)
+                .whereGreaterThanOrEqualTo("username", username)
+                .whereLessThanOrEqualTo("username", username + "\uf8ff")
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         List<User> foundUsers = new ArrayList<>();
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             User user = document.toObject(User.class);
-                            foundUsers.add(user);
+                            // Isključujemo trenutno ulogovanog korisnika iz rezultata pretrage
+                            if (!user.getUserId().equals(currentUserId)) {
+                                foundUsers.add(user);
+                            }
                         }
                         onCompleteListener.onSuccess(foundUsers);
                     } else {
@@ -196,5 +212,26 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                         onCompleteListener.onFailure(task.getException());
                     }
                 });
+    }
+
+    @Override
+    public void updateUser(User user, OnCompleteListener<Void> onCompleteListener) {
+        if (user == null || user.getUserId() == null || user.getUserId().isEmpty()) {
+            onCompleteListener.onFailure(new IllegalArgumentException("User or User ID is invalid."));
+            return;
+        }
+
+        DocumentReference userRef = usersCollection.document(user.getUserId());
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("coins", user.getCoins());
+        updates.put("equipment", user.getEquipment());
+        updates.put("xp", user.getXp());
+        updates.put("level", user.getLevel());
+        updates.put("powerPoints", user.getPowerPoints()); // DODAJTE OVU LINIJU
+
+        userRef.update(updates)
+                .addOnSuccessListener(aVoid -> onCompleteListener.onSuccess(null))
+                .addOnFailureListener(e -> onCompleteListener.onFailure(e));
     }
 }

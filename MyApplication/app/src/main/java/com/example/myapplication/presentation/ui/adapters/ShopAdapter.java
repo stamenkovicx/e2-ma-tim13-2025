@@ -10,33 +10,33 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.DatabaseHelper;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.ItemRepository;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.UserEquipment;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-
 import java.util.List;
 
 public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder> {
 
     private Context context;
     private List<Equipment> shopItems;
-    private DatabaseHelper databaseHelper;
+    private User currentUser;
     private OnShopActionListener listener;
+    private UserRepository userRepository;
+
     public interface OnShopActionListener {
         void onCoinsUpdated(int newCoinValue);
     }
 
-    public ShopAdapter(Context context, List<Equipment> shopItems, DatabaseHelper databaseHelper, OnShopActionListener listener) {
+    public ShopAdapter(Context context, List<Equipment> shopItems, User currentUser, OnShopActionListener listener) {
         this.context = context;
         this.shopItems = shopItems;
-        this.databaseHelper = databaseHelper;
+        this.currentUser = currentUser;
         this.listener = listener;
+        this.userRepository = new UserRepositoryFirebaseImpl();
     }
 
     @NonNull
@@ -73,17 +73,14 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
         }
 
         public void bind(Equipment item) {
-            // postavljanje detalja o item-u
             tvItemName.setText(item.getName());
             tvItemDescription.setText(item.getDescription());
 
-            // postavljanje ikonice
             int resourceId = context.getResources().getIdentifier(item.getIconResourceId(), "drawable", context.getPackageName());
             if (resourceId != 0) {
                 ivItemIcon.setImageResource(resourceId);
             }
 
-            // hardkodovana nagrada za pobjedu bosa - treba dinamicki dobiti iz baze
             int potentialCoinsFromPreviousLevel = 240;
             final int finalCost;
 
@@ -115,20 +112,10 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
             tvItemCost.setText(String.valueOf(finalCost));
 
             btnBuy.setOnClickListener(v -> {
-                FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-                if (currentUser == null) {
-                    Toast.makeText(context, "User not logged in.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                if (currentUser.getCoins() >= finalCost) {
 
-                User user = databaseHelper.getUser(currentUser.getEmail());
-                if (user == null) {
-                    Toast.makeText(context, "User data not found.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                    currentUser.setCoins(currentUser.getCoins() - finalCost);
 
-                if (user.getCoins() >= finalCost) {
-                    user.setCoins(user.getCoins() - finalCost);
                     Equipment purchasedItem = ItemRepository.getEquipmentByResourceId(item.getIconResourceId());
                     if (purchasedItem != null) {
                         UserEquipment newUserEquipment = new UserEquipment(
@@ -136,15 +123,25 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
                                 false,
                                 purchasedItem.getDuration()
                         );
-                        // Dodajte novi objekat u listu korisničke opreme
-                        user.addEquipment(newUserEquipment);
-                        databaseHelper.updateUser(user);
-
-                        if (listener != null) {
-                            listener.onCoinsUpdated(user.getCoins());
-                        }
-                        Toast.makeText(context, "You successfully bought " + item.getName() + "!", Toast.LENGTH_SHORT).show();
+                        currentUser.addEquipment(newUserEquipment);
                     }
+
+                    userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            if (listener != null) {
+                                listener.onCoinsUpdated(currentUser.getCoins());
+                            }
+                            Toast.makeText(context, "You successfully bought " + item.getName() + "!", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(context, "Failed to purchase item: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            currentUser.setCoins(currentUser.getCoins() + finalCost);
+                        }
+                    });
+
                 } else {
                     Toast.makeText(context, "Not enough coins!", Toast.LENGTH_SHORT).show();
                 }

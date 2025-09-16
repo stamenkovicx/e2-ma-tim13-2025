@@ -2,6 +2,8 @@ package com.example.myapplication.domain.models;
 
 import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.repository.ItemRepository;
+import com.google.firebase.firestore.Exclude;
+import com.google.firebase.firestore.PropertyName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,11 +20,14 @@ public class User {
     private int powerPoints;
     private int coins;
     private List<String> badges;
-    private List<UserEquipment> userEquipmentList;
-    private List<String> friends; // Lista ID-eva prijatelja
-    private List<String> friendRequestsSent; // Lista ID-eva korisnika kojima je poslat zahtev
-    private List<String> friendRequestsReceived; // Lista ID-eva korisnika od kojih je primljen zahtev
-    private String allianceId; // ID saveza kojem korisnik pripada
+    private List<UserEquipment> equipment;
+    private List<String> friends;
+    private List<String> friendRequestsSent;
+    private List<String> friendRequestsReceived;
+    private String allianceId;
+
+    public User() {
+    }
 
     public User(String username, String email, String password, String avatar) {
         this.username = username;
@@ -35,7 +40,7 @@ public class User {
         this.powerPoints = 0;
         this.coins = 0;
         this.badges = new ArrayList<>();
-        this.userEquipmentList = new ArrayList<>();
+        this.equipment = new ArrayList<>();
     }
 
     public User(String username, String email, String password, String avatar, int level, String title, int powerPoints, int xp, int coins) {
@@ -49,10 +54,9 @@ public class User {
         this.xp = xp;
         this.coins = coins;
         this.badges = new ArrayList<>();
-        this.userEquipmentList = new ArrayList<>();
+        this.equipment = new ArrayList<>();
     }
 
-    // Dodatni konstruktor, prilagođen za Firebase
     public User(String userId, String username, String email, String avatar, int xp, int level, String title, int powerPoints, int coins, List<String> friends, List<String> friendRequestsSent, List<String> friendRequestsReceived, String allianceId) {
         this.userId = userId;
         this.username = username;
@@ -64,7 +68,7 @@ public class User {
         this.powerPoints = powerPoints;
         this.coins = coins;
         this.badges = new ArrayList<>();
-        this.userEquipmentList = new ArrayList<>();
+        this.equipment = new ArrayList<>();
         this.friends = friends;
         this.friendRequestsSent = friendRequestsSent;
         this.friendRequestsReceived = friendRequestsReceived;
@@ -165,26 +169,28 @@ public class User {
         this.allianceId = allianceId;
     }
 
-     // Vraca osnovni Power Points bez bonusa od opreme.
-    public int getBasePowerPoints() {
-        return this.powerPoints;
+    public int getPowerPoints() {
+        return powerPoints;
     }
-
-     // Izracunava ukupne Power Points sabiranjem osnovnih PP-a i bonusa od aktivne opreme.
+    public void setPowerPoints(int powerPoints) {
+        this.powerPoints = powerPoints;
+    }
+    @Exclude
     public int getTotalPowerPoints() {
         int totalPower = this.powerPoints;
-        for (UserEquipment item : this.userEquipmentList) {
-            if (item.isActive()) {
-                Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
-                if (equipment != null) {
-                    totalPower += (int) equipment.getBonusValue();
+        if (this.equipment != null) {
+            for (UserEquipment item : this.equipment) {
+                // Proverite da li je item null
+                if (item != null) {
+                    Equipment equipmentDetails = ItemRepository.getEquipmentById(item.getEquipmentId());
+                    // Dodatna provera da li su detalji opreme null
+                    if (equipmentDetails != null && item.isActive()) {
+                        totalPower += (int) equipmentDetails.getBonusValue();
+                    }
                 }
             }
         }
         return totalPower;
-    }
-    public void setPowerPoints(int powerPoints) {
-        this.powerPoints = powerPoints;
     }
 
     public int getCoins() {
@@ -203,54 +209,39 @@ public class User {
         this.badges = badges;
     }
 
-    public List<UserEquipment> getUserEquipmentList() {
-        return userEquipmentList;
+    @PropertyName("equipment")
+    public List<UserEquipment> getEquipment() {
+        return equipment;
     }
 
-    public void setUserEquipmentList(List<UserEquipment> userEquipmentList) {
-        this.userEquipmentList = userEquipmentList;
+    @PropertyName("equipment")
+    public void setEquipment(List<UserEquipment> equipment) {
+        this.equipment = equipment;
     }
 
-    public void addEquipment(UserEquipment equipment) {
-        if (this.userEquipmentList == null) {
-            this.userEquipmentList = new ArrayList<>();
+    public void addEquipment(UserEquipment item) {
+        if (this.equipment == null) {
+            this.equipment = new ArrayList<>();
         }
-        this.userEquipmentList.add(equipment);
+        this.equipment.add(item);
     }
 
-    // METODE ZA RUKOVANJE XP-om I AŽURIRANJE STATISTIKE
-
-     // Dodaje XP korisniku i provjerava da li je doslo do promjene nivoa.
     public void addXp(int amount) {
-        // Dodavanje XP-a
         this.xp += amount;
-
-        // Provjera da li je korisnik presao na sledeci nivo
         int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
-
         while (this.xp >= requiredXp) {
-            // Povecanje nivoa
             this.level++;
-            // Azuriranje titule
             this.title = LevelingSystemHelper.getTitleForLevel(this.level);
-            // Dodavanje Power Points-a
             this.powerPoints += LevelingSystemHelper.getPowerPointsRewardForLevel(this.level);
-
-            // Oduzimanje potrosenog XP-a za prelazak na novi nivo
             this.xp -= requiredXp;
-
-            // Azuriranje requiredXp za sledecu iteraciju
             if (this.level > 0) {
                 requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
             } else {
-                // Ako je korisnik i dalje na nivou 0, sprijeciti beskonacnu petlju
                 break;
             }
         }
     }
 
-
-    // ****** METODE ZA RUKOVANJE PRIJATELJIMA I SAVEZIMA: ******
     public void addFriend(String friendId) {
         if (this.friends == null) {
             this.friends = new ArrayList<>();
@@ -284,5 +275,4 @@ public class User {
             this.friendRequestsReceived.remove(userId);
         }
     }
-    // ************************************************
 }

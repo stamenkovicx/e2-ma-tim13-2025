@@ -472,11 +472,9 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return result;
     }
 
-    public Map<String, Double> getXpLast7Days() {
+    public Map<String, Double> getXpLast7Days(int userLevel) {
         Map<String, Double> xpPerDay = new LinkedHashMap<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-
-        int userLevel = getUserLevel();
 
         // Inicijalizacija mape sa 0 XP za posljednjih 7 dana
         for (int i = 6; i >= 0; i--) {
@@ -519,35 +517,6 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         }
         db.close();
         return xpPerDay;
-    }
-
-    public int getUserLevel() {
-        // Dohvatanje ukupne osnovne XP vrijednosti iz baze podataka
-        int totalBaseXp = getTotalBaseXp();
-        int currentLevel = 0;
-
-        // Iteriranje kroz nivoe dok se ne pronađe odgovarajuci
-        while (totalBaseXp >= LevelingSystemHelper.getRequiredXpForNextLevel(currentLevel)) {
-            currentLevel++;
-        }
-
-        return currentLevel;
-    }
-    private int getTotalBaseXp() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        int totalXp = 0;
-
-        String query = "SELECT SUM(" + DatabaseHelper.COLUMN_TASK_XP_VALUE + ") FROM " + DatabaseHelper.TABLE_TASKS +
-                " WHERE " + DatabaseHelper.COLUMN_TASK_STATUS + " = ?";
-
-        Cursor cursor = db.rawQuery(query, new String[]{TaskStatus.URAĐEN.name()});
-
-        if (cursor.moveToFirst()) {
-            totalXp = cursor.getInt(0);
-        }
-        cursor.close();
-        db.close();
-        return totalXp;
     }
 
     // TODO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:

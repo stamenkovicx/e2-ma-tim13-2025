@@ -10,10 +10,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.domain.models.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class RegistrationActivity extends AppCompatActivity {
 
@@ -22,7 +25,6 @@ public class RegistrationActivity extends AppCompatActivity {
     private ImageView avatar1, avatar2, avatar3, avatar4, avatar5;
     private ImageView currentSelectedAvatarView;
     private String selectedAvatar = "";
-    private DatabaseHelper databaseHelper;
     private FirebaseAuth mAuth;
 
     @Override
@@ -31,7 +33,6 @@ public class RegistrationActivity extends AppCompatActivity {
         setContentView(R.layout.activity_registration);
 
         mAuth = FirebaseAuth.getInstance();
-        databaseHelper = new DatabaseHelper(this);
 
         // Povezivanje elemenata iz XML-a
         etEmail = findViewById(R.id.etEmail);
@@ -79,22 +80,37 @@ public class RegistrationActivity extends AppCompatActivity {
                                     firebaseUser.sendEmailVerification()
                                             .addOnCompleteListener(emailTask -> {
                                                 if (emailTask.isSuccessful()) {
-                                                    // Ako je email uspjesno poslat -> cuvanje korisnika u lokalnu bazu
-                                                    if (!databaseHelper.checkUser(email)) {
-                                                        User newUser = new User(username, email, password, selectedAvatar);
-                                                        boolean isAdded = databaseHelper.addUser(newUser);
-
-                                                        if (isAdded) {
-                                                            Toast.makeText(RegistrationActivity.this, "Registration successful! Please verify your email.", Toast.LENGTH_LONG).show();
-                                                            // logika za prelazak na drugu stranicu
-                                                            mAuth.signOut();
-                                                            Intent intent = new Intent(RegistrationActivity.this, MainActivity.class);
-                                                            startActivity(intent);
-                                                            finish();
-                                                        } else {
-                                                            Toast.makeText(RegistrationActivity.this, "Registration failed.", Toast.LENGTH_SHORT).show();
-                                                        }
-                                                    }
+                                                    // Ako je email uspesno poslat -> cuvanje korisnika u Firestore
+                                                    FirebaseFirestore db = FirebaseFirestore.getInstance();
+                                                    List<String> emptyList = new ArrayList<>();
+                                                    User newUser = new User(
+                                                            firebaseUser.getUid(),
+                                                            username,
+                                                            email,
+                                                            selectedAvatar,
+                                                            0,
+                                                            0,
+                                                            "Beginner",
+                                                            0,
+                                                            0,
+                                                            emptyList,
+                                                            emptyList,
+                                                            emptyList,
+                                                            null
+                                                    );
+                                                    db.collection("users").document(firebaseUser.getUid())
+                                                            .set(newUser)
+                                                            .addOnSuccessListener(aVoid -> {
+                                                                Toast.makeText(RegistrationActivity.this, "Registration successful! Please verify your email.", Toast.LENGTH_LONG).show();
+                                                                mAuth.signOut();
+                                                                Intent intent = new Intent(RegistrationActivity.this, MainActivity.class);
+                                                                startActivity(intent);
+                                                                finish();
+                                                            })
+                                                            .addOnFailureListener(e -> {
+                                                                Toast.makeText(RegistrationActivity.this, "Failed to save user data to Firestore.", Toast.LENGTH_SHORT).show();
+                                                                firebaseUser.delete();
+                                                            });
                                                 } else {
                                                     // Slanje emaila nije uspjelo
                                                     Toast.makeText(RegistrationActivity.this, "Failed to send verification email.", Toast.LENGTH_SHORT).show();
