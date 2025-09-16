@@ -49,8 +49,8 @@ public class EditTaskActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_task);
 
-        taskRepository = new TaskRepositorySQLiteImpl(this);
         categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
 
         if (getIntent().getSerializableExtra("task") != null) {
             taskToEdit = (Task) getIntent().getSerializableExtra("task");

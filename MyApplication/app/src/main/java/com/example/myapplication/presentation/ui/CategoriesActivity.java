@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -73,30 +74,44 @@ public class CategoriesActivity extends AppCompatActivity {
         btnAddCategory.setOnClickListener(v -> {
             String name = etCategoryName.getText().toString().trim();
             if (!name.isEmpty()) {
-                // Ako korisnik nije izabrao boju, uzmi prvu slobodnu
-                int colorToUse = selectedColor != Color.GRAY ? selectedColor :
-                        AVAILABLE_COLORS.get(categories.size() % AVAILABLE_COLORS.size());
+                int colorToUse = selectedColor; // Započnite sa izabranom bojom.
 
-                // Provera da boja nije zauzeta
-                boolean taken = false;
-                for (Category c : categories) {
-                    if (c.getColor() == colorToUse) {
-                        taken = true;
-                        break;
-                    }
-                }
-                if (taken) {
+                // Ako korisnik nije izabrao boju, dodelite joj prvu dostupnu iz liste
+                if (selectedColor == Color.GRAY) {
                     colorToUse = AVAILABLE_COLORS.get(categories.size() % AVAILABLE_COLORS.size());
                 }
 
+                // Provera da boja nije zauzeta
+                for (Category c : categories) {
+                    if (c.getColor() == colorToUse) {
+                        // Ako je zauzeta, pokušajte da pronađete sledeću slobodnu boju
+                        int startIndex = categories.size();
+                        colorToUse = AVAILABLE_COLORS.get(startIndex % AVAILABLE_COLORS.size());
+                        // Prekinite petlju jer ste pronašli sledeću boju
+                        break;
+                    }
+                }
+
                 Category newCategory = new Category(0, name, colorToUse);
-                repository.insertCategory(newCategory);
+                long insertId = repository.insertCategory(newCategory);
 
-                categories.add(newCategory);
-                adapter.notifyItemInserted(categories.size() - 1);
+                if (insertId != -1) {
+                    // Ažurirajte ID nove kategorije iz baze
+                    newCategory.setId((int) insertId);
+                    // Dodajte novu kategoriju u listu pre obaveštenja
+                    categories.add(newCategory);
+                    // Osvežite prikaz adaptera
+                    adapter.notifyItemInserted(categories.size() - 1);
 
-                etCategoryName.setText("");
-                selectedColor = Color.GRAY; // reset
+                    // Takođe, osvežite prikaz cele liste kako bi se osigurala konzistentnost
+                    adapter.updateCategories(repository.getAllCategories());
+
+                    Toast.makeText(this, "Kategorija uspešno dodata!", Toast.LENGTH_SHORT).show();
+                    etCategoryName.setText("");
+                    selectedColor = Color.GRAY; // reset
+                } else {
+                    Toast.makeText(this, "Greška pri dodavanju kategorije.", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

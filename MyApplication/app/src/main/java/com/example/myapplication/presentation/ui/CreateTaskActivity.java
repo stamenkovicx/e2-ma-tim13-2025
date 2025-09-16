@@ -24,6 +24,8 @@ import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -55,8 +57,9 @@ public class CreateTaskActivity extends AppCompatActivity {
         //Toast.makeText(this, "CreateTaskActivity startovao!", Toast.LENGTH_SHORT).show();
 
 
-        // Inicijalizacija repozitorijuma. Pretpostavka da postoji SQLite implementacija.
-        taskRepository = new TaskRepositorySQLiteImpl(this);
+
+        categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
 
         // Povezivanje UI elemenata
         etTaskName = findViewById(R.id.etTaskName);
@@ -155,7 +158,15 @@ public class CreateTaskActivity extends AppCompatActivity {
 
         // Prikupljanje ostalih podataka
         String description = etTaskDescription.getText().toString();
-        Category selectedCategory = (Category) spCategory.getSelectedItem();
+        Category selectedCategory = null;
+        Object selectedItem = spCategory.getSelectedItem();
+        if (selectedItem instanceof Category) {
+            selectedCategory = (Category) selectedItem;
+        } else if (selectedItem != null) {
+            // Ovo se dešava ako spiner nije popunjen sa Category objektima
+            Toast.makeText(this, "Greška: spiner nije pravilno inicijalizovan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
         // **ISPRAVLJENA LOGIKA ZA DOBIJANJE ENUM VREDNOSTI**
@@ -200,7 +211,13 @@ public class CreateTaskActivity extends AppCompatActivity {
                 Toast.makeText(this, "Neispravan format za ponavljajući zadatak.", Toast.LENGTH_SHORT).show();
                 return;
             }
+        } else {
+            // Jednokratni zadatak: start i end date = današnji datum
+            Calendar calendar = Calendar.getInstance();
+            startDate = calendar.getTime();
+            endDate = calendar.getTime();
         }
+
 
         Date executionTime = null;
         try {
@@ -210,24 +227,43 @@ public class CreateTaskActivity extends AppCompatActivity {
             Toast.makeText(this, "Neispravan format za vreme.", Toast.LENGTH_SHORT).show();
             return;
         }
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        String userEmail = currentUser != null ? currentUser.getEmail() : "";
+
+        // Provera da li je korisnik ulogovan
+        if (userEmail.isEmpty()) {
+            Toast.makeText(this, "Niste ulogovani. Ne možete kreirati zadatak.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         // Kreiranje novog zadatka
-        Task newTask = new Task(
-                0,
-                name,
-                description,
-                selectedCategory,
-                frequency,
-                interval,
-                intervalUnit,
-                startDate,
-                endDate,
-                executionTime,
-                difficulty, // Koristi ispravnu vrednost
-                importance // Koristi ispravnu vrednost
-        );
+        Task newTask;
 
-        // Čuvanje zadatka u bazi
+        if (selectedCategory != null) {
+            newTask = new Task(
+                    0,
+                    name,
+                    description,
+                    selectedCategory, // Prosleđivanje celog Category objekta
+                    frequency,
+                    interval,
+                    intervalUnit,
+                    startDate,
+                    endDate,
+                    executionTime,
+                    difficulty,
+                    importance,
+                    userEmail
+            );
+            newTask.setUserEmail(userEmail);
+        } else {
+            // Ako nema izabrane kategorije, kreiraj zadatak bez nje
+            // Ili prikaži poruku o grešci
+            Toast.makeText(this, "Izaberite kategoriju.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+// Čuvanje zadatka u bazi
         long newTaskId = taskRepository.insertTask(newTask);
 
         if (newTaskId != -1) {
@@ -239,11 +275,11 @@ public class CreateTaskActivity extends AppCompatActivity {
     }
 
     // Pomoćna funkcija koja simulira dobijanje kategorija iz baze
-    private List<Category> getDummyCategories() {
+  /*  private List<Category> getDummyCategories() {
         List<Category> categories = new ArrayList<>();
         categories.add(new Category(1, "Zdravlje", R.color.red));
         categories.add(new Category(2, "Ucenje", R.color.blue));
         categories.add(new Category(3, "Sređivanje", R.color.green));
         return categories;
-    }
+    }*/
 }
