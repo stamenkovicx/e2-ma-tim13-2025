@@ -58,7 +58,9 @@ public class UserRepositorySQLiteImpl {
         dbHelper.updateUser(user);
 
         task.setStatus(TaskStatus.URAĐEN);
-        TaskRepositorySQLiteImpl taskRepo = new TaskRepositorySQLiteImpl(dbHelper.getContext());
+        CategoryRepositorySQLiteImpl categoryRepo = new CategoryRepositorySQLiteImpl(dbHelper.getContext());
+
+        TaskRepositorySQLiteImpl taskRepo = new TaskRepositorySQLiteImpl(dbHelper.getContext(), categoryRepo);
         taskRepo.updateTask(task);
     }
 }

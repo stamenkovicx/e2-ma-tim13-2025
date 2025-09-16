@@ -7,6 +7,8 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
 // Uvezite klase potrebne za grafikone
+import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
+import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.PieChart;
@@ -45,7 +47,8 @@ public class StatisticsActivity extends AppCompatActivity {
         binding = ActivityStatisticsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        taskRepository = new TaskRepositorySQLiteImpl(this);
+        CategoryRepository categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
 
         loadStatistics();
     }

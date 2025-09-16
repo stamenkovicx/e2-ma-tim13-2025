@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
@@ -35,8 +36,8 @@ public class TaskListFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_task_list, container, false);
 
         if (getContext() != null) {
-            taskRepository = new TaskRepositorySQLiteImpl(getContext());
-        }
+            CategoryRepositorySQLiteImpl categoryRepository = new CategoryRepositorySQLiteImpl(getContext());
+            taskRepository = new TaskRepositorySQLiteImpl(getContext(), categoryRepository);        }
 
         rvAllTasks = view.findViewById(R.id.rvAllTasks);
         spTaskFilter = view.findViewById(R.id.spTaskFilter);

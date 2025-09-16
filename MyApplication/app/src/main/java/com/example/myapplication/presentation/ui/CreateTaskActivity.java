@@ -55,8 +55,9 @@ public class CreateTaskActivity extends AppCompatActivity {
         //Toast.makeText(this, "CreateTaskActivity startovao!", Toast.LENGTH_SHORT).show();
 
 
-        // Inicijalizacija repozitorijuma. Pretpostavka da postoji SQLite implementacija.
-        taskRepository = new TaskRepositorySQLiteImpl(this);
+
+        categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
 
         // Povezivanje UI elemenata
         etTaskName = findViewById(R.id.etTaskName);
@@ -155,7 +156,15 @@ public class CreateTaskActivity extends AppCompatActivity {
 
         // Prikupljanje ostalih podataka
         String description = etTaskDescription.getText().toString();
-        Category selectedCategory = (Category) spCategory.getSelectedItem();
+        Category selectedCategory = null;
+        Object selectedItem = spCategory.getSelectedItem();
+        if (selectedItem instanceof Category) {
+            selectedCategory = (Category) selectedItem;
+        } else if (selectedItem != null) {
+            // Ovo se dešava ako spiner nije popunjen sa Category objektima
+            Toast.makeText(this, "Greška: spiner nije pravilno inicijalizovan.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
         // **ISPRAVLJENA LOGIKA ZA DOBIJANJE ENUM VREDNOSTI**
@@ -212,22 +221,31 @@ public class CreateTaskActivity extends AppCompatActivity {
         }
 
         // Kreiranje novog zadatka
-        Task newTask = new Task(
-                0,
-                name,
-                description,
-                selectedCategory,
-                frequency,
-                interval,
-                intervalUnit,
-                startDate,
-                endDate,
-                executionTime,
-                difficulty, // Koristi ispravnu vrednost
-                importance // Koristi ispravnu vrednost
-        );
+        Task newTask;
 
-        // Čuvanje zadatka u bazi
+        if (selectedCategory != null) {
+            newTask = new Task(
+                    0,
+                    name,
+                    description,
+                    selectedCategory, // Prosleđivanje celog Category objekta
+                    frequency,
+                    interval,
+                    intervalUnit,
+                    startDate,
+                    endDate,
+                    executionTime,
+                    difficulty,
+                    importance
+            );
+        } else {
+            // Ako nema izabrane kategorije, kreiraj zadatak bez nje
+            // Ili prikaži poruku o grešci
+            Toast.makeText(this, "Izaberite kategoriju.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+// Čuvanje zadatka u bazi
         long newTaskId = taskRepository.insertTask(newTask);
 
         if (newTaskId != -1) {

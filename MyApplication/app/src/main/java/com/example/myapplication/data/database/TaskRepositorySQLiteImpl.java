@@ -39,11 +39,10 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
     private CategoryRepository categoryRepository;
 
 
-    public TaskRepositorySQLiteImpl(Context context) {
-        // Koristimo postojeći DatabaseHelper da dobijemo pristup bazi
+    // Bolji pristup (Dependency Injection)
+    public TaskRepositorySQLiteImpl(Context context, CategoryRepository categoryRepository) {
         this.dbHelper = new DatabaseHelper(context);
-        this.categoryRepository = new CategoryRepositorySQLiteImpl(context);
-
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
@@ -58,6 +57,9 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             cv.put(DatabaseHelper.COLUMN_TASK_DESCRIPTION, task.getDescription());
             cv.put(DatabaseHelper.COLUMN_TASK_CATEGORY_ID,
                     task.getCategory() != null ? task.getCategory().getId() : -1);
+
+            cv.put(DatabaseHelper.COLUMN_TASK_CATEGORY_COLOR,
+                    task.getCategory() != null ? task.getCategory().getColor() : 0);
             cv.put(DatabaseHelper.COLUMN_TASK_FREQUENCY, task.getFrequency());
             cv.put(DatabaseHelper.COLUMN_TASK_INTERVAL, task.getInterval());
             cv.put(DatabaseHelper.COLUMN_TASK_INTERVAL_UNIT, task.getIntervalUnit());
