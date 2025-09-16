@@ -3,7 +3,6 @@ package com.example.myapplication.presentation.ui;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,6 +14,7 @@ import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.UserEquipment;
+import com.example.myapplication.presentation.ui.adapters.InventoryAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 

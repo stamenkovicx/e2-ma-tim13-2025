@@ -4,6 +4,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import com.example.myapplication.MainActivity;
 import com.google.firebase.auth.FirebaseAuth;
@@ -13,6 +15,7 @@ public class HomeActivity extends AppCompatActivity {
 
     private Button btnLogout, btnProfile, btnGoToCreateTask, btnGoToTaskViewer, btnManageCategories,
             btnViewStatistics;
+    private LinearLayout goToSearchButton;
 
     private FirebaseAuth mAuth;
 
@@ -29,6 +32,7 @@ public class HomeActivity extends AppCompatActivity {
         btnGoToTaskViewer = findViewById(R.id.btnGoToTaskViewer);
         btnManageCategories = findViewById(R.id.btnManageCategories);
         btnViewStatistics = findViewById(R.id.btnViewStatistics);
+        goToSearchButton = findViewById(R.id.buttonGoToSearch);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -59,6 +63,10 @@ public class HomeActivity extends AppCompatActivity {
         });
         btnViewStatistics.setOnClickListener(v-> {
             Intent intent = new Intent(HomeActivity.this, StatisticsActivity.class);
+            startActivity(intent);
+        });
+        goToSearchButton.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, SearchUsersActivity.class);
             startActivity(intent);
         });
     }

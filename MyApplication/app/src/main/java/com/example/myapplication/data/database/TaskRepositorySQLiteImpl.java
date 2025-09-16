@@ -542,5 +542,5 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return totalXp;
     }
 
-    // TO DO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:
+    // TODO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:
 }

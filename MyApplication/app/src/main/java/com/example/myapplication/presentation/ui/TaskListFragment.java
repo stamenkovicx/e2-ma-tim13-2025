@@ -17,6 +17,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
+import com.example.myapplication.presentation.ui.adapters.TaskAdapter;
 
 import java.util.List;
 import java.util.stream.Collectors;
