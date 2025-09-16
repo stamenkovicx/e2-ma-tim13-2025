@@ -94,7 +94,8 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
                     repository.updateCategory(category);
 
                     // Update boje svih zadataka te kategorije
-                    TaskRepository taskRepo = new TaskRepositorySQLiteImpl(context);
+                    // Kreiraj TaskRepository instancu, prosleđujući joj CategoryRepository
+                    TaskRepository taskRepo = new TaskRepositorySQLiteImpl(context, repository);
                     taskRepo.updateTasksColor(category.getId(), category.getColor());
 
                     // Osvežavamo prikaz

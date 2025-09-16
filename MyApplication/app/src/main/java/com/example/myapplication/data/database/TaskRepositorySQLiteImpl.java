@@ -39,11 +39,10 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
     private CategoryRepository categoryRepository;
 
 
-    public TaskRepositorySQLiteImpl(Context context) {
-        // Koristimo postojeći DatabaseHelper da dobijemo pristup bazi
+    // Bolji pristup (Dependency Injection)
+    public TaskRepositorySQLiteImpl(Context context, CategoryRepository categoryRepository) {
         this.dbHelper = new DatabaseHelper(context);
-        this.categoryRepository = new CategoryRepositorySQLiteImpl(context);
-
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
@@ -58,6 +57,9 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             cv.put(DatabaseHelper.COLUMN_TASK_DESCRIPTION, task.getDescription());
             cv.put(DatabaseHelper.COLUMN_TASK_CATEGORY_ID,
                     task.getCategory() != null ? task.getCategory().getId() : -1);
+
+            cv.put(DatabaseHelper.COLUMN_TASK_CATEGORY_COLOR,
+                    task.getCategory() != null ? task.getCategory().getColor() : 0);
             cv.put(DatabaseHelper.COLUMN_TASK_FREQUENCY, task.getFrequency());
             cv.put(DatabaseHelper.COLUMN_TASK_INTERVAL, task.getInterval());
             cv.put(DatabaseHelper.COLUMN_TASK_INTERVAL_UNIT, task.getIntervalUnit());
@@ -71,6 +73,7 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             cv.put(DatabaseHelper.COLUMN_TASK_XP_VALUE, task.getXpValue());
             cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
             cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, formatDate(task.getCompletionDate()));
+            cv.put(DatabaseHelper.COLUMN_TASK_USER_EMAIL, task.getUserEmail());
 
             insert = db.insert(DatabaseHelper.TABLE_TASKS, null, cv);
             if (insert == -1) {
@@ -107,12 +110,17 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return task;
     }
 
+    // Ažurirajte implementaciju u TaskRepositorySQLiteImpl.java
     @Override
-    public List<Task> getAllTasks() {
+    public List<Task> getAllTasks(String userEmail) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         List<Task> tasks = new ArrayList<>();
+
         Cursor cursor = db.query(DatabaseHelper.TABLE_TASKS,
-                null, null, null, null, null, null);
+                null,
+                DatabaseHelper.COLUMN_TASK_USER_EMAIL + " = ?",
+                new String[]{userEmail},
+                null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
             do {

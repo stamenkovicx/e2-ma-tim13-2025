@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
 import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
@@ -32,6 +33,8 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
     private Task task;
     private TaskRepository taskRepository;
+    private UserRepositorySQLiteImpl userRepository;
+    private CategoryRepositorySQLiteImpl categoryRepository;
 
     private TextView tvTaskName, tvTaskDescription, tvCategory, tvFrequency, tvDates, tvExecutionTime, tvDifficulty, tvImportance;
     private View vCategoryColor;
@@ -43,7 +46,8 @@ public class TaskDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_task_details);
 
-        taskRepository = new TaskRepositorySQLiteImpl(this);
+        CategoryRepositorySQLiteImpl categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
 
         if (getIntent().getSerializableExtra("task") != null) {
             task = (Task) getIntent().getSerializableExtra("task");

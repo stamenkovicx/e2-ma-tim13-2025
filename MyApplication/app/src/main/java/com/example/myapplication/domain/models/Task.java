@@ -21,6 +21,19 @@ public class Task implements Serializable {
 
     private TaskStatus status;
     private Date completionDate;
+    private String userEmail;
+
+    // Dodajte novi konstruktor
+    public Task(int id, String name, String description, Category category,
+                String frequency, int interval, String intervalUnit,
+                Date startDate, Date endDate, Date executionTime,
+                DifficultyType difficulty, ImportanceType importance,
+                String userEmail) {
+        // Pozovite postojeći konstruktor
+        this(id, name, description, category, frequency, interval, intervalUnit,
+                startDate, endDate, executionTime, difficulty, importance);
+        this.userEmail = userEmail;
+    }
 
     // Konstruktor za kreiranje NOVOG zadatka
     public Task(int id, String name, String description, Category category, String frequency, int interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, DifficultyType difficulty, ImportanceType importance) {
@@ -183,5 +196,12 @@ public class Task implements Serializable {
 
     public void setCompletionDate(Date completionDate) {
         this.completionDate = completionDate;
+    }
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
     }
 }
