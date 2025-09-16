@@ -24,6 +24,8 @@ import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -225,6 +227,14 @@ public class CreateTaskActivity extends AppCompatActivity {
             Toast.makeText(this, "Neispravan format za vreme.", Toast.LENGTH_SHORT).show();
             return;
         }
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        String userEmail = currentUser != null ? currentUser.getEmail() : "";
+
+        // Provera da li je korisnik ulogovan
+        if (userEmail.isEmpty()) {
+            Toast.makeText(this, "Niste ulogovani. Ne možete kreirati zadatak.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         // Kreiranje novog zadatka
         Task newTask;
@@ -242,8 +252,10 @@ public class CreateTaskActivity extends AppCompatActivity {
                     endDate,
                     executionTime,
                     difficulty,
-                    importance
+                    importance,
+                    userEmail
             );
+            newTask.setUserEmail(userEmail);
         } else {
             // Ako nema izabrane kategorije, kreiraj zadatak bez nje
             // Ili prikaži poruku o grešci
@@ -263,11 +275,11 @@ public class CreateTaskActivity extends AppCompatActivity {
     }
 
     // Pomoćna funkcija koja simulira dobijanje kategorija iz baze
-    private List<Category> getDummyCategories() {
+  /*  private List<Category> getDummyCategories() {
         List<Category> categories = new ArrayList<>();
         categories.add(new Category(1, "Zdravlje", R.color.red));
         categories.add(new Category(2, "Ucenje", R.color.blue));
         categories.add(new Category(3, "Sređivanje", R.color.green));
         return categories;
-    }
+    }*/
 }

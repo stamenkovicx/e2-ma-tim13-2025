@@ -8,7 +8,7 @@ import java.util.List;
 public interface TaskRepository {
     long insertTask(Task task);
     Task getTaskById(long taskId);
-    List<Task> getAllTasks();
+    public List<Task> getAllTasks(String userEmail);
     int updateTask(Task task);
     int deleteTask(long taskId);
 

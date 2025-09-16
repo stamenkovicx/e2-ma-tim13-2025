@@ -57,6 +57,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_TASK_STATUS = "status";
     public static final String COLUMN_TASK_COMPLETION_DATE = "completion_date";
     public static final String COLUMN_TASK_CATEGORY_COLOR = "category_color";
+    public static final String COLUMN_TASK_USER_EMAIL = "user_email";
 
 
     //*******************************************************************//
@@ -98,7 +99,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     + COLUMN_TASK_XP_VALUE + " INTEGER NOT NULL,"
                     + COLUMN_TASK_STATUS + " TEXT NOT NULL,"
                     + COLUMN_TASK_COMPLETION_DATE + " TEXT,"
-                    + COLUMN_TASK_CATEGORY_COLOR + " INTEGER)";
+                    + COLUMN_TASK_CATEGORY_COLOR + " INTEGER,"
+                    + COLUMN_TASK_USER_EMAIL + " TEXT" + ")";
+    ;
     ;
 
 

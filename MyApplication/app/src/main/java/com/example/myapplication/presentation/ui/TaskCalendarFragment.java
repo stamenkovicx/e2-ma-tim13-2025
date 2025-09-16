@@ -18,6 +18,9 @@ import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.presentation.ui.adapters.TaskAdapter;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -30,6 +33,7 @@ public class TaskCalendarFragment extends Fragment {
     private RecyclerView rvTasks;
     private TaskRepository taskRepository;
     private TaskAdapter taskAdapter;
+    private String userEmail;
 
     @Nullable
     @Override
@@ -39,6 +43,15 @@ public class TaskCalendarFragment extends Fragment {
         if (getContext() != null) {
             CategoryRepositorySQLiteImpl categoryRepository = new CategoryRepositorySQLiteImpl(getContext());
             taskRepository = new TaskRepositorySQLiteImpl(getContext(), categoryRepository);
+
+            // Dohvati trenutno ulogovanog korisnika i njegov e-mail
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                userEmail = currentUser.getEmail();
+            } else {
+                // Ako korisnik nije ulogovan, ne možemo učitati zadatke
+                return view;
+            }
         }
 
         calendarView = view.findViewById(R.id.calendarView);
@@ -57,7 +70,8 @@ public class TaskCalendarFragment extends Fragment {
     }
 
     private void loadTasksForDate(String date) {
-        List<Task> allTasks = taskRepository.getAllTasks();
+        // Prosleđujemo userEmail u metodu getAllTasks
+        List<Task> allTasks = taskRepository.getAllTasks(userEmail);
 
         List<Task> tasksForDate = allTasks.stream()
                 .filter(task -> {
@@ -71,7 +85,7 @@ public class TaskCalendarFragment extends Fragment {
                 .collect(Collectors.toList());
 
         if (taskAdapter == null) {
-            taskAdapter = new TaskAdapter(tasksForDate, getContext()); // Dodaj 'getContext()'
+            taskAdapter = new TaskAdapter(tasksForDate, getContext());
             rvTasks.setAdapter(taskAdapter);
         } else {
             taskAdapter.updateTasks(tasksForDate);
@@ -81,6 +95,9 @@ public class TaskCalendarFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        loadTasksForDate(new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+        // Ažuriramo listu zadataka prilikom povratka na fragment
+        if (userEmail != null) {
+            loadTasksForDate(new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+        }
     }
 }

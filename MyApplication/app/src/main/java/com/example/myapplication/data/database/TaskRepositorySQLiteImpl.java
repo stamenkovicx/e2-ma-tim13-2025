@@ -73,6 +73,7 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
             cv.put(DatabaseHelper.COLUMN_TASK_XP_VALUE, task.getXpValue());
             cv.put(DatabaseHelper.COLUMN_TASK_STATUS, task.getStatus().name());
             cv.put(DatabaseHelper.COLUMN_TASK_COMPLETION_DATE, formatDate(task.getCompletionDate()));
+            cv.put(DatabaseHelper.COLUMN_TASK_USER_EMAIL, task.getUserEmail());
 
             insert = db.insert(DatabaseHelper.TABLE_TASKS, null, cv);
             if (insert == -1) {
@@ -109,12 +110,17 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return task;
     }
 
+    // Ažurirajte implementaciju u TaskRepositorySQLiteImpl.java
     @Override
-    public List<Task> getAllTasks() {
+    public List<Task> getAllTasks(String userEmail) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         List<Task> tasks = new ArrayList<>();
+
         Cursor cursor = db.query(DatabaseHelper.TABLE_TASKS,
-                null, null, null, null, null, null);
+                null,
+                DatabaseHelper.COLUMN_TASK_USER_EMAIL + " = ?",
+                new String[]{userEmail},
+                null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
