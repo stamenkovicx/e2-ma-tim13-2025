@@ -8,8 +8,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.DatabaseHelper;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.ItemRepository;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
 import com.example.myapplication.domain.models.User;
@@ -27,41 +28,65 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
     private RecyclerView rvClothing;
     private RecyclerView rvWeapons;
     private Button btnBackToProfile;
-    private DatabaseHelper databaseHelper;
+
+    private UserRepository userRepository;
+    private FirebaseAuth mAuth;
+    private User currentUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inventory);
 
-        databaseHelper = new DatabaseHelper(this);
+        userRepository = new UserRepositoryFirebaseImpl();
+        mAuth = FirebaseAuth.getInstance();
 
         rvPotions = findViewById(R.id.rvPotions);
         rvClothing = findViewById(R.id.rvClothing);
         rvWeapons = findViewById(R.id.rvWeapons);
         btnBackToProfile = findViewById(R.id.btnBackToProfile);
 
-        loadUserEquipment();
+        loadUserDataAndSetupInventory();
 
         btnBackToProfile.setOnClickListener(v -> finish());
     }
 
-    private void loadUserEquipment() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser == null) {
+    private void loadUserDataAndSetupInventory() {
+        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+        if (firebaseUser == null) {
             Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        User user = databaseHelper.getUser(currentUser.getEmail());
-        if (user == null) {
-            Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
-            finish();
+        userRepository.getUserById(firebaseUser.getUid(), new UserRepository.OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                if (user != null) {
+                    currentUser = user;
+                    setupInventoryLists();
+                } else {
+                    Toast.makeText(InventoryActivity.this, "User data not found.", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(InventoryActivity.this, "Failed to load user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        });
+    }
+
+    private void setupInventoryLists() {
+        if (currentUser == null || currentUser.getEquipment() == null || currentUser.getEquipment().isEmpty()) {
+            // Ako je lista opreme prazna, prikazi poruku i nemoj postavljati adaptere
+            Toast.makeText(this, "Your inventory is empty.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        List<UserEquipment> allUserEquipment = user.getUserEquipmentList();
+        List<UserEquipment> allUserEquipment = currentUser.getEquipment();
 
         List<UserEquipment> potions = new ArrayList<>();
         List<UserEquipment> clothing = new ArrayList<>();
@@ -93,52 +118,68 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
         rvWeapons.setAdapter(weaponsAdapter);
     }
 
+
     @Override
     public void onActivateClick(UserEquipment userEquipment) {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
-        User user = databaseHelper.getUser(currentUser.getEmail());
-        if (user == null) return;
+        // Pronalazimo pravi objekat opreme u globalnom user objektu
+        int foundIndex = -1;
+        for (int i = 0; i < currentUser.getEquipment().size(); i++) {
+            if (currentUser.getEquipment().get(i).getEquipmentId() == userEquipment.getEquipmentId()) {
+                foundIndex = i;
+                break;
+            }
+        }
 
-        // Bonus od opreme
-        Equipment equipmentDetails = ItemRepository.getEquipmentById(userEquipment.getEquipmentId());
+        if (foundIndex == -1) {
+            Toast.makeText(this, "Item not found in inventory.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Dobijamo referencu na objekat koji treba da modifikujemo
+        final UserEquipment foundItem = currentUser.getEquipment().get(foundIndex);
+
+        boolean isNowActive = !foundItem.isActive();
+        foundItem.setActive(isNowActive);
+
+        Equipment equipmentDetails = ItemRepository.getEquipmentById(foundItem.getEquipmentId());
         if (equipmentDetails == null) {
             Toast.makeText(this, "Equipment details not found.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Provjera da li je oprema trenutno aktivna
-        boolean isNowActive = !userEquipment.isActive();
+        // Ažuriranje PP-a
+        double bonusPercentage = equipmentDetails.getBonusValue();
+        final int currentPowerPoints = currentUser.getTotalPowerPoints();
+        int basePowerPoints = currentUser.getPowerPoints();
 
-        UserEquipment foundItem = null;
-        for (UserEquipment item : user.getUserEquipmentList()) {
-            if (item.getEquipmentId() == userEquipment.getEquipmentId()) {
-                foundItem = item;
-                break;
-            }
+        if (isNowActive) {
+            int bonusToAdd = (int) (basePowerPoints * bonusPercentage);
+            currentUser.setPowerPoints(currentPowerPoints + bonusToAdd);
+            Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been activated! Power has increased.", Toast.LENGTH_SHORT).show();
+        } else {
+            int bonusToRemove = (int) (basePowerPoints * bonusPercentage);
+            currentUser.setPowerPoints(currentPowerPoints - bonusToRemove);
+            Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been deactivated! Power has been restored to normal.", Toast.LENGTH_SHORT).show();
         }
 
-        if (foundItem != null) {
-            foundItem.setActive(isNowActive);
-
-            // Azuriranje PP-a
-            double bonusPercentage = equipmentDetails.getBonusValue();
-            int currentPowerPoints = user.getBasePowerPoints();
-
-            if (isNowActive) {
-                int bonusToAdd = (int) (currentPowerPoints * bonusPercentage);
-                user.setPowerPoints(currentPowerPoints + bonusToAdd);
-                Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been activated! Power has increased.", Toast.LENGTH_SHORT).show();
-            } else {
-                int bonusToRemove = (int) (currentPowerPoints * bonusPercentage);
-                user.setPowerPoints(currentPowerPoints - bonusToRemove);
-                Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been deactivated! Power has been restored to normal.", Toast.LENGTH_SHORT).show();
+        // Ažuriranje korisnika u Firebase-u
+        userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                // Ažuriraj listu nakon uspešnog ažuriranja u bazi
+                setupInventoryLists();
             }
 
-            databaseHelper.updateUser(user);
-
-            loadUserEquipment();
-        }
+            @Override
+            public void onFailure(Exception e) {
+                // Vraćanje stanja u slučaju neuspešnog ažuriranja
+                // Koristimo finalni foundItem objekat i finalnu currentPowerPoints vrednost
+                foundItem.setActive(!isNowActive); // Vrati stanje nazad
+                currentUser.setPowerPoints(currentPowerPoints); // Vrati PP nazad
+                Toast.makeText(InventoryActivity.this, "Failed to update user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }

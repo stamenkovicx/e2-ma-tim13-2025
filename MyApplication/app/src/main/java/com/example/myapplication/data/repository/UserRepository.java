@@ -17,4 +17,5 @@ public interface UserRepository {
         void onFailure(Exception e);
     }
     void getUserById(String userId, OnCompleteListener<User> onCompleteListener);
+    void updateUser(User user, OnCompleteListener<Void> onCompleteListener);
 }

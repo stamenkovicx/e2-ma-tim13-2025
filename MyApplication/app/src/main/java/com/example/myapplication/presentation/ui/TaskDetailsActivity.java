@@ -2,6 +2,7 @@ package com.example.myapplication.presentation.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -10,11 +11,15 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.TaskRepository;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
+import com.example.myapplication.domain.models.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -33,8 +38,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
     private Button btnEdit, btnDelete;
     private Button btnComplete, btnCancel, btnPause, btnActivate;
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,7 +45,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         taskRepository = new TaskRepositorySQLiteImpl(this);
 
-        // Preuzmi Task objekat iz Intent-a
         if (getIntent().getSerializableExtra("task") != null) {
             task = (Task) getIntent().getSerializableExtra("task");
         }
@@ -81,15 +83,79 @@ public class TaskDetailsActivity extends AppCompatActivity {
         });
 
         btnComplete.setOnClickListener(v -> {
-            // Promeni status lokalno
             updateTaskStatus(TaskStatus.URAĐEN);
 
-            // Dodaj XP korisniku
-            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-            if (currentUser != null) {
-                String email = currentUser.getEmail();
-                UserRepositorySQLiteImpl userRepo = new UserRepositorySQLiteImpl(this);
-                userRepo.completeTaskAndAddXp(email, task);
+            FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (firebaseUser != null) {
+                String userId = firebaseUser.getUid();
+                UserRepositoryFirebaseImpl userRepo = new UserRepositoryFirebaseImpl();
+
+                userRepo.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
+                    @Override
+                    public void onSuccess(User user) {
+                        int previousLevel = user.getLevel();
+
+                        int baseXpForDifficulty = task.getDifficulty().getXpValue();
+                        int baseXpForImportance = task.getImportance().getXpValue();
+
+                        int dynamicXpFromDifficulty = LevelingSystemHelper.getXpForDifficulty(baseXpForDifficulty, user.getLevel());
+                        int dynamicXpFromImportance = LevelingSystemHelper.getXpForImportance(baseXpForImportance, user.getLevel());
+
+                        int totalXpGained = dynamicXpFromDifficulty + dynamicXpFromImportance;
+
+                        user.setXp(user.getXp() + totalXpGained);
+
+                        while (true) {
+                            int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+
+                            if (user.getXp() < requiredXp) {
+                                break;
+                            }
+
+                            int newLevel = user.getLevel() + 1;
+                            user.setLevel(newLevel);
+
+                            int remainingXp = user.getXp() - requiredXp;
+                            user.setXp(remainingXp);
+
+                            String newTitle = LevelingSystemHelper.getTitleForLevel(newLevel);
+                            user.setTitle(newTitle);
+
+                            int ppGained = LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel);
+                            user.setPowerPoints(user.getPowerPoints() + ppGained);
+                        }
+
+                        userRepo.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                runOnUiThread(() -> {
+                                    Toast.makeText(getApplicationContext(), "Task complete! XP added!", Toast.LENGTH_SHORT).show();
+
+                                    if (user.getLevel() > previousLevel) {
+                                        // metoda koja prikazuje pop-up za PP
+                                        // Npr: showPowerPointsPopup(user.getPowerPoints());
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                runOnUiThread(() -> {
+                                    Log.e("TaskDetails", "Error updating user: " + e.getMessage());
+                                    Toast.makeText(getApplicationContext(), "Error adding XP.", Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        runOnUiThread(() -> {
+                            Log.e("TaskDetails", "Error fetching user:: " + e.getMessage());
+                            Toast.makeText(getApplicationContext(), "Error fetching user data.", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
             }
         });
         btnCancel.setOnClickListener(v -> updateTaskStatus(TaskStatus.OTKAZAN));

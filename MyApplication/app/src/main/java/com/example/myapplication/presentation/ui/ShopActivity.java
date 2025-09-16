@@ -4,12 +4,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.data.repository.ItemRepository;
+import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
 import com.example.myapplication.domain.models.User;
@@ -27,25 +29,56 @@ public class ShopActivity extends AppCompatActivity implements ShopAdapter.OnSho
     private TextView tvUserCoins;
     private Button btnBackToProfile;
 
+    private UserRepository userRepository;
+    private FirebaseAuth mAuth;
+    private User currentUser;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_shop);
 
-        // Povezivanje UI elemenata
+        userRepository = new UserRepositoryFirebaseImpl();
+        mAuth = FirebaseAuth.getInstance();
+
         rvPotions = findViewById(R.id.rvPotions);
         rvClothing = findViewById(R.id.rvClothing);
         tvUserCoins = findViewById(R.id.tvUserCoins);
         btnBackToProfile = findViewById(R.id.btnBackToProfile);
 
-        updateCoinsDisplay();
-        // Postavljanje lista za prodavnicu
-        setupShopLists();
+        loadUserDataAndSetupShop();
 
         btnBackToProfile.setOnClickListener(v -> finish());
     }
 
+    private void loadUserDataAndSetupShop() {
+        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+        if (firebaseUser != null) {
+            userRepository.getUserById(firebaseUser.getUid(), new UserRepository.OnCompleteListener<User>() {
+                @Override
+                public void onSuccess(User user) {
+                    if (user != null) {
+                        currentUser = user;
+                        updateCoinsDisplay();
+                        setupShopLists();
+                    } else {
+                        Toast.makeText(ShopActivity.this, "User data not found.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(ShopActivity.this, "Failed to load user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
     private void setupShopLists() {
+        if (currentUser == null) {
+            return;
+        }
+
         List<Equipment> allEquipment = ItemRepository.getAllEquipment();
         List<Equipment> potions = new ArrayList<>();
         List<Equipment> clothing = new ArrayList<>();
@@ -58,36 +91,25 @@ public class ShopActivity extends AppCompatActivity implements ShopAdapter.OnSho
             }
         }
 
-        // Povezivanje sa bazom podataka
-        DatabaseHelper databaseHelper = new DatabaseHelper(this);
-
         // Postavljanje RecyclerView-a za napitke
         rvPotions.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        ShopAdapter potionsAdapter = new ShopAdapter(this, potions, databaseHelper, this);
+        ShopAdapter potionsAdapter = new ShopAdapter(this, potions, currentUser, this);
         rvPotions.setAdapter(potionsAdapter);
 
-        // Postavljanje RecyclerView-a za odjecu
+        // Postavljanje RecyclerView-a za odeću
         rvClothing.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        ShopAdapter clothingAdapter = new ShopAdapter(this, clothing, databaseHelper, this);
+        ShopAdapter clothingAdapter = new ShopAdapter(this, clothing, currentUser, this);
         rvClothing.setAdapter(clothingAdapter);
-
-        updateCoinsDisplay();
     }
 
-    // Azuriranje prikaza novcica
     private void updateCoinsDisplay() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
-            User user = new DatabaseHelper(this).getUser(currentUser.getEmail());
-            if (user != null) {
-                tvUserCoins.setText(String.valueOf(user.getCoins()));
-            }
+            tvUserCoins.setText(String.valueOf(currentUser.getCoins()));
         }
     }
 
     @Override
     public void onCoinsUpdated(int newCoinValue) {
-        // Ova metoda ce biti pozvana iz adaptera nakon uspjesne kupovine
-        tvUserCoins.setText(String.valueOf(newCoinValue));
+        updateCoinsDisplay();
     }
 }

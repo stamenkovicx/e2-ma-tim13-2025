@@ -144,12 +144,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(COLUMN_AVATAR, user.getAvatar());
         cv.put(COLUMN_LEVEL, user.getLevel());
         cv.put(COLUMN_TITLE, user.getTitle());
-        cv.put(COLUMN_POWER_POINTS, user.getBasePowerPoints());
+        cv.put(COLUMN_POWER_POINTS, user.getPowerPoints());
         cv.put(COLUMN_XP, user.getXp());
         cv.put(COLUMN_COINS, user.getCoins());
 
         Type type = new TypeToken<List<UserEquipment>>() {}.getType();
-        String equipmentJson = new Gson().toJson(user.getUserEquipmentList(), type);
+        String equipmentJson = new Gson().toJson(user.getEquipment(), type);
         cv.put(COLUMN_EQUIPMENT, equipmentJson);
 
         long insert = db.insert(TABLE_USERS, null, cv);
@@ -222,7 +222,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Type type = new TypeToken<List<UserEquipment>>() {}.getType();
             List<UserEquipment> userEquipmentList = new Gson().fromJson(equipmentJson, type);
             if (userEquipmentList != null) {
-                user.setUserEquipmentList(userEquipmentList);
+                user.setEquipment(userEquipmentList);
             }
         }
 
@@ -242,35 +242,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_AVATAR, user.getAvatar());
         values.put(COLUMN_LEVEL, user.getLevel());
         values.put(COLUMN_TITLE, user.getTitle());
-        values.put(COLUMN_POWER_POINTS, user.getBasePowerPoints());
+        values.put(COLUMN_POWER_POINTS, user.getPowerPoints());
         values.put(COLUMN_XP, user.getXp());
         values.put(COLUMN_COINS, user.getCoins());
 
         Type type = new TypeToken<List<UserEquipment>>() {}.getType();
-        String equipmentJson = new Gson().toJson(user.getUserEquipmentList(), type);
+        String equipmentJson = new Gson().toJson(user.getEquipment(), type);
         values.put(COLUMN_EQUIPMENT, equipmentJson);
 
         db.update(TABLE_USERS, values, "email = ?", new String[]{user.getEmail()});
         db.close();
     }
-
-    public List<Equipment> getUserEquipment(String userEmail) {
-        List<Equipment> userEquipment = new ArrayList<>();
-        User user = getUser(userEmail);
-
-        if (user != null && user.getUserEquipmentList() != null) {
-            for (UserEquipment item : user.getUserEquipmentList()) {
-                Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
-                if (equipment != null) {
-                    equipment.setActive(item.isActive());
-                    equipment.setDuration(item.getDuration());
-                    userEquipment.add(equipment);
-                }
-            }
-        }
-        return userEquipment;
-    }
-
 
     private void onCreateCategories(SQLiteDatabase db) {
         ContentValues values = new ContentValues();

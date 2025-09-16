@@ -15,6 +15,8 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.database.DatabaseHelper;
 import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.repository.ItemRepository;
+import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.UserEquipment;
@@ -47,7 +49,7 @@ public class ProfileActivity extends AppCompatActivity {
     private LinearLayout llBadgesContainer;
     private LinearLayout llEquipmentContainer;
 
-    private DatabaseHelper databaseHelper;
+    private UserRepository userRepository;
     private FirebaseAuth mAuth;
     private MaterialButton btnGoToShop;
     private Button btnInventory;
@@ -59,11 +61,9 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        // Inicijalizacija baze podataka i Firebase-a
-        databaseHelper = new DatabaseHelper(this);
+        userRepository = new UserRepositoryFirebaseImpl();
         mAuth = FirebaseAuth.getInstance();
 
-        // Povezivanje UI elemenata
         ivProfileAvatar = findViewById(R.id.ivProfileAvatar);
         tvProfileUsername = findViewById(R.id.tvProfileUsername);
         tvLevel = findViewById(R.id.tvLevel);
@@ -77,11 +77,6 @@ public class ProfileActivity extends AppCompatActivity {
         llEquipmentContainer = findViewById(R.id.llEquipmentContainer);
         xpProgressBar = findViewById(R.id.xpProgressBar);
         tvXpProgress = findViewById(R.id.tvXpProgress);
-
-        // Ucitavanje korisnickih podataka
-        // loadUserProfileData();
-
-        btnChangePassword = findViewById(R.id.btnChangePassword);
 
         btnChangePassword.setOnClickListener(v -> {
             showChangePasswordDialog();
@@ -105,55 +100,54 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Učitavanje korisnickih podataka svaki put kad se aktivnost ponovo prikaze
         loadUserProfileData();
     }
 
     private void loadUserProfileData() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            String email = currentUser.getEmail();
+            String userId = currentUser.getUid();
+            userRepository.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
+                @Override
+                public void onSuccess(User user) {
+                    if (user != null) {
+                        String userDisplayName = user.getUsername() + " (" + user.getTitle() + ")";
+                        tvProfileUsername.setText(userDisplayName);
 
-            // Dohvatanje podataka iz lokalne baze
-            User user = databaseHelper.getUser(email);
+                        int avatarResourceId = getResources().getIdentifier(user.getAvatar(), "drawable", getPackageName());
+                        ivProfileAvatar.setImageResource(avatarResourceId);
 
-            if (user != null) {
-                // Prikaz imena - username + title
-                String userDisplayName = user.getUsername() + " (" + user.getTitle() + ")";
-                tvProfileUsername.setText(userDisplayName);
+                        tvLevel.setText(String.valueOf(user.getLevel()));
+                        tvTitle.setText(user.getTitle());
+                        tvPowerPoints.setText(String.valueOf(user.getTotalPowerPoints()));
+                        tvXP.setText(String.valueOf(user.getXp()));
+                        tvCoins.setText(String.valueOf(user.getCoins()));
 
-                // Prikaz avatara
-                int avatarResourceId = getResources().getIdentifier(user.getAvatar(), "drawable", getPackageName());
-                ivProfileAvatar.setImageResource(avatarResourceId);
+                        String qrData = "Username: " + user.getUsername() + "\n" +
+                                "Level: " + user.getLevel() + "\n" +
+                                "XP: " + user.getXp();
 
-                // Prikaz ostalih podataka
-                tvLevel.setText(String.valueOf(user.getLevel()));
-                tvTitle.setText(user.getTitle());
-                tvPowerPoints.setText(String.valueOf(user.getTotalPowerPoints()));
-                tvXP.setText(String.valueOf(user.getXp()));
-                tvCoins.setText(String.valueOf(user.getCoins()));
+                        generateQRCode(qrData);
 
-                // Podaci za QR kod:
-                String qrData = "Username: " + user.getUsername() + "\n" +
-                        "Level: " + user.getLevel() + "\n" +
-                        "XP: " + user.getXp();
-                // Generisanje i prikaz QR koda
-                generateQRCode(qrData);
+                        List<String> userBadges = user.getBadges();
+                        List<UserEquipment> userEquipment = user.getEquipment();
 
-                // Bedzevi i oprema
-                List<String> userBadges = user.getBadges();
-                List<UserEquipment> userEquipment = user.getUserEquipmentList();
+                        displayBadgesAndEquipment(userBadges, userEquipment);
 
-                displayBadgesAndEquipment(userBadges, userEquipment);
-
-                int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
-                int currentXp = user.getXp();
-                xpProgressBar.setMax(requiredXp);
-                xpProgressBar.setProgress(currentXp);
-                tvXpProgress.setText(currentXp + " / " + requiredXp + " XP");
-            } else {
-                Toast.makeText(this, "User data not found.", Toast.LENGTH_SHORT).show();
-            }
+                        int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+                        int currentXp = user.getXp();
+                        xpProgressBar.setMax(requiredXp);
+                        xpProgressBar.setProgress(currentXp);
+                        tvXpProgress.setText(currentXp + " / " + requiredXp + " XP");
+                    } else {
+                        Toast.makeText(ProfileActivity.this, "User data not found.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(ProfileActivity.this, "Failed to load user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
         } else {
             Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
         }
@@ -243,13 +237,10 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        // NOVI KOD ZA OPREMU
         for (UserEquipment item : userEquipmentList) {
-            // Pronađite Equipment objekat po ID-u iz repozitorijuma
             Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
             if (equipment != null) {
                 ImageView equipmentView = new ImageView(this);
-                // Dohvatite resourceId iz Equipment objekta
                 int resourceId = getResources().getIdentifier(equipment.getIconResourceId(), "drawable", getPackageName());
                 if (resourceId != 0) {
                     equipmentView.setImageResource(resourceId);

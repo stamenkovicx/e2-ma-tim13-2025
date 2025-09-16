@@ -5,6 +5,7 @@ public class UserEquipment {
     private boolean isActive;
     private int duration;
 
+    public UserEquipment(){}
     public UserEquipment(int equipmentId, boolean isActive, int duration) {
         this.equipmentId = equipmentId;
         this.isActive = isActive;
