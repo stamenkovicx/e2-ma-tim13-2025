@@ -1,6 +1,7 @@
 [versions]
 agp = "8.13.0"
 cardview = "1.0.0"
+colorpickerview = "2.3.0"
 core = "3.5.3"
 gson = "2.10.1"
 junit = "4.13.2"
@@ -17,9 +18,11 @@ materialVersion = "1.13.0"
 mpandroidchart = "v3.1.0"
 zxingAndroidEmbedded = "4.3.0"
 zxingCore = "3.5.3"
+firebaseFirestore = "26.0.0"
 
 [libraries]
 cardview = { module = "androidx.cardview:cardview", version.ref = "cardview" }
+colorpickerview = { module = "com.github.skydoves:colorpickerview", version.ref = "colorpickerview" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -35,7 +38,8 @@ google-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", 
 material-v1130 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
-zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" } # Ispravno referenciranje
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" } # Ispravno referenciranje
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -13,6 +13,7 @@ import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.EquipmentType;
 import com.example.myapplication.domain.models.User;
+import com.example.myapplication.presentation.ui.adapters.ShopAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 

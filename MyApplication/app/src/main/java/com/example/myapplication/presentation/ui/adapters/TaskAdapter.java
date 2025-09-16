@@ -1,4 +1,4 @@
-package com.example.myapplication.presentation.ui;
+package com.example.myapplication.presentation.ui.adapters;
 
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
 import com.example.myapplication.domain.models.Task;
+import com.example.myapplication.presentation.ui.TaskDetailsActivity;
 
 import java.io.Serializable;
 import java.text.SimpleDateFormat;

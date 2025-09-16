@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -15,6 +14,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
 import com.example.myapplication.domain.models.Category;
+import com.example.myapplication.presentation.ui.adapters.CategoryAdapter;
 import com.skydoves.colorpickerview.ColorPickerDialog;
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener;
 

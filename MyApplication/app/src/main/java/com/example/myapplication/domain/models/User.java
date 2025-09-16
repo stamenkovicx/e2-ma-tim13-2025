@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class User {
+    private String userId;
     private String username;
     private String email;
     private String password;
@@ -18,6 +19,10 @@ public class User {
     private int coins;
     private List<String> badges;
     private List<UserEquipment> userEquipmentList;
+    private List<String> friends; // Lista ID-eva prijatelja
+    private List<String> friendRequestsSent; // Lista ID-eva korisnika kojima je poslat zahtev
+    private List<String> friendRequestsReceived; // Lista ID-eva korisnika od kojih je primljen zahtev
+    private String allianceId; // ID saveza kojem korisnik pripada
 
     public User(String username, String email, String password, String avatar) {
         this.username = username;
@@ -47,6 +52,32 @@ public class User {
         this.userEquipmentList = new ArrayList<>();
     }
 
+    // Dodatni konstruktor, prilagođen za Firebase
+    public User(String userId, String username, String email, String avatar, int xp, int level, String title, int powerPoints, int coins, List<String> friends, List<String> friendRequestsSent, List<String> friendRequestsReceived, String allianceId) {
+        this.userId = userId;
+        this.username = username;
+        this.email = email;
+        this.avatar = avatar;
+        this.xp = xp;
+        this.level = level;
+        this.title = title;
+        this.powerPoints = powerPoints;
+        this.coins = coins;
+        this.badges = new ArrayList<>();
+        this.userEquipmentList = new ArrayList<>();
+        this.friends = friends;
+        this.friendRequestsSent = friendRequestsSent;
+        this.friendRequestsReceived = friendRequestsReceived;
+        this.allianceId = allianceId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
     public String getUsername() {
         return username;
     }
@@ -100,6 +131,38 @@ public class User {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public List<String> getFriends() {
+        return friends;
+    }
+
+    public void setFriends(List<String> friends) {
+        this.friends = friends;
+    }
+
+    public List<String> getFriendRequestsSent() {
+        return friendRequestsSent;
+    }
+
+    public void setFriendRequestsSent(List<String> friendRequestsSent) {
+        this.friendRequestsSent = friendRequestsSent;
+    }
+
+    public List<String> getFriendRequestsReceived() {
+        return friendRequestsReceived;
+    }
+
+    public void setFriendRequestsReceived(List<String> friendRequestsReceived) {
+        this.friendRequestsReceived = friendRequestsReceived;
+    }
+
+    public String getAllianceId() {
+        return allianceId;
+    }
+
+    public void setAllianceId(String allianceId) {
+        this.allianceId = allianceId;
     }
 
      // Vraca osnovni Power Points bez bonusa od opreme.
@@ -185,4 +248,41 @@ public class User {
             }
         }
     }
+
+
+    // ****** METODE ZA RUKOVANJE PRIJATELJIMA I SAVEZIMA: ******
+    public void addFriend(String friendId) {
+        if (this.friends == null) {
+            this.friends = new ArrayList<>();
+        }
+        this.friends.add(friendId);
+    }
+    public void removeFriend(String friendId) {
+        if (this.friends != null) {
+            this.friends.remove(friendId);
+        }
+    }
+    public void addSentRequest(String userId) {
+        if (this.friendRequestsSent == null) {
+            this.friendRequestsSent = new ArrayList<>();
+        }
+        this.friendRequestsSent.add(userId);
+    }
+    public void addReceivedRequest(String userId) {
+        if (this.friendRequestsReceived == null) {
+            this.friendRequestsReceived = new ArrayList<>();
+        }
+        this.friendRequestsReceived.add(userId);
+    }
+    public void removeSentRequest(String userId) {
+        if (this.friendRequestsSent != null) {
+            this.friendRequestsSent.remove(userId);
+        }
+    }
+    public void removeReceivedRequest(String userId) {
+        if (this.friendRequestsReceived != null) {
+            this.friendRequestsReceived.remove(userId);
+        }
+    }
+    // ************************************************
 }
