@@ -5,7 +5,9 @@ import android.util.Log;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.domain.models.Category;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
@@ -31,10 +33,17 @@ public class CategoryRepositoryFirebaseImpl implements CategoryRepository {
 
     @Override
     public void insertCategory(Category category, String userId, OnCategoryAddedListener listener) {
-        getCategoriesCollection(userId)
-                .add(category)
-                .addOnSuccessListener(documentReference -> {
-                    Log.d(TAG, "Category added with ID: " + documentReference.getId());
+        // Kreiraj referencu za novi dokument i odmah dobij ID
+        DocumentReference newDocRef = getCategoriesCollection(userId).document();
+        String newId = newDocRef.getId();
+
+        // Postavi dobijeni ID u svoj Category objekat
+        category.setId(newId);
+
+        // Koristi set() metodu za upis celog objekta
+        newDocRef.set(category)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Category successfully added with ID: " + newId);
                     listener.onSuccess();
                 })
                 .addOnFailureListener(e -> {
@@ -48,6 +57,8 @@ public class CategoryRepositoryFirebaseImpl implements CategoryRepository {
         Log.d(TAG, "Fetching categories for userId: " + userId);
 
         getCategoriesCollection(userId)
+                // Sada sortiramo po "createdAt"
+                .orderBy("createdAt", Query.Direction.ASCENDING)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     Log.d(TAG, "Documents fetched: " + queryDocumentSnapshots.size());
