@@ -3,6 +3,7 @@ package com.example.myapplication.presentation.ui;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -15,24 +16,28 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
-import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.database.CategoryRepositoryFirebaseImpl;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class EditTaskActivity extends AppCompatActivity {
+
+    private static final String TAG = "EditTaskActivity";
 
     private EditText etTaskName, etTaskDescription, etInterval, etStartDate, etEndDate, etExecutionTime;
     private Spinner spCategory, spDifficulty, spImportance, spIntervalUnit;
@@ -43,17 +48,49 @@ public class EditTaskActivity extends AppCompatActivity {
     private TaskRepository taskRepository;
     private CategoryRepository categoryRepository;
     private Task taskToEdit;
+    private String userId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_task);
 
-        categoryRepository = new CategoryRepositorySQLiteImpl(this);
-        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
+        // Instanciranje Firebase repozitorijuma
+        taskRepository = new TaskRepositoryFirebaseImpl();
+        categoryRepository = new CategoryRepositoryFirebaseImpl();
 
-        if (getIntent().getSerializableExtra("task") != null) {
-            taskToEdit = (Task) getIntent().getSerializableExtra("task");
+        // Dohvatanje trenutnog korisnika
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+        } else {
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        String taskId = getIntent().getStringExtra("taskId");
+        if (taskId != null) {
+            // Asinhrono dohvati zadatak iz baze
+            taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+                @Override
+                public void onSuccess(Task task) {
+                    if (task != null) {
+                        taskToEdit = task;
+                        populateFields(taskToEdit);
+                    } else {
+                        runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Task not found.", Toast.LENGTH_SHORT).show());
+                        finish();
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e(TAG, "Error fetching task by ID", e);
+                    runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Error loading task.", Toast.LENGTH_SHORT).show());
+                    finish();
+                }
+            });
         }
 
         etTaskName = findViewById(R.id.etTaskName);
@@ -70,11 +107,7 @@ public class EditTaskActivity extends AppCompatActivity {
         recurringGroup = findViewById(R.id.recurringGroup);
         btnSaveTask = findViewById(R.id.btnCreateTask);
 
-        btnSaveTask.setText("Sačuvaj izmene");
-
-        if (taskToEdit != null) {
-            populateFields(taskToEdit);
-        }
+        btnSaveTask.setText("Save Changes");
 
         etStartDate.setOnClickListener(v -> showDatePicker(etStartDate));
         etEndDate.setOnClickListener(v -> showDatePicker(etEndDate));
@@ -84,6 +117,11 @@ public class EditTaskActivity extends AppCompatActivity {
                 recurringGroup.setVisibility(View.VISIBLE);
             } else {
                 recurringGroup.setVisibility(View.GONE);
+                // Clear fields when switching to one-time
+                etInterval.setText("");
+                etStartDate.setText("");
+                etEndDate.setText("");
+                spIntervalUnit.setSelection(0);
             }
         });
 
@@ -94,39 +132,65 @@ public class EditTaskActivity extends AppCompatActivity {
         etTaskName.setText(task.getName());
         etTaskDescription.setText(task.getDescription());
 
-        // Postavljanje kategorije
-        List<Category> categories = categoryRepository.getAllCategories();
-        ArrayAdapter<Category> categoryAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, categories);
-        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spCategory.setAdapter(categoryAdapter);
-        int categoryPosition = -1;
-        for (int i = 0; i < categories.size(); i++) {
-            if (categories.get(i).getId() == task.getCategory().getId()) {
-                categoryPosition = i;
-                break;
+        // Asinhrono učitavanje kategorija i postavljanje spinnera
+        categoryRepository.getAllCategories(userId, new CategoryRepository.OnCategoriesLoadedListener() {
+            @Override
+            public void onSuccess(List<Category> categories) {
+                ArrayAdapter<Category> categoryAdapter = new ArrayAdapter<>(EditTaskActivity.this,
+                        android.R.layout.simple_spinner_item, categories);
+                categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spCategory.setAdapter(categoryAdapter);
+                int categoryPosition = -1;
+                if (task.getCategory() != null) {
+                    for (int i = 0; i < categories.size(); i++) {
+                        if (categories.get(i).getId().equals(task.getCategory().getId())) {
+                            categoryPosition = i;
+                            break;
+                        }
+                    }
+                }
+                if (categoryPosition != -1) {
+                    spCategory.setSelection(categoryPosition);
+                }
             }
-        }
-        if (categoryPosition != -1) {
-            spCategory.setSelection(categoryPosition);
-        }
 
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Failed to load categories.", e);
+                runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Failed to load categories.", Toast.LENGTH_SHORT).show());
+            }
+        });
 
         // Postavljanje težine i bitnosti
         ArrayAdapter<CharSequence> difficultyAdapter = ArrayAdapter.createFromResource(this, R.array.difficulty_options, android.R.layout.simple_spinner_item);
-        spDifficulty.setSelection(difficultyAdapter.getPosition(task.getDifficulty().getSerbianName()));
+        difficultyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spDifficulty.setAdapter(difficultyAdapter);
+        if (task.getDifficulty() != null) {
+            spDifficulty.setSelection(difficultyAdapter.getPosition(task.getDifficulty()));
+        }
 
         ArrayAdapter<CharSequence> importanceAdapter = ArrayAdapter.createFromResource(this, R.array.importance_options, android.R.layout.simple_spinner_item);
-        spImportance.setSelection(importanceAdapter.getPosition(task.getImportance().getSerbianName()));
+        importanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spImportance.setAdapter(importanceAdapter);
+        if (task.getImportance() != null) {
+            spImportance.setSelection(importanceAdapter.getPosition(task.getImportance()));
+        }
+
+        ArrayAdapter<CharSequence> intervalUnitAdapter = ArrayAdapter.createFromResource(this, R.array.interval_units, android.R.layout.simple_spinner_item);
+        intervalUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spIntervalUnit.setAdapter(intervalUnitAdapter);
 
         // Postavljanje ostalih polja
         if ("recurring".equals(task.getFrequency())) {
             rgFrequency.check(R.id.rbRecurring);
             recurringGroup.setVisibility(View.VISIBLE);
-            etInterval.setText(String.valueOf(task.getInterval()));
+            if (task.getInterval() != null) {
+                etInterval.setText(String.valueOf(task.getInterval()));
+            }
 
-            ArrayAdapter<CharSequence> intervalUnitAdapter = ArrayAdapter.createFromResource(this, R.array.interval_units, android.R.layout.simple_spinner_item);
-            spIntervalUnit.setSelection(intervalUnitAdapter.getPosition(task.getIntervalUnit()));
+            if (task.getIntervalUnit() != null) {
+                spIntervalUnit.setSelection(intervalUnitAdapter.getPosition(task.getIntervalUnit()));
+            }
 
             if (task.getStartDate() != null) {
                 etStartDate.setText(new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(task.getStartDate()));
@@ -146,17 +210,15 @@ public class EditTaskActivity extends AppCompatActivity {
 
     private void saveTaskChanges() {
         if (taskToEdit == null) {
-            Toast.makeText(this, "Greška: Zadatak nije pronađen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error: Task not found.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 1. Preuzmi sve podatke iz UI elemenata
         String name = etTaskName.getText().toString().trim();
         String description = etTaskDescription.getText().toString().trim();
         Category selectedCategory = (Category) spCategory.getSelectedItem();
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
-        // Pronađi ispravne enum vrednosti
         DifficultyType difficulty = null;
         String selectedDifficultyStr = spDifficulty.getSelectedItem().toString();
         for (DifficultyType d : DifficultyType.values()) {
@@ -176,21 +238,21 @@ public class EditTaskActivity extends AppCompatActivity {
         }
 
         if (name.isEmpty() || difficulty == null || importance == null || selectedCategory == null) {
-            Toast.makeText(this, "Naziv, težina, bitnost i kategorija su obavezni.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Name, difficulty, importance and category are required.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 2. Ažuriraj taskToEdit objekat
         taskToEdit.setName(name);
         taskToEdit.setDescription(description);
         taskToEdit.setCategory(selectedCategory);
         taskToEdit.setFrequency(frequency);
-        taskToEdit.setDifficulty(difficulty);
-        taskToEdit.setImportance(importance);
+        taskToEdit.setDifficulty(difficulty.name());
+        taskToEdit.setImportance(importance.name());
+        taskToEdit.setXpValue(difficulty.getXpValue() + importance.getXpValue());
 
-        if ("recurring".equals(frequency)) {
-            try {
-                int interval = Integer.parseInt(etInterval.getText().toString());
+        try {
+            if ("recurring".equals(frequency)) {
+                Integer interval = Integer.parseInt(etInterval.getText().toString());
                 String intervalUnit = spIntervalUnit.getSelectedItem().toString();
                 SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
                 Date startDate = dateFormat.parse(etStartDate.getText().toString());
@@ -200,31 +262,38 @@ public class EditTaskActivity extends AppCompatActivity {
                 taskToEdit.setIntervalUnit(intervalUnit);
                 taskToEdit.setStartDate(startDate);
                 taskToEdit.setEndDate(endDate);
-
-            } catch (NumberFormatException | ParseException e) {
-                Toast.makeText(this, "Greška u formatu datuma/intervala.", Toast.LENGTH_SHORT).show();
-                return;
+            } else {
+                taskToEdit.setInterval(null);
+                taskToEdit.setIntervalUnit(null);
+                taskToEdit.setStartDate(null);
+                taskToEdit.setEndDate(null);
             }
-        }
 
-        try {
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
             Date executionTime = timeFormat.parse(etExecutionTime.getText().toString());
             taskToEdit.setExecutionTime(executionTime);
-        } catch (ParseException e) {
-            Toast.makeText(this, "Greška u formatu vremena.", Toast.LENGTH_SHORT).show();
+
+        } catch (NumberFormatException | ParseException e) {
+            Toast.makeText(this, "Error in date/time format or interval.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 3. Pozovi metodu za ažuriranje u repozitorijumu
-        int rowsAffected = taskRepository.updateTask(taskToEdit);
+        // Asinhroni poziv za ažuriranje zadatka u Firebase-u
+        taskRepository.updateTask(taskToEdit, userId, new TaskRepository.OnTaskUpdatedListener() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    Toast.makeText(EditTaskActivity.this, "Changes saved successfully!", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+            }
 
-        if (rowsAffected > 0) {
-            Toast.makeText(this, "Promene uspešno sačuvane!", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            Toast.makeText(this, "Greška prilikom čuvanja izmena.", Toast.LENGTH_SHORT).show();
-        }
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Error saving task changes", e);
+                runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Error saving changes.", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     private void showDatePicker(final EditText dateField) {

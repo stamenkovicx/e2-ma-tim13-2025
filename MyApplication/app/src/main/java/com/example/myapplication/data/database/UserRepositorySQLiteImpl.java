@@ -1,4 +1,4 @@
-package com.example.myapplication.data.database;
+/*package com.example.myapplication.data.database;
 
 import android.content.Context;
 import android.util.Log;
@@ -52,7 +52,7 @@ public class UserRepositorySQLiteImpl {
             user.setTitle(newTitle);
 
             int ppGained = LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel);
-            user.setPowerPoints(user.getBasePowerPoints() + ppGained);
+            user.setPowerPoints(user.getPowerPoints() + ppGained);
         }
 
         dbHelper.updateUser(user);
@@ -65,4 +65,4 @@ public class UserRepositorySQLiteImpl {
     }
 
     // obrisati ovo skroz ??
-}
+}*/

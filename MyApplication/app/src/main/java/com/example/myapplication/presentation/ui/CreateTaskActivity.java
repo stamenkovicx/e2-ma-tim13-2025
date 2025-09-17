@@ -16,20 +16,20 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
+import com.example.myapplication.data.database.CategoryRepositoryFirebaseImpl;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.repository.TaskRepository;
-import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
 import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -37,31 +37,42 @@ import java.util.Locale;
 
 public class CreateTaskActivity extends AppCompatActivity {
 
-    // UI elementi
+    private static final String TAG = "CreateTaskActivity";
+
     private EditText etTaskName, etTaskDescription, etInterval, etStartDate, etEndDate, etExecutionTime;
     private Spinner spCategory, spDifficulty, spImportance, spIntervalUnit;
     private RadioGroup rgFrequency;
     private LinearLayout recurringGroup;
     private Button btnCreateTask;
-    private CategoryRepository categoryRepository;
 
-
-    // Repozitorijum za zadatke
     private TaskRepository taskRepository;
+    private CategoryRepository categoryRepository;
+    private String userId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_task);
 
-        //Toast.makeText(this, "CreateTaskActivity startovao!", Toast.LENGTH_SHORT).show();
+        categoryRepository = new CategoryRepositoryFirebaseImpl();
+        taskRepository = new TaskRepositoryFirebaseImpl();
 
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+        } else {
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
+        initializeViews();
+        setupSpinners();
+        loadCategories();
+        setupListeners();
+    }
 
-        categoryRepository = new CategoryRepositorySQLiteImpl(this);
-        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
-
-        // Povezivanje UI elemenata
+    private void initializeViews() {
         etTaskName = findViewById(R.id.etTaskName);
         etTaskDescription = findViewById(R.id.etTaskDescription);
         etInterval = findViewById(R.id.etInterval);
@@ -75,8 +86,9 @@ public class CreateTaskActivity extends AppCompatActivity {
         rgFrequency = findViewById(R.id.rgFrequency);
         recurringGroup = findViewById(R.id.recurringGroup);
         btnCreateTask = findViewById(R.id.btnCreateTask);
+    }
 
-        // Postavljanje adaptera za Spinere sa fiksnim opcijama
+    private void setupSpinners() {
         ArrayAdapter<CharSequence> difficultyAdapter = ArrayAdapter.createFromResource(this,
                 R.array.difficulty_options, android.R.layout.simple_spinner_item);
         difficultyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -87,41 +99,57 @@ public class CreateTaskActivity extends AppCompatActivity {
         importanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spImportance.setAdapter(importanceAdapter);
 
-        categoryRepository = new CategoryRepositorySQLiteImpl(this);
+        ArrayAdapter<CharSequence> intervalUnitAdapter = ArrayAdapter.createFromResource(this,
+                R.array.interval_units, android.R.layout.simple_spinner_item);
+        intervalUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spIntervalUnit.setAdapter(intervalUnitAdapter);
+    }
 
-        List<Category> categories = categoryRepository.getAllCategories();
-        ArrayAdapter<Category> categoryAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, categories);
-        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spCategory.setAdapter(categoryAdapter);
-
-
-        // Listeners za odabir datuma i vremena
+    private void setupListeners() {
         etStartDate.setOnClickListener(v -> showDatePicker(etStartDate));
         etEndDate.setOnClickListener(v -> showDatePicker(etEndDate));
         etExecutionTime.setOnClickListener(v -> showTimePicker());
 
-        // Listener za promene u grupi radio dugmadi
         rgFrequency.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rbRecurring) {
                 recurringGroup.setVisibility(View.VISIBLE);
             } else {
                 recurringGroup.setVisibility(View.GONE);
+                etInterval.setText("");
+                etStartDate.setText("");
+                etEndDate.setText("");
+                spIntervalUnit.setSelection(0);
             }
         });
 
-        // Listener za dugme Kreiraj zadatak
         btnCreateTask.setOnClickListener(v -> {
-            try {
-                createTask();
-            } catch (Exception e) {
-                Log.e("CreateTaskActivity", "Crash u createTask()", e);
-                Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            createTask();
+        });
+    }
+
+    private void loadCategories() {
+        categoryRepository.getAllCategories(userId, new CategoryRepository.OnCategoriesLoadedListener() {
+            @Override
+            public void onSuccess(List<Category> categories) {
+                if (categories != null && !categories.isEmpty()) {
+                    ArrayAdapter<Category> categoryAdapter = new ArrayAdapter<>(CreateTaskActivity.this,
+                            android.R.layout.simple_spinner_item, categories);
+                    categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    spCategory.setAdapter(categoryAdapter);
+                } else {
+                    Toast.makeText(CreateTaskActivity.this, "No categories found. Please add a category first.", Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Failed to load categories.", e);
+                Toast.makeText(CreateTaskActivity.this, "Failed to load categories.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-        private void showDatePicker(final EditText dateField) {
+    private void showDatePicker(final EditText dateField) {
         final Calendar c = Calendar.getInstance();
         int year = c.get(Calendar.YEAR);
         int month = c.get(Calendar.MONTH);
@@ -144,142 +172,108 @@ public class CreateTaskActivity extends AppCompatActivity {
                 (view, hourOfDay, minuteOfHour) -> {
                     String formattedTime = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minuteOfHour);
                     etExecutionTime.setText(formattedTime);
-                }, hour, minute, true); // true za 24h format
+                }, hour, minute, true);
         timePickerDialog.show();
     }
 
     private void createTask() {
-        // Validacija unosa
-        String name = etTaskName.getText().toString();
+        String name = etTaskName.getText().toString().trim();
         if (name.isEmpty()) {
-            Toast.makeText(this, "Naziv zadatka je obavezan.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Task name is required.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Prikupljanje ostalih podataka
-        String description = etTaskDescription.getText().toString();
-        Category selectedCategory = null;
-        Object selectedItem = spCategory.getSelectedItem();
-        if (selectedItem instanceof Category) {
-            selectedCategory = (Category) selectedItem;
-        } else if (selectedItem != null) {
-            // Ovo se dešava ako spiner nije popunjen sa Category objektima
-            Toast.makeText(this, "Greška: spiner nije pravilno inicijalizovan.", Toast.LENGTH_SHORT).show();
+        String description = etTaskDescription.getText().toString().trim();
+        Category selectedCategory = (Category) spCategory.getSelectedItem();
+
+        if (selectedCategory == null) {
+            Toast.makeText(this, "Please select a category.", Toast.LENGTH_SHORT).show();
             return;
         }
+
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
-        // **ISPRAVLJENA LOGIKA ZA DOBIJANJE ENUM VREDNOSTI**
-        DifficultyType difficulty = null;
-        String selectedDifficultyStr = spDifficulty.getSelectedItem().toString();
-        for (DifficultyType d : DifficultyType.values()) {
-            if (d.getSerbianName().equals(selectedDifficultyStr)) {
-                difficulty = d;
-                break;
-            }
-        }
+        DifficultyType difficulty = DifficultyType.fromSerbianName(spDifficulty.getSelectedItem().toString());
+        ImportanceType importance = ImportanceType.fromSerbianName(spImportance.getSelectedItem().toString());
 
-        ImportanceType importance = null;
-        String selectedImportanceStr = spImportance.getSelectedItem().toString();
-        for (ImportanceType i : ImportanceType.values()) {
-            if (i.getSerbianName().equals(selectedImportanceStr)) {
-                importance = i;
-                break;
-            }
-        }
-
-        // Provera da li su pronađene vrednosti (za slučaj da spiner ne radi kako treba)
         if (difficulty == null || importance == null) {
-            Toast.makeText(this, "Greška pri odabiru težine ili bitnosti.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error selecting difficulty or importance.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        int interval = 0;
-        String intervalUnit = "";
+        Integer interval = null;
+        String intervalUnit = null;
         Date startDate = null;
         Date endDate = null;
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
 
         if (frequency.equals("recurring")) {
             try {
+                if (etInterval.getText().toString().isEmpty()) {
+                    Toast.makeText(this, "Interval is required for recurring tasks.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (etStartDate.getText().toString().isEmpty() || etEndDate.getText().toString().isEmpty()) {
+                    Toast.makeText(this, "Start and end dates are required for recurring tasks.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 interval = Integer.parseInt(etInterval.getText().toString());
                 intervalUnit = spIntervalUnit.getSelectedItem().toString();
-                // Ispravljen format datuma
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
                 startDate = dateFormat.parse(etStartDate.getText().toString());
                 endDate = dateFormat.parse(etEndDate.getText().toString());
             } catch (NumberFormatException | ParseException e) {
-                Toast.makeText(this, "Neispravan format za ponavljajući zadatak.", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Error parsing recurring task fields", e);
+                Toast.makeText(this, "Invalid format for recurring task.", Toast.LENGTH_SHORT).show();
                 return;
             }
         } else {
-            // Jednokratni zadatak: start i end date = današnji datum
-            Calendar calendar = Calendar.getInstance();
-            startDate = calendar.getTime();
-            endDate = calendar.getTime();
+            startDate = Calendar.getInstance().getTime();
+            endDate = startDate;
         }
-
 
         Date executionTime = null;
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         try {
-            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
             executionTime = timeFormat.parse(etExecutionTime.getText().toString());
         } catch (ParseException e) {
-            Toast.makeText(this, "Neispravan format za vreme.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        String userEmail = currentUser != null ? currentUser.getEmail() : "";
-
-        // Provera da li je korisnik ulogovan
-        if (userEmail.isEmpty()) {
-            Toast.makeText(this, "Niste ulogovani. Ne možete kreirati zadatak.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error parsing time format", e);
+            Toast.makeText(this, "Invalid time format.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Kreiranje novog zadatka
-        Task newTask;
+        int xpValue = difficulty.getXpValue() + importance.getXpValue();
 
-        if (selectedCategory != null) {
-            newTask = new Task(
-                    0,
-                    name,
-                    description,
-                    selectedCategory, // Prosleđivanje celog Category objekta
-                    frequency,
-                    interval,
-                    intervalUnit,
-                    startDate,
-                    endDate,
-                    executionTime,
-                    difficulty,
-                    importance,
-                    userEmail
-            );
-            newTask.setUserEmail(userEmail);
-        } else {
-            // Ako nema izabrane kategorije, kreiraj zadatak bez nje
-            // Ili prikaži poruku o grešci
-            Toast.makeText(this, "Izaberite kategoriju.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        Task newTask = new Task(
+                name,
+                description,
+                selectedCategory,
+                frequency,
+                interval,
+                intervalUnit,
+                startDate,
+                endDate,
+                executionTime,
+                difficulty.name(),
+                importance.name(),
+                xpValue,
+                userId
+        );
 
-// Čuvanje zadatka u bazi
-        long newTaskId = taskRepository.insertTask(newTask);
+        taskRepository.insertTask(newTask, userId, new TaskRepository.OnTaskAddedListener() {
+            @Override
+            public void onSuccess(String taskId) {
+                newTask.setId(taskId);
+                runOnUiThread(() -> {
+                    Toast.makeText(CreateTaskActivity.this, "Task created successfully!", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+            }
 
-        if (newTaskId != -1) {
-            Toast.makeText(this, "Zadatak uspešno kreiran!", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            Toast.makeText(this, "Greška prilikom kreiranja zadatka.", Toast.LENGTH_SHORT).show();
-        }
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Error creating task", e);
+                Toast.makeText(CreateTaskActivity.this, "Error creating task: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
-
-    // Pomoćna funkcija koja simulira dobijanje kategorija iz baze
-  /*  private List<Category> getDummyCategories() {
-        List<Category> categories = new ArrayList<>();
-        categories.add(new Category(1, "Zdravlje", R.color.red));
-        categories.add(new Category(2, "Ucenje", R.color.blue));
-        categories.add(new Category(3, "Sređivanje", R.color.green));
-        return categories;
-    }*/
 }

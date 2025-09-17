@@ -1,6 +1,7 @@
 package com.example.myapplication.presentation.ui.adapters;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,10 +12,11 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Category;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.skydoves.colorpickerview.ColorPickerDialog;
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener;
 
@@ -22,16 +24,20 @@ import java.util.List;
 
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
 
-    private List<Category> categories;
-    private List<Integer> availableColors;
-    private Context context;
-    private CategoryRepository repository;
+    private static final String TAG = "CategoryAdapter";
 
-    public CategoryAdapter(List<Category> categories, List<Integer> availableColors, Context context, CategoryRepository repository) {
+    private List<Category> categories;
+    private Context context;
+    private CategoryRepository categoryRepository;
+    private TaskRepository taskRepository;
+    private String userId;
+
+    public CategoryAdapter(List<Category> categories, Context context, CategoryRepository categoryRepository, String userEmail) {
         this.categories = categories;
-        this.availableColors = availableColors;
         this.context = context;
-        this.repository = repository;
+        this.categoryRepository = categoryRepository;
+        this.userId = userId;
+        this.taskRepository = new TaskRepositoryFirebaseImpl();
     }
 
     @NonNull
@@ -47,7 +53,6 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
         holder.tvCategoryName.setText(category.getName());
         holder.vCategoryColor.setBackgroundColor(category.getColor());
 
-        // Klik na boju za promenu
         holder.vCategoryColor.setOnClickListener(v -> showColorPicker(category));
     }
 
@@ -69,41 +74,55 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
 
     private void showColorPicker(Category category) {
         new ColorPickerDialog.Builder(context)
-                .setTitle("Izaberite boju")
+                .setTitle("Choose a color")
                 .setPositiveButton("OK", (ColorEnvelopeListener) (envelope, fromUser) -> {
                     int chosenColor = envelope.getColor();
 
-                    // Provera da li je boja već zauzeta
                     boolean taken = false;
                     for (Category c : categories) {
-                        if (c.getColor() == chosenColor && c.getId() != category.getId()) {
+                        if (c.getColor() == chosenColor && !c.getId().equals(category.getId())) {
                             taken = true;
                             break;
                         }
                     }
 
                     if (taken) {
-                        Toast.makeText(context, "Ova boja je već zauzeta!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, "This color is already taken!", Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    // Menjamo boju kategorije
                     category.setColor(chosenColor);
 
-                    // Update u bazi
-                    repository.updateCategory(category);
+                    // Asinhroni poziv za ažuriranje kategorije
+                    categoryRepository.updateCategory(category, userId, new CategoryRepository.OnCategoryUpdatedListener() {
+                        @Override
+                        public void onSuccess() {
+                            // Asinhroni poziv za ažuriranje boje zadataka
+                            taskRepository.updateTasksColor(category.getId(), chosenColor, userId, new TaskRepository.OnTaskUpdatedListener() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(context, "Category color and associated tasks updated successfully!", Toast.LENGTH_SHORT).show();
+                                    notifyDataSetChanged();
+                                }
 
-                    // Update boje svih zadataka te kategorije
-                    // Kreiraj TaskRepository instancu, prosleđujući joj CategoryRepository
-                    TaskRepository taskRepo = new TaskRepositorySQLiteImpl(context, repository);
-                    taskRepo.updateTasksColor(category.getId(), category.getColor());
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Log.e(TAG, "Failed to update tasks color.", e);
+                                    Toast.makeText(context, "Failed to update tasks color.", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
 
-                    // Osvežavamo prikaz
-                    notifyDataSetChanged();
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e(TAG, "Failed to update category color.", e);
+                            Toast.makeText(context, "Failed to update category color.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
-                .setNegativeButton("Otkaži", (dialogInterface, i) -> dialogInterface.dismiss())
-                .attachAlphaSlideBar(false)   // bez providnosti
-                .attachBrightnessSlideBar(true) // sa osvetljenošću
+                .setNegativeButton("Cancel", (dialogInterface, i) -> dialogInterface.dismiss())
+                .attachAlphaSlideBar(false)
+                .attachBrightnessSlideBar(true)
                 .show();
     }
 

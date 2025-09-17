@@ -1,4 +1,4 @@
-package com.example.myapplication.data.database;
+/*** package com.example.myapplication.data.database;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -29,10 +29,10 @@ import java.util.Map;
 import java.util.Calendar;
 import java.util.Set;
 
-/**
- * Konkretna implementacija TaskRepository interfejsa
- * koja koristi SQLite bazu podataka.
- */
+
+ // Konkretna implementacija TaskRepository interfejsa
+ // koja koristi SQLite bazu podataka.
+
 public class TaskRepositorySQLiteImpl implements TaskRepository {
 
     private DatabaseHelper dbHelper;
@@ -291,10 +291,10 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
         return activeDays;
     }
 
-    /**
-     * Racuna najduzi niz uzastopnih dana sa uspjesno zavrsenim zadacima
-     * Niz se ne prekida ako u danu nema zadataka
-     */
+
+     //Racuna najduzi niz uzastopnih dana sa uspjesno zavrsenim zadacima
+     //Niz se ne prekida ako u danu nema zadataka
+
     public int getLongestConsecutiveDays() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         List<String> completionDates = new ArrayList<>();
@@ -520,4 +520,4 @@ public class TaskRepositorySQLiteImpl implements TaskRepository {
     }
 
     // TODO: metoda koja vraca broj zapocetih i zavrsenih specijalnih misija:
-}
+} ***/

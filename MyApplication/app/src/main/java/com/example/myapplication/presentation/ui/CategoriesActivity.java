@@ -2,6 +2,7 @@ package com.example.myapplication.presentation.ui;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -12,10 +13,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.CategoryRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.CategoryRepository;
-import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
 import com.example.myapplication.domain.models.Category;
 import com.example.myapplication.presentation.ui.adapters.CategoryAdapter;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.skydoves.colorpickerview.ColorPickerDialog;
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener;
 
@@ -24,48 +28,56 @@ import java.util.List;
 
 public class CategoriesActivity extends AppCompatActivity {
 
+    private static final String TAG = "CategoriesActivity";
+
     private RecyclerView rvCategories;
     private CategoryAdapter adapter;
     private CategoryRepository repository;
     private EditText etCategoryName;
     private Button btnAddCategory;
-    private List<Integer> AVAILABLE_COLORS; // umesto fiksnog
-    private List<Category> categories;
-    private int selectedColor = Color.GRAY; // default boja
+    private ImageButton btnSelectColor;
 
+    private List<Category> categories = new ArrayList<>();
+    private int selectedColor = Color.GRAY;
+    private String userId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_categories);
 
-        repository = new CategoryRepositorySQLiteImpl(this);
+        repository = new CategoryRepositoryFirebaseImpl();
+
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+        } else {
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
         rvCategories = findViewById(R.id.rvCategories);
         etCategoryName = findViewById(R.id.etCategoryName);
         btnAddCategory = findViewById(R.id.btnAddCategory);
-        ImageButton btnSelectColor = findViewById(R.id.btnSelectColor);
+        btnSelectColor = findViewById(R.id.btnSelectColor);
 
         rvCategories.setLayoutManager(new LinearLayoutManager(this));
 
-        categories = repository.getAllCategories();
-        AVAILABLE_COLORS = generateColors(50); // generiši 50 boja
-
-        adapter = new CategoryAdapter(categories, AVAILABLE_COLORS, this, repository);
+        adapter = new CategoryAdapter(categories, this, repository, userId);
         rvCategories.setAdapter(adapter);
 
-        // Biranje boje pre dodavanja nove kategorije
+        loadCategories();
+
         btnSelectColor.setOnClickListener(v -> {
             new ColorPickerDialog.Builder(this)
-                    .setTitle("Izaberite boju")
+                    .setTitle("Choose a Color")
                     .setPositiveButton("OK", (ColorEnvelopeListener) (envelope, fromUser) -> {
-                        // Postavi boju na dugme
                         btnSelectColor.setBackgroundColor(envelope.getColor());
-                        // Ukloni sliku
-                        btnSelectColor.setImageResource(0); // Ovo postavlja sliku na null
+                        btnSelectColor.setImageResource(0);
                         selectedColor = envelope.getColor();
                     })
-                    .setNegativeButton("Otkaži", (dialogInterface, i) -> dialogInterface.dismiss())
+                    .setNegativeButton("Cancel", (dialogInterface, i) -> dialogInterface.dismiss())
                     .attachAlphaSlideBar(false)
                     .attachBrightnessSlideBar(true)
                     .show();
@@ -74,63 +86,49 @@ public class CategoriesActivity extends AppCompatActivity {
         btnAddCategory.setOnClickListener(v -> {
             String name = etCategoryName.getText().toString().trim();
             if (!name.isEmpty()) {
-                int colorToUse = selectedColor; // Započnite sa izabranom bojom.
-
-                // Ako korisnik nije izabrao boju, dodelite joj prvu dostupnu iz liste
-                if (selectedColor == Color.GRAY) {
-                    colorToUse = AVAILABLE_COLORS.get(categories.size() % AVAILABLE_COLORS.size());
+                int colorToUse = selectedColor;
+                if (colorToUse == Color.GRAY) {
+                    Toast.makeText(this, "Please select a color.", Toast.LENGTH_SHORT).show();
+                    return;
                 }
 
-                // Provera da boja nije zauzeta
-                for (Category c : categories) {
-                    if (c.getColor() == colorToUse) {
-                        // Ako je zauzeta, pokušajte da pronađete sledeću slobodnu boju
-                        int startIndex = categories.size();
-                        colorToUse = AVAILABLE_COLORS.get(startIndex % AVAILABLE_COLORS.size());
-                        // Prekinite petlju jer ste pronašli sledeću boju
-                        break;
+                Category newCategory = new Category(name, colorToUse);
+
+                repository.insertCategory(newCategory, userId, new CategoryRepository.OnCategoryAddedListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(CategoriesActivity.this, "Category added successfully!", Toast.LENGTH_SHORT).show();
+                        etCategoryName.setText("");
+                        selectedColor = Color.GRAY;
+                        btnSelectColor.setBackgroundColor(Color.TRANSPARENT);
+                        loadCategories();
                     }
-                }
 
-                Category newCategory = new Category(0, name, colorToUse);
-                long insertId = repository.insertCategory(newCategory);
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e(TAG, "Error adding category", e);
+                        Toast.makeText(CategoriesActivity.this, "Error adding category.", Toast.LENGTH_SHORT).show();
+                    }
+                });
 
-                if (insertId != -1) {
-                    // Ažurirajte ID nove kategorije iz baze
-                    newCategory.setId((int) insertId);
-                    // Dodajte novu kategoriju u listu pre obaveštenja
-                    categories.add(newCategory);
-                    // Osvežite prikaz adaptera
-                    adapter.notifyItemInserted(categories.size() - 1);
-
-                    // Takođe, osvežite prikaz cele liste kako bi se osigurala konzistentnost
-                    adapter.updateCategories(repository.getAllCategories());
-
-                    Toast.makeText(this, "Kategorija uspešno dodata!", Toast.LENGTH_SHORT).show();
-                    etCategoryName.setText("");
-                    selectedColor = Color.GRAY; // reset
-                } else {
-                    Toast.makeText(this, "Greška pri dodavanju kategorije.", Toast.LENGTH_SHORT).show();
-                }
+            } else {
+                Toast.makeText(this, "Category name cannot be empty.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    private void loadCategories() {
+        repository.getAllCategories(userId, new CategoryRepository.OnCategoriesLoadedListener() {
+            @Override
+            public void onSuccess(List<Category> loadedCategories) {
+                adapter.updateCategories(loadedCategories);
+            }
 
-
-    private List<Integer> generateColors(int n) {
-        List<Integer> colors = new ArrayList<>();
-        float[] saturations = {0.5f, 0.7f, 0.9f}; // pastelne, srednje, jarke
-        float[] values = {0.8f, 0.9f, 1.0f};      // svetla, srednja, tamna
-
-        for (int i = 0; i < n; i++) {
-            float hue = (i * 360f / n);             // raspodela kroz ceo spektar
-            float saturation = saturations[i % saturations.length];
-            float value = values[i % values.length];
-            colors.add(Color.HSVToColor(new float[]{hue, saturation, value}));
-        }
-        return colors;
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Error loading categories", e);
+                Toast.makeText(CategoriesActivity.this, "Failed to load categories.", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
-
-
 }

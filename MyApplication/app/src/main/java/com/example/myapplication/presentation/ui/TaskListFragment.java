@@ -1,12 +1,15 @@
 package com.example.myapplication.presentation.ui;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -14,13 +17,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
-import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.presentation.ui.adapters.TaskAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,7 +34,7 @@ public class TaskListFragment extends Fragment {
     private Spinner spTaskFilter;
     private TaskRepository taskRepository;
     private TaskAdapter taskAdapter;
-    private String userEmail;
+    private String userId;
 
     @Nullable
     @Override
@@ -39,14 +42,15 @@ public class TaskListFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_task_list, container, false);
 
         if (getContext() != null) {
-            CategoryRepositorySQLiteImpl categoryRepository = new CategoryRepositorySQLiteImpl(getContext());
-            taskRepository = new TaskRepositorySQLiteImpl(getContext(), categoryRepository);
+            // Instanciramo Firebase repozitorijum
+            taskRepository = new TaskRepositoryFirebaseImpl();
 
             FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
             if (currentUser != null) {
-                userEmail = currentUser.getEmail();
+                userId = currentUser.getUid();
             } else {
-                return view; // Ili prikažite poruku o grešci
+                Toast.makeText(getContext(), "User not logged in.", Toast.LENGTH_SHORT).show();
+                return view;
             }
         }
 
@@ -79,34 +83,70 @@ public class TaskListFragment extends Fragment {
     }
 
     private void loadAllTasks() {
-        List<Task> allTasks = taskRepository.getAllTasks(userEmail);
-        if (taskAdapter == null) {
-            if (getContext() != null) {
-                taskAdapter = new TaskAdapter(allTasks, getContext());
-                rvAllTasks.setAdapter(taskAdapter);
-            }
-        } else {
-            taskAdapter.updateTasks(allTasks);
+        if (userId == null || userId.isEmpty()) {
+            Log.e("TaskListFragment", "User email is null or empty.");
+            return;
         }
+
+        // Koristimo asinhroni poziv za učitavanje svih zadataka
+        taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
+            @Override
+            public void onSuccess(List<Task> allTasks) {
+                // Ažuriramo listu unutar callback-a
+                if (taskAdapter == null) {
+                    if (getContext() != null) {
+                        taskAdapter = new TaskAdapter(allTasks, getContext());
+                        rvAllTasks.setAdapter(taskAdapter);
+                    }
+                } else {
+                    taskAdapter.updateTasks(allTasks);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("TaskListFragment", "Failed to load tasks.", e);
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Failed to load tasks.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     private void loadTasks(String filter) {
-        List<Task> filteredTasks;
-        List<Task> allTasks = taskRepository.getAllTasks(userEmail);
-
-        if (filter.equals("Jednokratni")) {
-            filteredTasks = allTasks.stream()
-                    .filter(task -> "one-time".equals(task.getFrequency()))
-                    .collect(Collectors.toList());
-        } else if (filter.equals("Ponavljajući")) {
-            filteredTasks = allTasks.stream()
-                    .filter(task -> "recurring".equals(task.getFrequency()))
-                    .collect(Collectors.toList());
-        } else {
-            filteredTasks = allTasks;
+        if (userId == null || userId.isEmpty()) {
+            Log.e("TaskListFragment", "User email is null or empty.");
+            return;
         }
 
-        updateTaskList(filteredTasks);
+        // Koristimo asinhroni poziv za učitavanje svih zadataka, a zatim filtriramo lokalno
+        taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
+            @Override
+            public void onSuccess(List<Task> allTasks) {
+                List<Task> filteredTasks;
+
+                if ("Jednokratni".equals(filter)) {
+                    filteredTasks = allTasks.stream()
+                            .filter(task -> "one-time".equals(task.getFrequency()))
+                            .collect(Collectors.toList());
+                } else if ("Ponavljajući".equals(filter)) {
+                    filteredTasks = allTasks.stream()
+                            .filter(task -> "recurring".equals(task.getFrequency()))
+                            .collect(Collectors.toList());
+                } else {
+                    filteredTasks = allTasks;
+                }
+                updateTaskList(filteredTasks);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("TaskListFragment", "Failed to filter tasks.", e);
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Failed to filter tasks.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     private void updateTaskList(List<Task> tasks) {

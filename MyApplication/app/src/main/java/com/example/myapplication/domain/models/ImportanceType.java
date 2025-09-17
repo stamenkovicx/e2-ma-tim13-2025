@@ -21,4 +21,13 @@ public enum ImportanceType {
     public int getXpValue() {
         return xpValue;
     }
+
+    public static ImportanceType fromSerbianName(String serbianName) {
+        for (ImportanceType type : ImportanceType.values()) {
+            if (type.serbianName.equals(serbianName)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

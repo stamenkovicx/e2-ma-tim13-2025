@@ -11,48 +11,80 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
-import com.example.myapplication.data.database.CategoryRepositorySQLiteImpl;
-import com.example.myapplication.data.database.LevelingSystemHelper;
-import com.example.myapplication.data.database.TaskRepositorySQLiteImpl;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
-import com.example.myapplication.data.database.UserRepositorySQLiteImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.domain.models.DifficultyType;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.myapplication.data.database.LevelingSystemHelper;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public class TaskDetailsActivity extends AppCompatActivity {
 
     private Task task;
     private TaskRepository taskRepository;
-    private UserRepositorySQLiteImpl userRepository;
-    private CategoryRepositorySQLiteImpl categoryRepository;
+    private UserRepository userRepository;
+    private String userId;
 
     private TextView tvTaskName, tvTaskDescription, tvCategory, tvFrequency, tvDates, tvExecutionTime, tvDifficulty, tvImportance;
     private View vCategoryColor;
     private Button btnEdit, btnDelete;
     private Button btnComplete, btnCancel, btnPause, btnActivate;
+    private static final String TAG = "TaskDetailsActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_task_details);
 
-        CategoryRepositorySQLiteImpl categoryRepository = new CategoryRepositorySQLiteImpl(this);
-        taskRepository = new TaskRepositorySQLiteImpl(this, categoryRepository);
-
-        if (getIntent().getSerializableExtra("task") != null) {
-            task = (Task) getIntent().getSerializableExtra("task");
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+        } else {
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
+        // Instanciramo Firebase repozitorijume
+        taskRepository = new TaskRepositoryFirebaseImpl();
+        userRepository = new UserRepositoryFirebaseImpl();
+
+        String taskId = getIntent().getStringExtra("taskId");
+        if (taskId != null) {
+            taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+                @Override
+                public void onSuccess(Task fetchedTask) {
+                    if (fetchedTask != null) {
+                        task = fetchedTask;
+                        initializeViews();
+                        displayTaskDetails(task);
+                        updateStatusButtons();
+                    } else {
+                        Toast.makeText(TaskDetailsActivity.this, "Task not found.", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e(TAG, "Failed to load task details.", e);
+                    Toast.makeText(TaskDetailsActivity.this, "Failed to load task details.", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+            });
+        }
+    }
+
+    private void initializeViews() {
         tvTaskName = findViewById(R.id.tvTaskName);
         tvTaskDescription = findViewById(R.id.tvTaskDescription);
         vCategoryColor = findViewById(R.id.vCategoryColor);
@@ -64,114 +96,36 @@ public class TaskDetailsActivity extends AppCompatActivity {
         tvImportance = findViewById(R.id.tvImportance);
         btnEdit = findViewById(R.id.btnEdit);
         btnDelete = findViewById(R.id.btnDelete);
-
         btnComplete = findViewById(R.id.btnComplete);
         btnCancel = findViewById(R.id.btnCancel);
         btnPause = findViewById(R.id.btnPause);
         btnActivate = findViewById(R.id.btnActivate);
 
-        if (task != null) {
-            displayTaskDetails(task);
-            updateStatusButtons();
-        }
-
-
         btnEdit.setOnClickListener(v -> {
             Intent intent = new Intent(this, EditTaskActivity.class);
-            intent.putExtra("task", task);
+            intent.putExtra("taskId", task.getId());
             startActivity(intent);
         });
 
-        btnDelete.setOnClickListener(v -> {
-            deleteTask();
-        });
+        btnDelete.setOnClickListener(v -> deleteTask());
 
-        btnComplete.setOnClickListener(v -> {
-            updateTaskStatus(TaskStatus.URAĐEN);
-
-            FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-            if (firebaseUser != null) {
-                String userId = firebaseUser.getUid();
-                UserRepositoryFirebaseImpl userRepo = new UserRepositoryFirebaseImpl();
-
-                userRepo.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
-                    @Override
-                    public void onSuccess(User user) {
-                        int previousLevel = user.getLevel();
-
-                        int baseXpForDifficulty = task.getDifficulty().getXpValue();
-                        int baseXpForImportance = task.getImportance().getXpValue();
-
-                        int dynamicXpFromDifficulty = LevelingSystemHelper.getXpForDifficulty(baseXpForDifficulty, user.getLevel());
-                        int dynamicXpFromImportance = LevelingSystemHelper.getXpForImportance(baseXpForImportance, user.getLevel());
-
-                        int totalXpGained = dynamicXpFromDifficulty + dynamicXpFromImportance;
-
-                        user.setXp(user.getXp() + totalXpGained);
-
-                        while (true) {
-                            int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
-
-                            if (user.getXp() < requiredXp) {
-                                break;
-                            }
-
-                            int newLevel = user.getLevel() + 1;
-                            user.setLevel(newLevel);
-
-                            int remainingXp = user.getXp() - requiredXp;
-                            user.setXp(remainingXp);
-
-                            String newTitle = LevelingSystemHelper.getTitleForLevel(newLevel);
-                            user.setTitle(newTitle);
-
-                            int ppGained = LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel);
-                            user.setPowerPoints(user.getPowerPoints() + ppGained);
-                        }
-
-                        userRepo.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                runOnUiThread(() -> {
-                                    Toast.makeText(getApplicationContext(), "Task complete! XP added!", Toast.LENGTH_SHORT).show();
-
-                                    if (user.getLevel() > previousLevel) {
-                                        // metoda koja prikazuje pop-up za PP
-                                        // Npr: showPowerPointsPopup(user.getPowerPoints());
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void onFailure(Exception e) {
-                                runOnUiThread(() -> {
-                                    Log.e("TaskDetails", "Error updating user: " + e.getMessage());
-                                    Toast.makeText(getApplicationContext(), "Error adding XP.", Toast.LENGTH_SHORT).show();
-                                });
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailure(Exception e) {
-                        runOnUiThread(() -> {
-                            Log.e("TaskDetails", "Error fetching user:: " + e.getMessage());
-                            Toast.makeText(getApplicationContext(), "Error fetching user data.", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                });
-            }
-        });
+        btnComplete.setOnClickListener(v -> updateTaskStatusAndXP(TaskStatus.URAĐEN));
         btnCancel.setOnClickListener(v -> updateTaskStatus(TaskStatus.OTKAZAN));
         btnPause.setOnClickListener(v -> updateTaskStatus(TaskStatus.PAUZIRAN));
         btnActivate.setOnClickListener(v -> updateTaskStatus(TaskStatus.AKTIVAN));
     }
 
+
     private void displayTaskDetails(Task task) {
         tvTaskName.setText(task.getName());
         tvTaskDescription.setText(task.getDescription());
-        vCategoryColor.setBackgroundColor(task.getCategory().getColor());
-        tvCategory.setText(String.format("Kategorija: %s", task.getCategory().getName()));
+        if (task.getCategory() != null) {
+            vCategoryColor.setBackgroundColor(task.getCategory().getColor());
+            tvCategory.setText(String.format("Kategorija: %s", task.getCategory().getName()));
+        } else {
+            vCategoryColor.setBackgroundColor(0);
+            tvCategory.setText("Kategorija: Nije postavljeno");
+        }
 
         String frequencyText = task.getFrequency();
         if ("recurring".equals(task.getFrequency())) {
@@ -190,70 +144,142 @@ public class TaskDetailsActivity extends AppCompatActivity {
         String executionTime = task.getExecutionTime() != null ? timeFormat.format(task.getExecutionTime()) : "Nije postavljeno";
         tvExecutionTime.setText(String.format("Vreme izvršenja: %s", executionTime));
 
-        tvDifficulty.setText(String.format("Težina: %s (%d XP)", task.getDifficulty().getSerbianName(), task.getDifficulty().getXpValue()));
-        tvImportance.setText(String.format("Bitnost: %s (%d XP)", task.getImportance().getSerbianName(), task.getImportance().getXpValue()));
+        DifficultyType difficultyType = task.getDifficultyType();
+        if (difficultyType != null) {
+            tvDifficulty.setText(String.format("Težina: %s (%d XP)", difficultyType.getSerbianName(), difficultyType.getXpValue()));
+        } else {
+            tvDifficulty.setText("Težina: Nije postavljeno");
+        }
+
+        com.example.myapplication.domain.models.ImportanceType importanceType = task.getImportanceType();
+        if (importanceType != null) {
+            tvImportance.setText(String.format("Bitnost: %s (%d XP)", importanceType.getSerbianName(), importanceType.getXpValue()));
+        } else {
+            tvImportance.setText("Bitnost: Nije postavljeno");
+        }
     }
+
     private void deleteTask() {
         if (task != null) {
-            // nije moguce obrisati zavrsene zadatke
             if (task.getStatus() == TaskStatus.URAĐEN) {
-                Toast.makeText(this, "Ne možete obrisati urađen zadatak.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "You cannot delete a completed task.", Toast.LENGTH_SHORT).show();
             } else {
-                int rowsDeleted = taskRepository.deleteTask(task.getId());
-                if (rowsDeleted > 0) {
-                    Toast.makeText(this, "Zadatak uspešno obrisan.", Toast.LENGTH_SHORT).show();
-                    finish();
-                } else {
-                    Toast.makeText(this, "Greška prilikom brisanja zadatka.", Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
+                taskRepository.deleteTask(task.getId(), userId, new TaskRepository.OnTaskDeletedListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(TaskDetailsActivity.this, "Task successfully deleted.", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (task != null) {
-            // Ponovo ucitaj zadatak iz baze da bi dobio najnovije podatke
-            Task updatedTask = taskRepository.getTaskById(task.getId());
-            if (updatedTask != null) {
-                this.task = updatedTask;
-
-                checkTaskExpiration(task);
-
-                displayTaskDetails(this.task);
-                updateStatusButtons();
-            }
-        }
-    }
-
-    private void checkTaskExpiration(Task task) {
-        if (task.getStatus() == TaskStatus.AKTIVAN || task.getStatus() == TaskStatus.PAUZIRAN) {
-            if (task.getStartDate() != null) {
-                long diffMillis = new java.util.Date().getTime() - task.getStartDate().getTime();
-                long diffDays = diffMillis / (24 * 60 * 60 * 1000);
-
-                if (diffDays > 3) {
-                    task.setStatus(TaskStatus.NEURAĐEN);
-                    Executor executor = Executors.newSingleThreadExecutor();
-                    executor.execute(() -> taskRepository.updateTask(task));
-                }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e(TAG, "Error deleting task", e);
+                        Toast.makeText(TaskDetailsActivity.this, "Error deleting task.", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         }
     }
 
     private void updateTaskStatus(TaskStatus newStatus) {
         task.setStatus(newStatus);
-        Executor executor = Executors.newSingleThreadExecutor();
-        executor.execute(() -> {
-            taskRepository.updateTask(task);
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Status zadatka promenjen na " + newStatus, Toast.LENGTH_SHORT).show();
-                displayTaskDetails(task);
-                updateStatusButtons();
-            });
+        taskRepository.updateTask(task, userId, new TaskRepository.OnTaskUpdatedListener() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    Toast.makeText(TaskDetailsActivity.this, "Task status changed to " + newStatus.name().toLowerCase(Locale.ROOT) + ".", Toast.LENGTH_SHORT).show();
+                    displayTaskDetails(task);
+                    updateStatusButtons();
+                });
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Error updating task status", e);
+                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Failed to update task status.", Toast.LENGTH_SHORT).show());
+            }
         });
     }
+
+    private void updateTaskStatusAndXP(TaskStatus newStatus) {
+        if (task.getStatus() == TaskStatus.URAĐEN) {
+            Toast.makeText(this, "Task is already completed.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        task.setStatus(newStatus);
+        task.setCompletionDate(new java.util.Date());
+
+        taskRepository.updateTask(task, userId, new TaskRepository.OnTaskUpdatedListener() {
+            @Override
+            public void onSuccess() {
+                FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                if (firebaseUser != null) {
+                    userRepository.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
+                        @Override
+                        public void onSuccess(User user) {
+                            if (user != null) {
+                                int previousLevel = user.getLevel();
+                                int totalXpGained = task.getXpValue();
+                                user.setXp(user.getXp() + totalXpGained);
+
+                                while (true) {
+                                    int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+                                    if (user.getXp() < requiredXp) {
+                                        break;
+                                    }
+                                    int newLevel = user.getLevel() + 1;
+                                    user.setLevel(newLevel);
+                                    int remainingXp = user.getXp() - requiredXp;
+                                    user.setXp(remainingXp);
+                                    user.setTitle(LevelingSystemHelper.getTitleForLevel(newLevel));
+                                    user.setPowerPoints(user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel));
+                                }
+
+                                userRepository.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        runOnUiThread(() -> {
+                                            Toast.makeText(TaskDetailsActivity.this, "Task completed! XP added.", Toast.LENGTH_SHORT).show();
+                                            if (user.getLevel() > previousLevel) {
+                                                // Prikazati pop-up za podizanje nivoa
+                                            }
+                                            updateStatusButtons();
+                                        });
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+                                        Log.e(TAG, "Error updating user", e);
+                                        runOnUiThread(() -> {
+                                            Toast.makeText(TaskDetailsActivity.this, "Error adding XP.", Toast.LENGTH_SHORT).show();
+                                            updateStatusButtons();
+                                        });
+                                    }
+                                });
+                            } else {
+                                Log.e(TAG, "User data not found for ID: " + userId);
+                                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "User data not found.", Toast.LENGTH_SHORT).show());
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e(TAG, "Error fetching user data", e);
+                            runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Error fetching user data.", Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, "Failed to update task status to completed.", e);
+                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Failed to complete task.", Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
 
     private void updateStatusButtons() {
         boolean isRecurring = "recurring".equals(task.getFrequency());
@@ -265,8 +291,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 btnActivate.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
-
-                // Dugme za pauziranje prikazujemo samo za ponavljajuće zadatke
                 if (isRecurring) {
                     btnPause.setVisibility(View.VISIBLE);
                 } else {
@@ -294,4 +318,29 @@ public class TaskDetailsActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (task != null && task.getId() != null) {
+            taskRepository.getTaskById(task.getId(), userId, new TaskRepository.OnTaskLoadedListener() {
+                @Override
+                public void onSuccess(Task updatedTask) {
+                    if (updatedTask != null) {
+                        TaskDetailsActivity.this.task = updatedTask;
+                        displayTaskDetails(TaskDetailsActivity.this.task);
+                        updateStatusButtons();
+                    } else {
+                        runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Task not found.", Toast.LENGTH_SHORT).show());
+                        finish();
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e(TAG, "Failed to refresh task data.", e);
+                    runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Failed to load task details.", Toast.LENGTH_SHORT).show());
+                }
+            });
+        }
+    }
 }

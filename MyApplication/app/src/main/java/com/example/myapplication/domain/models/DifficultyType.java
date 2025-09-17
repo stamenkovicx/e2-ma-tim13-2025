@@ -21,4 +21,13 @@ public enum DifficultyType {
     public int getXpValue() {
         return xpValue;
     }
+
+    public static DifficultyType fromSerbianName(String serbianName) {
+        for (DifficultyType type : DifficultyType.values()) {
+            if (type.serbianName.equals(serbianName)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

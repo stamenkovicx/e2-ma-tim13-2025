@@ -1,62 +1,37 @@
 package com.example.myapplication.domain.models;
 
+import com.google.firebase.firestore.Exclude;
 import java.io.Serializable;
 import java.util.Date;
 
-
 public class Task implements Serializable {
-    private int id;
+
+    private String id;
     private String name;
     private String description;
     private Category category;
-    private String frequency; // "one-time" ili "recurring"
-    private int interval;
-    private String intervalUnit; // "dan", "nedelja"
+    private String frequency;
+    private Integer interval;
+    private String intervalUnit;
     private Date startDate;
     private Date endDate;
     private Date executionTime;
-    private DifficultyType difficulty;
-    private ImportanceType importance;
-    private int xpValue;
-
-    private TaskStatus status;
     private Date completionDate;
-    private String userEmail;
 
-    // Dodajte novi konstruktor
-    public Task(int id, String name, String description, Category category,
-                String frequency, int interval, String intervalUnit,
-                Date startDate, Date endDate, Date executionTime,
-                DifficultyType difficulty, ImportanceType importance,
-                String userEmail) {
-        // Pozovite postojeći konstruktor
-        this(id, name, description, category, frequency, interval, intervalUnit,
-                startDate, endDate, executionTime, difficulty, importance);
-        this.userEmail = userEmail;
-    }
+    private String difficulty;
+    private String importance;
 
-    // Konstruktor za kreiranje NOVOG zadatka
-    public Task(int id, String name, String description, Category category, String frequency, int interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, DifficultyType difficulty, ImportanceType importance) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.category = category;
-        this.frequency = frequency;
-        this.interval = interval;
-        this.intervalUnit = intervalUnit;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.executionTime = executionTime;
-        this.difficulty = difficulty;
-        this.importance = importance;
-        this.xpValue = calculateTaskXP(difficulty, importance);
+    private int xpValue;
+    private String userId;
+    private TaskStatus status;
+
+    public Task() {
         this.status = TaskStatus.AKTIVAN;
-        this.completionDate = null;
     }
 
-    // Konstruktor za UCITAVANJE zadatka iz baze
-    public Task(int id, String name, String description, Category category, String frequency, int interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, DifficultyType difficulty, ImportanceType importance, TaskStatus status, Date completionDate) {
-        this.id = id;
+
+
+    public Task(String name, String description, Category category, String frequency, Integer interval, String intervalUnit, Date startDate, Date endDate, Date executionTime, String difficulty, String importance, int xpValue, String userId) {
         this.name = name;
         this.description = description;
         this.category = category;
@@ -68,140 +43,73 @@ public class Task implements Serializable {
         this.executionTime = executionTime;
         this.difficulty = difficulty;
         this.importance = importance;
-        this.xpValue = calculateTaskXP(difficulty, importance);
-        this.status = status;
-        this.completionDate = completionDate;
-    }
-
-    // Pomoćna privatna funkcija za izračunavanje XP vrednosti na osnovu težine i bitnosti.
-    private int calculateTaskXP(DifficultyType difficulty, ImportanceType importance) {
-        return difficulty.getXpValue() + importance.getXpValue();
-    }
-
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Category getCategory() {
-        return category;
-    }
-
-    public void setCategory(Category category) {
-        this.category = category;
-    }
-
-    public String getFrequency() {
-        return frequency;
-    }
-
-    public void setFrequency(String frequency) {
-        this.frequency = frequency;
-    }
-
-    public int getInterval() {
-        return interval;
-    }
-
-    public void setInterval(int interval) {
-        this.interval = interval;
-    }
-
-    public String getIntervalUnit() {
-        return intervalUnit;
-    }
-
-    public void setIntervalUnit(String intervalUnit) {
-        this.intervalUnit = intervalUnit;
-    }
-
-    public Date getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(Date startDate) {
-        this.startDate = startDate;
-    }
-
-    public Date getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(Date endDate) {
-        this.endDate = endDate;
-    }
-
-    public Date getExecutionTime() {
-        return executionTime;
-    }
-
-    public void setExecutionTime(Date executionTime) {
-        this.executionTime = executionTime;
-    }
-
-    public DifficultyType getDifficulty() {
-        return difficulty;
-    }
-
-    public void setDifficulty(DifficultyType difficulty) {
-        this.difficulty = difficulty;
-    }
-
-    public ImportanceType getImportance() {
-        return importance;
-    }
-
-    public void setImportance(ImportanceType importance) {
-        this.importance = importance;
-    }
-
-    public int getXpValue() {
-        return xpValue;
-    }
-
-    public void setXpValue(int xpValue) {
         this.xpValue = xpValue;
-    }
-    public TaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TaskStatus status) {
-        this.status = status;
+        this.userId = userId;
+        this.status = TaskStatus.AKTIVAN;
     }
 
-    public Date getCompletionDate() {
-        return completionDate;
+    @Exclude
+    public DifficultyType getDifficultyType() {
+        if (this.difficulty == null) return null;
+        try {
+            return DifficultyType.valueOf(this.difficulty);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
-    public void setCompletionDate(Date completionDate) {
-        this.completionDate = completionDate;
-    }
-    public String getUserEmail() {
-        return userEmail;
+    public void setDifficultyType(DifficultyType difficultyType) {
+        if (difficultyType != null) {
+            this.difficulty = difficultyType.name();
+        }
     }
 
-    public void setUserEmail(String userEmail) {
-        this.userEmail = userEmail;
+    @Exclude
+    public ImportanceType getImportanceType() {
+        if (this.importance == null) return null;
+        try {
+            return ImportanceType.valueOf(this.importance);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
+
+    public void setImportanceType(ImportanceType importanceType) {
+        if (importanceType != null) {
+            this.importance = importanceType.name();
+        }
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+    public String getFrequency() { return frequency; }
+    public void setFrequency(String frequency) { this.frequency = frequency; }
+    public Integer getInterval() { return interval; }
+    public void setInterval(Integer interval) { this.interval = interval; }
+    public String getIntervalUnit() { return intervalUnit; }
+    public void setIntervalUnit(String intervalUnit) { this.intervalUnit = intervalUnit; }
+    public Date getStartDate() { return startDate; }
+    public void setStartDate(Date startDate) { this.startDate = startDate; }
+    public Date getEndDate() { return endDate; }
+    public void setEndDate(Date endDate) { this.endDate = endDate; }
+    public Date getExecutionTime() { return executionTime; }
+    public void setExecutionTime(Date executionTime) { this.executionTime = executionTime; }
+    public Date getCompletionDate() { return completionDate; }
+    public void setCompletionDate(Date completionDate) { this.completionDate = completionDate; }
+    public String getDifficulty() { return difficulty; }
+    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
+    public String getImportance() { return importance; }
+    public void setImportance(String importance) { this.importance = importance; }
+    public int getXpValue() { return xpValue; }
+    public void setXpValue(int xpValue) { this.xpValue = xpValue; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    public TaskStatus getStatus() { return status; }
+    public void setStatus(TaskStatus status) { this.status = status; }
 }

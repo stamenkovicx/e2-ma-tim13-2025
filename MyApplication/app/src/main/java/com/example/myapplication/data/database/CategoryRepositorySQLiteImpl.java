@@ -1,4 +1,4 @@
-package com.example.myapplication.data.database;
+/*package com.example.myapplication.data.database;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -95,4 +95,4 @@ public class CategoryRepositorySQLiteImpl implements CategoryRepository {
         int color = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_CATEGORY_COLOR));
         return new Category(id, name, color);
     }
-}
+}*/
