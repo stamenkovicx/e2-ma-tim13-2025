@@ -89,6 +89,9 @@ public class UserSearchAdapter extends RecyclerView.Adapter<UserSearchAdapter.Us
             usernameTextView.setText(user.getUsername());
             levelTextView.setText("Level: " + user.getLevel());
 
+            int avatarResourceId = itemView.getContext().getResources().getIdentifier(user.getAvatar(), "drawable", itemView.getContext().getPackageName());
+            avatarImageView.setImageResource(avatarResourceId);
+
             // Provera da li je trenutni korisnik isti kao prikazani
             if (currentUser.getUserId().equals(user.getUserId())) {
                 addFriendButton.setVisibility(View.GONE);

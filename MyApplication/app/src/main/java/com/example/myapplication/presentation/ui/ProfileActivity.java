@@ -156,7 +156,9 @@ public class ProfileActivity extends AppCompatActivity {
     private void generateQRCode(String data) {
         MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
         try {
-            BitMatrix bitMatrix = multiFormatWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200);
+            String qrData = mAuth.getCurrentUser().getUid();
+
+            BitMatrix bitMatrix = multiFormatWriter.encode(qrData, BarcodeFormat.QR_CODE, 200, 200);
             BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
             Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
             ivQRCode.setImageBitmap(bitmap);

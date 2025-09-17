@@ -14,9 +14,7 @@ import com.example.myapplication.R;
 public class HomeActivity extends AppCompatActivity {
 
     private Button btnLogout, btnProfile, btnGoToCreateTask, btnGoToTaskViewer, btnManageCategories,
-            btnViewStatistics;
-    private LinearLayout goToSearchButton;
-
+            btnViewStatistics, btnViewFriends;
     private FirebaseAuth mAuth;
 
     @Override
@@ -32,7 +30,7 @@ public class HomeActivity extends AppCompatActivity {
         btnGoToTaskViewer = findViewById(R.id.btnGoToTaskViewer);
         btnManageCategories = findViewById(R.id.btnManageCategories);
         btnViewStatistics = findViewById(R.id.btnViewStatistics);
-        goToSearchButton = findViewById(R.id.buttonGoToSearch);
+        btnViewFriends = findViewById(R.id.btnViewFriends);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -65,8 +63,8 @@ public class HomeActivity extends AppCompatActivity {
             Intent intent = new Intent(HomeActivity.this, StatisticsActivity.class);
             startActivity(intent);
         });
-        goToSearchButton.setOnClickListener(v -> {
-            Intent intent = new Intent(HomeActivity.this, SearchUsersActivity.class);
+        btnViewFriends.setOnClickListener(v-> {
+            Intent intent = new Intent(HomeActivity.this, FriendsActivity.class);
             startActivity(intent);
         });
     }

@@ -31,6 +31,7 @@
     </string-array>
 
     <string name="view_statistics">View statistics</string>
+    <string name="view_friends">View friends</string>
     <string name="xp_in_7_days">XP Gained in Last 7 Days</string>
     <string name="average_difficulty">Average Difficulty XP</string>
 

@@ -1,5 +1,7 @@
 package com.example.myapplication.presentation.ui;
 
+import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -8,6 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.data.repository.ItemRepository;
@@ -17,6 +20,13 @@ import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.UserEquipment;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import java.util.ArrayList;
 
@@ -133,15 +143,28 @@ public class UserProfileActivity extends AppCompatActivity {
         }
         badgesTitleTextView.setVisibility(View.VISIBLE);
         equipmentTitleTextView.setVisibility(View.VISIBLE);
+
+        MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+        try {
+            BitMatrix bitMatrix = multiFormatWriter.encode(user.getUserId(), BarcodeFormat.QR_CODE, 200, 200);
+            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+            Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
+            ivQRCode.setImageBitmap(bitmap);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            ivQRCode.setVisibility(View.GONE);
+        }
     }
 
     private void setupAddFriendButton(User user) {
+        // Provera da li je to vaš profil
         if (viewedUserId != null && viewedUserId.equals(currentUserId)) {
             addFriendButton.setVisibility(View.GONE);
+            ivQRCode.setVisibility(View.VISIBLE);
             return;
         }
 
-        // Provjera da li je korisnik vec prijatelj
+        // Provera da li je korisnik vec prijatelj
         if (currentUser.getFriends() != null && currentUser.getFriends().contains(user.getUserId())) {
             addFriendButton.setText(R.string.already_friends);
             addFriendButton.setEnabled(false);
@@ -149,7 +172,7 @@ public class UserProfileActivity extends AppCompatActivity {
             return;
         }
 
-        // Provjera da li je trenutnom korisniku poslat zahtjev od tog korisnika
+        // Provera da li je trenutnom korisniku poslat zahtev (VI PRIHVATATE)
         if (currentUser.getFriendRequestsReceived() != null && currentUser.getFriendRequestsReceived().contains(user.getUserId())) {
             addFriendButton.setText(R.string.accept_friend);
             addFriendButton.setEnabled(true);
@@ -171,7 +194,7 @@ public class UserProfileActivity extends AppCompatActivity {
             return;
         }
 
-        // Provjera da li je zahtjev vec poslat
+        // Provera da li je zahtev vec poslat (VI ČEKATE)
         if (currentUser.getFriendRequestsSent() != null && currentUser.getFriendRequestsSent().contains(user.getUserId())) {
             addFriendButton.setText(R.string.request_sent);
             addFriendButton.setEnabled(false);
@@ -179,10 +202,11 @@ public class UserProfileActivity extends AppCompatActivity {
             return;
         }
 
-        // Standardno dugme za dodavanje prijatelja
+        // Nijedan uslov nije ispunjen, prikažite dugme za dodavanje i dugme za skeniranje
         addFriendButton.setText(R.string.add_friend_button);
         addFriendButton.setEnabled(true);
         addFriendButton.setVisibility(View.VISIBLE);
+
         addFriendButton.setOnClickListener(v -> {
             userRepository.sendFriendRequest(currentUserId, viewedUserId, new UserRepository.OnCompleteListener<Void>() {
                 @Override
