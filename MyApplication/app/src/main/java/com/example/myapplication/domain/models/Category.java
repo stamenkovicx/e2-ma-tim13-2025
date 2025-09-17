@@ -1,12 +1,17 @@
 package com.example.myapplication.domain.models;
 
+import com.google.firebase.firestore.ServerTimestamp;
+
 import java.io.Serializable;
+import java.util.Date;
 import java.util.Objects;
 
 public class Category implements Serializable {
     private String id;
     private String name;
     private int color;
+    @ServerTimestamp
+    private Date createdAt;
 
     // Konstruktor bez argumenata je potreban za Firebase
     public Category() {
@@ -46,6 +51,9 @@ public class Category implements Serializable {
 
     public void setColor(int color) {
         this.color = color;
+    }
+    public Date getCreatedAt() {
+        return createdAt;
     }
 
     @Override

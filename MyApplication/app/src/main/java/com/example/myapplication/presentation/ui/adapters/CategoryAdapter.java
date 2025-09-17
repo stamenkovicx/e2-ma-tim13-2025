@@ -36,7 +36,7 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
         this.categories = categories;
         this.context = context;
         this.categoryRepository = categoryRepository;
-        this.userId = userId;
+        this.userId = userEmail;
         this.taskRepository = new TaskRepositoryFirebaseImpl();
     }
 
@@ -50,6 +50,7 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
         Category category = categories.get(position);
+        holder.tvCategoryIndex.setText((position + 1) + "."); // redni broj
         holder.tvCategoryName.setText(category.getName());
         holder.vCategoryColor.setBackgroundColor(category.getColor());
 
@@ -64,11 +65,14 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.Catego
     public static class CategoryViewHolder extends RecyclerView.ViewHolder {
         public View vCategoryColor;
         public TextView tvCategoryName;
+        public TextView tvCategoryIndex;
+
 
         public CategoryViewHolder(@NonNull View itemView) {
             super(itemView);
             vCategoryColor = itemView.findViewById(R.id.vCategoryColor);
             tvCategoryName = itemView.findViewById(R.id.tvCategoryName);
+            tvCategoryIndex = itemView.findViewById(R.id.tvCategoryIndex);
         }
     }
 

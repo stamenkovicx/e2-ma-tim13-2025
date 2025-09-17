@@ -74,7 +74,6 @@ public class CategoriesActivity extends AppCompatActivity {
                     .setTitle("Choose a Color")
                     .setPositiveButton("OK", (ColorEnvelopeListener) (envelope, fromUser) -> {
                         btnSelectColor.setBackgroundColor(envelope.getColor());
-                        btnSelectColor.setImageResource(0);
                         selectedColor = envelope.getColor();
                     })
                     .setNegativeButton("Cancel", (dialogInterface, i) -> dialogInterface.dismiss())
@@ -91,6 +90,19 @@ public class CategoriesActivity extends AppCompatActivity {
                     Toast.makeText(this, "Please select a color.", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                // Provera da li je boja već zauzeta
+                boolean isColorTaken = false;
+                for (Category existingCategory : categories) {
+                    if (existingCategory.getColor() == colorToUse) {
+                        isColorTaken = true;
+                        break;
+                    }
+                }
+
+                if (isColorTaken) {
+                    Toast.makeText(this, "This color is already taken!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
                 Category newCategory = new Category(name, colorToUse);
 
@@ -100,7 +112,7 @@ public class CategoriesActivity extends AppCompatActivity {
                         Toast.makeText(CategoriesActivity.this, "Category added successfully!", Toast.LENGTH_SHORT).show();
                         etCategoryName.setText("");
                         selectedColor = Color.GRAY;
-                        btnSelectColor.setBackgroundColor(Color.TRANSPARENT);
+                        btnSelectColor.setBackgroundResource(R.drawable.chromatic);
                         loadCategories();
                     }
 
