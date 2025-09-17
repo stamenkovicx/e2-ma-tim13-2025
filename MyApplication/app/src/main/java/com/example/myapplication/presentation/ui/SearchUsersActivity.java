@@ -16,6 +16,7 @@ import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.UserSearchAdapter;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,18 +39,34 @@ public class SearchUsersActivity extends AppCompatActivity {
         searchButton = findViewById(R.id.buttonSearch);
         usersRecyclerView = findViewById(R.id.recyclerViewUsers);
 
-        // Inicijalizacija UserRepository
+
         userRepository = new UserRepositoryFirebaseImpl();
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        // Podešavanje RecyclerView-a
-        adapter = new UserSearchAdapter(new ArrayList<>());
-        usersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        usersRecyclerView.setAdapter(adapter);
+        userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                adapter = new UserSearchAdapter(new ArrayList<>(), user);
+                usersRecyclerView.setLayoutManager(new LinearLayoutManager(SearchUsersActivity.this));
+                usersRecyclerView.setAdapter(adapter);
 
-        // Postavljanje listener-a na dugme za pretragu
+                setupSearchListeners();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(SearchUsersActivity.this, "Failed to load user data.", Toast.LENGTH_SHORT).show();
+                // Opciono: omoguciti pretragu cak i sa neucitanim podacima
+                adapter = new UserSearchAdapter(new ArrayList<>(), null);
+                usersRecyclerView.setLayoutManager(new LinearLayoutManager(SearchUsersActivity.this));
+                usersRecyclerView.setAdapter(adapter);
+                setupSearchListeners();
+            }
+        });
+    }
+
+    private void setupSearchListeners() {
         searchButton.setOnClickListener(v -> searchUsers());
-
-        // Pretraga u realnom vremenu (na unos teksta)
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
