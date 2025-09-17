@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
+            android:name=".presentation.ui.FriendsActivity"
+            android:exported="false" />
+        <activity
             android:name=".presentation.ui.StatisticsActivity"
             android:exported="false" />
         <activity
@@ -44,7 +47,11 @@
         <activity
             android:name=".presentation.ui.CategoriesActivity"
             android:exported="false" />
-        <activity android:name=".presentation.ui.SearchUsersActivity"
+        <activity
+            android:name=".presentation.ui.SearchUsersActivity"
+            android:exported="true" />
+        <activity android:name=".presentation.ui.UserProfileActivity" />
+        <activity android:name=".presentation.ui.QRScannerActivity"
             android:exported="true" />
 
         <activity

@@ -31,6 +31,7 @@
     </string-array>
 
     <string name="view_statistics">View statistics</string>
+    <string name="view_friends">View friends</string>
     <string name="xp_in_7_days">XP Gained in Last 7 Days</string>
     <string name="average_difficulty">Average Difficulty XP</string>
 
@@ -39,7 +40,7 @@
     <string name="search_button_description">Search</string>
 
     <string name="user_avatar_description">User avatar</string>
-    <string name="add_friend_button">Add</string>
+    <string name="add_friend_button">Add Friend</string>
 
     <string name="qr_code_title">QR Code</string>
     <string name="qr_code_description">QR code for adding as a friend</string>
@@ -50,5 +51,6 @@
     <string name="request_sent">Request sent</string>
     <string name="friend_request_sent">Friend request sent!</string>
     <string name="already_friends">Already friends</string>
+    <string name="accept_friend">Accept Friend</string>
 
 </resources>

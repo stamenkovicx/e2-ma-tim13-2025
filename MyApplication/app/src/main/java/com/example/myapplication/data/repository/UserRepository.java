@@ -10,6 +10,7 @@ public interface UserRepository {
     void rejectFriendRequest(String currentUserId, String senderUserId, OnCompleteListener<Void> onCompleteListener);
     // Metoda za pretragu korisnika po korisnickom imenu
     void searchUsers(String username, OnCompleteListener<List<User>> onCompleteListener);
+    void getUsersByIds(List<String> userIds, OnCompleteListener<List<User>> onCompleteListener);
 
     // Pomocni interfejs za asinhronu komunikaciju
     interface OnCompleteListener<T> {

@@ -234,4 +234,33 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 .addOnSuccessListener(aVoid -> onCompleteListener.onSuccess(null))
                 .addOnFailureListener(e -> onCompleteListener.onFailure(e));
     }
+
+    @Override
+    public void getUsersByIds(List<String> userIds, UserRepository.OnCompleteListener<List<User>> onCompleteListener) {
+        List<User> friends = new ArrayList<>();
+        if (userIds == null || userIds.isEmpty()) {
+            onCompleteListener.onSuccess(friends);
+            return;
+        }
+
+        // Koristi se lista zadataka da se prati kada su svi dohvaćeni
+        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        for (String userId : userIds) {
+            tasks.add(db.collection("users").document(userId).get());
+        }
+
+        // Pomocu Task.whenAllSuccess() cekamo da se svi zadaci zavrse
+        Task<List<DocumentSnapshot>> allTasks = com.google.android.gms.tasks.Tasks.whenAllSuccess(tasks);
+
+        allTasks.addOnSuccessListener(documentSnapshots -> {
+            List<User> friendUsers = new ArrayList<>();
+            for (DocumentSnapshot doc : documentSnapshots) {
+                User user = doc.toObject(User.class);
+                if (user != null) {
+                    friendUsers.add(user);
+                }
+            }
+            onCompleteListener.onSuccess(friendUsers);
+        }).addOnFailureListener(onCompleteListener::onFailure);
+    }
 }
