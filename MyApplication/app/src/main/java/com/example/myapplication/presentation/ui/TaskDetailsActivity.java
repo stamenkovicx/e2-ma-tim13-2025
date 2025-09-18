@@ -153,6 +153,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
             tvDifficulty.setText("Težina: Nije postavljeno");
         }
 
+        // Ispravite ImportanceType
         com.example.myapplication.domain.models.ImportanceType importanceType = task.getImportanceType();
         if (importanceType != null) {
             tvImportance.setText(String.format("Bitnost: %s (%d XP)", importanceType.getSerbianName(), importanceType.getXpValue()));
@@ -205,79 +206,87 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
     private void updateTaskStatusAndXP(TaskStatus newStatus) {
         if (task.getStatus() == TaskStatus.URAĐEN) {
-            Toast.makeText(this, "Task is already completed.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Zadatak je već završen.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        task.setStatus(newStatus);
-        task.setCompletionDate(new java.util.Date());
-
-        taskRepository.updateTask(task, userId, new TaskRepository.OnTaskUpdatedListener() {
+        taskRepository.updateTaskStatusToDone(task.getId(), userId, new TaskRepository.OnTaskUpdatedListener() {
             @Override
             public void onSuccess() {
-                FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-                if (firebaseUser != null) {
-                    userRepository.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
-                        @Override
-                        public void onSuccess(User user) {
-                            if (user != null) {
-                                int previousLevel = user.getLevel();
-                                int totalXpGained = task.getXpValue();
-                                user.setXp(user.getXp() + totalXpGained);
+                taskRepository.getTaskById(task.getId(), userId, new TaskRepository.OnTaskLoadedListener() {
+                    @Override
+                    public void onSuccess(Task updatedTask) {
+                        if (updatedTask != null) {
+                            task = updatedTask;
 
-                                while (true) {
-                                    int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
-                                    if (user.getXp() < requiredXp) {
-                                        break;
+                            userRepository.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
+                                @Override
+                                public void onSuccess(User user) {
+                                    if (user != null) {
+                                        int previousLevel = user.getLevel();
+                                        int totalXpGained = task.getXpValue(); // Vrednost može biti 0 zbog kvote
+                                        user.setXp(user.getXp() + totalXpGained);
+
+                                        while (true) {
+                                            int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
+                                            if (user.getXp() < requiredXp) {
+                                                break;
+                                            }
+                                            int newLevel = user.getLevel() + 1;
+                                            user.setLevel(newLevel);
+                                            int remainingXp = user.getXp() - requiredXp;
+                                            user.setXp(remainingXp);
+                                            user.setTitle(LevelingSystemHelper.getTitleForLevel(newLevel));
+                                            user.setPowerPoints(user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel));
+                                        }
+
+                                        userRepository.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                runOnUiThread(() -> {
+                                                    if (totalXpGained > 0) {
+                                                        Toast.makeText(TaskDetailsActivity.this, "Zadatak završen! Dodeljeno " + totalXpGained + " XP.", Toast.LENGTH_SHORT).show();
+                                                    } else {
+                                                        Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je kvota za XP ispunjena.", Toast.LENGTH_SHORT).show();
+                                                    }
+                                                    if (user.getLevel() > previousLevel) {
+                                                        Toast.makeText(TaskDetailsActivity.this, "Čestitamo! Podigli ste nivo na " + user.getLevel() + "!", Toast.LENGTH_LONG).show();
+                                                    }
+                                                    displayTaskDetails(task);
+                                                    updateStatusButtons();
+                                                });
+                                            }
+
+                                            @Override
+                                            public void onFailure(Exception e) {
+                                                Log.e(TAG, "Greška pri ažuriranju korisnika nakon zadatka", e);
+                                                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je došlo do greške pri ažuriranju XP-a.", Toast.LENGTH_SHORT).show());
+                                            }
+                                        });
                                     }
-                                    int newLevel = user.getLevel() + 1;
-                                    user.setLevel(newLevel);
-                                    int remainingXp = user.getXp() - requiredXp;
-                                    user.setXp(remainingXp);
-                                    user.setTitle(LevelingSystemHelper.getTitleForLevel(newLevel));
-                                    user.setPowerPoints(user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel));
                                 }
 
-                                userRepository.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
-                                    @Override
-                                    public void onSuccess(Void aVoid) {
-                                        runOnUiThread(() -> {
-                                            Toast.makeText(TaskDetailsActivity.this, "Task completed! XP added.", Toast.LENGTH_SHORT).show();
-                                            if (user.getLevel() > previousLevel) {
-                                                // Prikazati pop-up za podizanje nivoa
-                                            }
-                                            updateStatusButtons();
-                                        });
-                                    }
-
-                                    @Override
-                                    public void onFailure(Exception e) {
-                                        Log.e(TAG, "Error updating user", e);
-                                        runOnUiThread(() -> {
-                                            Toast.makeText(TaskDetailsActivity.this, "Error adding XP.", Toast.LENGTH_SHORT).show();
-                                            updateStatusButtons();
-                                        });
-                                    }
-                                });
-                            } else {
-                                Log.e(TAG, "User data not found for ID: " + userId);
-                                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "User data not found.", Toast.LENGTH_SHORT).show());
-                            }
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Log.e(TAG, "Greška pri dohvatanju podataka korisnika", e);
+                                    runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je došlo do greške pri dohvatanju korisničkih podataka.", Toast.LENGTH_SHORT).show());
+                                }
+                            });
                         }
+                    }
 
-                        @Override
-                        public void onFailure(Exception e) {
-                            Log.e(TAG, "Error fetching user data", e);
-                            runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Error fetching user data.", Toast.LENGTH_SHORT).show());
-                        }
-                    });
-                }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e(TAG, "Greška pri dohvatanju ažuriranog zadatka", e);
+                        runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je došlo do greške pri osvežavanju.", Toast.LENGTH_SHORT).show());
+                    }
+                });
             }
 
             @Override
             public void onFailure(Exception e) {
-                Log.e(TAG, "Failed to update task status to completed.", e);
-                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Failed to complete task.", Toast.LENGTH_SHORT).show());
+                Log.e(TAG, "Greška pri ažuriranju statusa zadatka na 'URAĐEN'.", e);
+                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Neuspešno označavanje zadatka kao završenog.", Toast.LENGTH_SHORT).show());
             }
         });
     }
