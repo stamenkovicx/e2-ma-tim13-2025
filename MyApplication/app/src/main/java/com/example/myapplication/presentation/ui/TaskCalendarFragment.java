@@ -22,7 +22,9 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -67,30 +69,67 @@ public class TaskCalendarFragment extends Fragment {
 
         return view;
     }
-
     private void loadTasksForDate(String date) {
         if (userId == null || userId.isEmpty()) {
-            Log.e("TaskCalendarFragment", "User email is null or empty.");
+            Log.e("TaskCalendarFragment", "User ID is null or empty.");
             return;
         }
 
-        // Koristimo asinhroni poziv za učitavanje svih zadataka
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
             public void onSuccess(List<Task> allTasks) {
-                // Filtriramo listu unutar callback-a, nakon što su podaci dohvaćeni
                 List<Task> tasksForDate = allTasks.stream()
                         .filter(task -> {
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                            if (task.getStartDate() != null) {
-                                String taskDate = dateFormat.format(task.getStartDate());
-                                return taskDate.equals(date);
+
+                            try {
+                                Date selectedDate = dateFormat.parse(date);
+
+                                // Jednokratni zadaci
+                                if ("one-time".equals(task.getFrequency()) && task.getStartDate() != null) {
+                                    return dateFormat.format(task.getStartDate()).equals(date);
+                                }
+
+                                // Ponavljajući zadaci
+                                if ("recurring".equals(task.getFrequency()) && task.getStartDate() != null && task.getEndDate() != null) {
+                                    if (!selectedDate.before(task.getStartDate()) && !selectedDate.after(task.getEndDate())) {
+                                        Calendar startCal = Calendar.getInstance();
+                                        startCal.setTime(task.getStartDate());
+
+                                        Calendar selectedCal = Calendar.getInstance();
+                                        selectedCal.setTime(selectedDate);
+
+                                        switch (task.getIntervalUnit()) {
+                                            case "dan":
+                                                long diffInMillis = selectedDate.getTime() - task.getStartDate().getTime();
+                                                long diffInDays = diffInMillis / (1000 * 60 * 60 * 24);
+                                                return diffInDays % task.getInterval() == 0;
+
+                                            case "nedelja":
+                                                long diffInWeeks = (selectedCal.getTimeInMillis() - startCal.getTimeInMillis()) / (7L * 24 * 60 * 60 * 1000);
+                                                // Prikazuje se samo na isti dan u nedelji i ako je razlika u nedeljama deljiva sa intervalom
+                                                return diffInWeeks % task.getInterval() == 0 &&
+                                                        startCal.get(Calendar.DAY_OF_WEEK) == selectedCal.get(Calendar.DAY_OF_WEEK);
+
+                                            case "mesec":
+                                                int startMonth = startCal.get(Calendar.YEAR) * 12 + startCal.get(Calendar.MONTH);
+                                                int selectedMonth = selectedCal.get(Calendar.YEAR) * 12 + selectedCal.get(Calendar.MONTH);
+                                                int diffInMonths = selectedMonth - startMonth;
+                                                // Prikazuje se samo ako je dan u mesecu isti kao startDate i razlika u mesecima deljiva sa intervalom
+                                                return diffInMonths % task.getInterval() == 0 &&
+                                                        startCal.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH);
+                                        }
+                                    }
+                                }
+
+                            } catch (ParseException e) {
+                                Log.e("TaskCalendarFragment", "Error parsing date.", e);
                             }
+
                             return false;
                         })
                         .collect(Collectors.toList());
 
-                // Ažuriramo RecyclerView
                 if (taskAdapter == null) {
                     if (getContext() != null) {
                         taskAdapter = new TaskAdapter(tasksForDate, getContext());
@@ -110,6 +149,7 @@ public class TaskCalendarFragment extends Fragment {
             }
         });
     }
+
 
     @Override
     public void onResume() {

@@ -41,7 +41,12 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
         Task task = tasks.get(position);
-        holder.tvTaskName.setText(task.getName());
+
+        String taskName = task.getName();
+        if ("recurring".equals(task.getFrequency())) {
+            taskName += " (ponavljajući)";
+        }
+        holder.tvTaskName.setText(taskName);
         holder.tvTaskDescription.setText(task.getDescription());
         holder.vTaskColor.setBackgroundColor(task.getCategory().getColor());
 

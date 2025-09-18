@@ -25,6 +25,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.example.myapplication.data.database.LevelingSystemHelper;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 
 public class TaskDetailsActivity extends AppCompatActivity {
@@ -283,6 +285,8 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
     private void updateStatusButtons() {
         boolean isRecurring = "recurring".equals(task.getFrequency());
+        boolean isTimeFinished = isTaskTimeFinished(task);
+        boolean isCompleted = task.getStatus() == TaskStatus.URAĐEN;
 
         switch (task.getStatus()) {
             case AKTIVAN:
@@ -291,6 +295,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 btnActivate.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
+                btnEdit.setEnabled(!isTimeFinished && !isCompleted); // dugme aktivno samo ako nije završeno
                 if (isRecurring) {
                     btnPause.setVisibility(View.VISIBLE);
                 } else {
@@ -305,18 +310,20 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 btnActivate.setVisibility(View.VISIBLE);
                 btnDelete.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
+                btnEdit.setEnabled(!isTimeFinished && !isCompleted);
                 break;
 
-            default: // URAĐEN, NEURAĐEN, OTKAZAN
+            default: // OTKAZAN, URAĐEN i drugi završeni
                 btnComplete.setVisibility(View.GONE);
                 btnCancel.setVisibility(View.GONE);
                 btnPause.setVisibility(View.GONE);
                 btnActivate.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.GONE);
-                btnEdit.setVisibility(View.GONE);
+                btnEdit.setVisibility(View.GONE);       // vidljivo
                 break;
         }
     }
+
 
     @Override
     protected void onResume() {
@@ -343,4 +350,28 @@ public class TaskDetailsActivity extends AppCompatActivity {
             });
         }
     }
+    private boolean isTaskTimeFinished(Task task) {
+        if (task.getEndDate() == null) return false;
+
+        Calendar now = Calendar.getInstance();
+        Calendar taskEnd = Calendar.getInstance();
+        taskEnd.setTime(task.getEndDate());
+        taskEnd.set(Calendar.HOUR_OF_DAY, 23);
+        taskEnd.set(Calendar.MINUTE, 59);
+        taskEnd.set(Calendar.SECOND, 59);
+        taskEnd.set(Calendar.MILLISECOND, 999);
+
+        Calendar taskCreated = Calendar.getInstance();
+        taskCreated.setTime(task.getStartDate()); // pretpostavljam da task ima createdDate
+
+        boolean isSameDayAsCreated = taskCreated.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                && taskCreated.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR);
+
+        // Ako je zadatak kreiran danas, ne smemo ga disejblovati
+        if (isSameDayAsCreated) return false;
+
+        return now.after(taskEnd);
+    }
+
+
 }
