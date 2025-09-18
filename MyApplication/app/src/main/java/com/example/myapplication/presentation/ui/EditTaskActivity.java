@@ -26,7 +26,6 @@ import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -55,44 +54,7 @@ public class EditTaskActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_task);
 
-        // Instanciranje Firebase repozitorijuma
-        taskRepository = new TaskRepositoryFirebaseImpl();
-        categoryRepository = new CategoryRepositoryFirebaseImpl();
-
-        // Dohvatanje trenutnog korisnika
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
-            userId = currentUser.getUid();
-        } else {
-            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
-        String taskId = getIntent().getStringExtra("taskId");
-        if (taskId != null) {
-            // Asinhrono dohvati zadatak iz baze
-            taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
-                @Override
-                public void onSuccess(Task task) {
-                    if (task != null) {
-                        taskToEdit = task;
-                        populateFields(taskToEdit);
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Task not found.", Toast.LENGTH_SHORT).show());
-                        finish();
-                    }
-                }
-
-                @Override
-                public void onFailure(Exception e) {
-                    Log.e(TAG, "Error fetching task by ID", e);
-                    runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Error loading task.", Toast.LENGTH_SHORT).show());
-                    finish();
-                }
-            });
-        }
-
+        // Inicijalizacija UI elemenata
         etTaskName = findViewById(R.id.etTaskName);
         etTaskDescription = findViewById(R.id.etTaskDescription);
         etInterval = findViewById(R.id.etInterval);
@@ -112,12 +74,12 @@ public class EditTaskActivity extends AppCompatActivity {
         etStartDate.setOnClickListener(v -> showDatePicker(etStartDate));
         etEndDate.setOnClickListener(v -> showDatePicker(etEndDate));
         etExecutionTime.setOnClickListener(v -> showTimePicker());
+
         rgFrequency.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rbRecurring) {
                 recurringGroup.setVisibility(View.VISIBLE);
             } else {
                 recurringGroup.setVisibility(View.GONE);
-                // Clear fields when switching to one-time
                 etInterval.setText("");
                 etStartDate.setText("");
                 etEndDate.setText("");
@@ -126,13 +88,55 @@ public class EditTaskActivity extends AppCompatActivity {
         });
 
         btnSaveTask.setOnClickListener(v -> saveTaskChanges());
+
+        // Firebase repozitorijumi
+        taskRepository = new TaskRepositoryFirebaseImpl();
+        categoryRepository = new CategoryRepositoryFirebaseImpl();
+
+        // Trenutni korisnik
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            userId = currentUser.getUid();
+        } else {
+            Toast.makeText(this, "User not logged in.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // Dohvatanje zadatka
+        String taskId = getIntent().getStringExtra("taskId");
+        if (taskId != null) {
+            taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+                @Override
+                public void onSuccess(Task task) {
+                    if (task != null) {
+                        taskToEdit = task;
+                        runOnUiThread(() -> populateFields(taskToEdit));
+                    } else {
+                        runOnUiThread(() -> {
+                            Toast.makeText(EditTaskActivity.this, "Task not found.", Toast.LENGTH_SHORT).show();
+                            finish();
+                        });
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e(TAG, "Error fetching task by ID", e);
+                    runOnUiThread(() -> {
+                        Toast.makeText(EditTaskActivity.this, "Error loading task.", Toast.LENGTH_SHORT).show();
+                        finish();
+                    });
+                }
+            });
+        }
     }
 
     private void populateFields(Task task) {
         etTaskName.setText(task.getName());
         etTaskDescription.setText(task.getDescription());
 
-        // Asinhrono učitavanje kategorija i postavljanje spinnera
+        // Spinneri za kategoriju
         categoryRepository.getAllCategories(userId, new CategoryRepository.OnCategoriesLoadedListener() {
             @Override
             public void onSuccess(List<Category> categories) {
@@ -157,47 +161,40 @@ public class EditTaskActivity extends AppCompatActivity {
             @Override
             public void onFailure(Exception e) {
                 Log.e(TAG, "Failed to load categories.", e);
-                runOnUiThread(() -> Toast.makeText(EditTaskActivity.this, "Failed to load categories.", Toast.LENGTH_SHORT).show());
             }
         });
 
-        // Postavljanje težine i bitnosti
-        ArrayAdapter<CharSequence> difficultyAdapter = ArrayAdapter.createFromResource(this, R.array.difficulty_options, android.R.layout.simple_spinner_item);
+        ArrayAdapter<CharSequence> difficultyAdapter = ArrayAdapter.createFromResource(this,
+                R.array.difficulty_options, android.R.layout.simple_spinner_item);
         difficultyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spDifficulty.setAdapter(difficultyAdapter);
         if (task.getDifficulty() != null) {
             spDifficulty.setSelection(difficultyAdapter.getPosition(task.getDifficulty()));
         }
 
-        ArrayAdapter<CharSequence> importanceAdapter = ArrayAdapter.createFromResource(this, R.array.importance_options, android.R.layout.simple_spinner_item);
+        ArrayAdapter<CharSequence> importanceAdapter = ArrayAdapter.createFromResource(this,
+                R.array.importance_options, android.R.layout.simple_spinner_item);
         importanceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spImportance.setAdapter(importanceAdapter);
         if (task.getImportance() != null) {
             spImportance.setSelection(importanceAdapter.getPosition(task.getImportance()));
         }
 
-        ArrayAdapter<CharSequence> intervalUnitAdapter = ArrayAdapter.createFromResource(this, R.array.interval_units, android.R.layout.simple_spinner_item);
+        ArrayAdapter<CharSequence> intervalUnitAdapter = ArrayAdapter.createFromResource(this,
+                R.array.interval_units, android.R.layout.simple_spinner_item);
         intervalUnitAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spIntervalUnit.setAdapter(intervalUnitAdapter);
 
-        // Postavljanje ostalih polja
         if ("recurring".equals(task.getFrequency())) {
             rgFrequency.check(R.id.rbRecurring);
             recurringGroup.setVisibility(View.VISIBLE);
-            if (task.getInterval() != null) {
-                etInterval.setText(String.valueOf(task.getInterval()));
-            }
-
-            if (task.getIntervalUnit() != null) {
+            if (task.getInterval() != null) etInterval.setText(String.valueOf(task.getInterval()));
+            if (task.getIntervalUnit() != null)
                 spIntervalUnit.setSelection(intervalUnitAdapter.getPosition(task.getIntervalUnit()));
-            }
-
-            if (task.getStartDate() != null) {
+            if (task.getStartDate() != null)
                 etStartDate.setText(new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(task.getStartDate()));
-            }
-            if (task.getEndDate() != null) {
+            if (task.getEndDate() != null)
                 etEndDate.setText(new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(task.getEndDate()));
-            }
         } else {
             rgFrequency.check(R.id.rbOneTime);
             recurringGroup.setVisibility(View.GONE);
@@ -206,6 +203,31 @@ public class EditTaskActivity extends AppCompatActivity {
         if (task.getExecutionTime() != null) {
             etExecutionTime.setText(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(task.getExecutionTime()));
         }
+
+        // Sakrivanje dugmeta za edit ako je zadatak prošao
+        if (task.getEndDate() != null && isTaskExpired(task.getEndDate())) {
+            btnSaveTask.setEnabled(false); // dugme je vidljivo ali neaktivno
+            Toast.makeText(this, "This task is completed and cannot be edited.", Toast.LENGTH_SHORT).show();
+        } else {
+            btnSaveTask.setEnabled(true); // dugme aktivno
+        }
+    }
+
+    private boolean isTaskExpired(Date endDate) {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+
+        Calendar taskEnd = Calendar.getInstance();
+        taskEnd.setTime(endDate);
+        taskEnd.set(Calendar.HOUR_OF_DAY, 0);
+        taskEnd.set(Calendar.MINUTE, 0);
+        taskEnd.set(Calendar.SECOND, 0);
+        taskEnd.set(Calendar.MILLISECOND, 0);
+
+        return taskEnd.before(today);
     }
 
     private void saveTaskChanges() {
@@ -251,34 +273,50 @@ public class EditTaskActivity extends AppCompatActivity {
         taskToEdit.setXpValue(difficulty.getXpValue() + importance.getXpValue());
 
         try {
-            if ("recurring".equals(frequency)) {
-                Integer interval = Integer.parseInt(etInterval.getText().toString());
-                String intervalUnit = spIntervalUnit.getSelectedItem().toString();
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-                Date startDate = dateFormat.parse(etStartDate.getText().toString());
-                Date endDate = dateFormat.parse(etEndDate.getText().toString());
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-                taskToEdit.setInterval(interval);
-                taskToEdit.setIntervalUnit(intervalUnit);
-                taskToEdit.setStartDate(startDate);
-                taskToEdit.setEndDate(endDate);
+            if ("recurring".equals(frequency)) {
+                // Interval
+                String intervalStr = etInterval.getText().toString().trim();
+                if (!intervalStr.isEmpty()) {
+                    taskToEdit.setInterval(Integer.parseInt(intervalStr));
+                }
+
+                // Interval unit
+                String intervalUnit = spIntervalUnit.getSelectedItem().toString();
+                if (!intervalUnit.isEmpty()) {
+                    taskToEdit.setIntervalUnit(intervalUnit);
+                }
+
+                // Start date
+                String startDateStr = etStartDate.getText().toString().trim();
+                if (!startDateStr.isEmpty()) {
+                    taskToEdit.setStartDate(dateFormat.parse(startDateStr));
+                }
+
+                // End date
+                String endDateStr = etEndDate.getText().toString().trim();
+                if (!endDateStr.isEmpty()) {
+                    taskToEdit.setEndDate(dateFormat.parse(endDateStr));
+                }
             } else {
+                // Jednokratni zadatak – ne brišemo postojeće start/end datume
                 taskToEdit.setInterval(null);
                 taskToEdit.setIntervalUnit(null);
-                taskToEdit.setStartDate(null);
-                taskToEdit.setEndDate(null);
             }
 
-            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            Date executionTime = timeFormat.parse(etExecutionTime.getText().toString());
-            taskToEdit.setExecutionTime(executionTime);
+            // Execution time
+            String executionTimeStr = etExecutionTime.getText().toString().trim();
+            if (!executionTimeStr.isEmpty()) {
+                taskToEdit.setExecutionTime(timeFormat.parse(executionTimeStr));
+            }
 
         } catch (NumberFormatException | ParseException e) {
             Toast.makeText(this, "Error in date/time format or interval.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Asinhroni poziv za ažuriranje zadatka u Firebase-u
         taskRepository.updateTask(taskToEdit, userId, new TaskRepository.OnTaskUpdatedListener() {
             @Override
             public void onSuccess() {
@@ -295,6 +333,7 @@ public class EditTaskActivity extends AppCompatActivity {
             }
         });
     }
+
 
     private void showDatePicker(final EditText dateField) {
         final Calendar c = Calendar.getInstance();
