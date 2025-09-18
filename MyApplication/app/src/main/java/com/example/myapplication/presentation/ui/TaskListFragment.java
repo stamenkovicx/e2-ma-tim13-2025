@@ -98,18 +98,13 @@ public class TaskListFragment extends Fragment {
                 todayCal.set(Calendar.MILLISECOND, 0);
                 Date today = todayCal.getTime();
 
-                List<Task> currentAndFutureTasks = allTasks.stream()
-                        .filter(task -> task.getStartDate() != null && !task.getStartDate().before(today))
+                // Filtriramo zadatke: počeli u prošlosti i još traju ili počinju danas/ubudućnosti
+                List<Task> visibleTasks = allTasks.stream()
+                        .filter(task -> task.getStartDate() != null &&
+                                (task.getEndDate() == null || !task.getEndDate().before(today)))
                         .collect(Collectors.toList());
 
-                if (taskAdapter == null) {
-                    if (getContext() != null) {
-                        taskAdapter = new TaskAdapter(currentAndFutureTasks, getContext());
-                        rvAllTasks.setAdapter(taskAdapter);
-                    }
-                } else {
-                    taskAdapter.updateTasks(currentAndFutureTasks);
-                }
+                updateTaskList(visibleTasks);
             }
 
             @Override
@@ -138,22 +133,24 @@ public class TaskListFragment extends Fragment {
                 todayCal.set(Calendar.MILLISECOND, 0);
                 Date today = todayCal.getTime();
 
-                // Filtriramo samo trenutne i buduće zadatke
-                List<Task> currentAndFutureTasks = allTasks.stream()
-                        .filter(task -> task.getStartDate() != null && !task.getStartDate().before(today))
+                // Filtriramo zadatke: počeli u prošlosti i još traju ili počinju danas/ubudućnosti
+                List<Task> visibleTasks = allTasks.stream()
+                        .filter(task -> task.getStartDate() != null &&
+                                (task.getEndDate() == null || !task.getEndDate().before(today)))
                         .collect(Collectors.toList());
 
+                // Primena filtera po tipu
                 List<Task> filteredTasks;
                 if ("Jednokratni".equals(filter)) {
-                    filteredTasks = currentAndFutureTasks.stream()
+                    filteredTasks = visibleTasks.stream()
                             .filter(task -> "one-time".equals(task.getFrequency()))
                             .collect(Collectors.toList());
                 } else if ("Ponavljajući".equals(filter)) {
-                    filteredTasks = currentAndFutureTasks.stream()
+                    filteredTasks = visibleTasks.stream()
                             .filter(task -> "recurring".equals(task.getFrequency()))
                             .collect(Collectors.toList());
                 } else {
-                    filteredTasks = currentAndFutureTasks;
+                    filteredTasks = visibleTasks;
                 }
 
                 updateTaskList(filteredTasks);
@@ -168,6 +165,7 @@ public class TaskListFragment extends Fragment {
             }
         });
     }
+
 
     private void updateTaskList(List<Task> tasks) {
         if (taskAdapter == null) {
