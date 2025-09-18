@@ -17,6 +17,34 @@
         android:layout_marginBottom="16dp" />
 
     <LinearLayout
+        android:id="@+id/btnSearchUsers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_gravity="center_horizontal"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:layout_margin="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Find new friends"
+            android:textSize="18sp"
+            android:textColor="@color/text_color_primary"
+            android:layout_marginEnd="8dp"/>
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_menu_search"
+            android:contentDescription="@string/search_button_description"/>
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -25,19 +53,19 @@
         android:gravity="center">
 
         <Button
-            android:id="@+id/btnSearchUsers"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Search Users"
-            android:layout_marginEnd="8dp" />
-
-        <Button
             android:id="@+id/btnScanQrCode"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Scan QR Code" />
+
+        <Button
+            android:id="@+id/btnCreateAlliance"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Create Alliance" />
     </LinearLayout>
 
     <TextView

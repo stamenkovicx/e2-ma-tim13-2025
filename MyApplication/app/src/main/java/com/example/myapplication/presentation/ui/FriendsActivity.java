@@ -1,10 +1,14 @@
 package com.example.myapplication.presentation.ui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,7 +33,8 @@ public class FriendsActivity extends AppCompatActivity {
     private RecyclerView friendsRecyclerView;
     private FriendsAdapter friendsAdapter;
     private TextView tvNoFriends;
-    private Button btnSearchUsers, btnScanQrCode;
+    private LinearLayout btnSearchUsers;
+    private Button btnScanQrCode, btnCreateAlliance;
 
     private UserRepository userRepository;
     private String currentUserId;
@@ -46,6 +51,7 @@ public class FriendsActivity extends AppCompatActivity {
         tvNoFriends = findViewById(R.id.tvNoFriends);
         btnSearchUsers = findViewById(R.id.btnSearchUsers);
         btnScanQrCode = findViewById(R.id.btnScanQrCode);
+        btnCreateAlliance = findViewById(R.id.btnCreateAlliance);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -94,6 +100,10 @@ public class FriendsActivity extends AppCompatActivity {
             // Pokretanje vaše QRScannerActivity
             Intent intent = new Intent(FriendsActivity.this, QRScannerActivity.class);
             qrCodeScannerLauncher.launch(intent);
+        });
+
+        btnCreateAlliance.setOnClickListener(v -> {
+            showCreateAllianceDialog();
         });
     }
 
@@ -171,6 +181,52 @@ public class FriendsActivity extends AppCompatActivity {
             @Override
             public void onFailure(Exception e) {
                 Toast.makeText(FriendsActivity.this, "Error sending friend request: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showCreateAllianceDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_create_alliance, null);
+        builder.setView(dialogView);
+
+        final EditText etAllianceName = dialogView.findViewById(R.id.etAllianceName);
+        Button btnCreate = dialogView.findViewById(R.id.btnCreate);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancel);
+
+        final AlertDialog dialog = builder.create();
+
+        btnCreate.setOnClickListener(v -> {
+            String allianceName = etAllianceName.getText().toString().trim();
+            if (allianceName.isEmpty()) {
+                Toast.makeText(FriendsActivity.this, "Alliance name cannot be empty.", Toast.LENGTH_SHORT).show();
+            } else {
+                createAlliance(allianceName);
+                dialog.dismiss();
+            }
+        });
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private void createAlliance(String allianceName) {
+        userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                if (user != null) {
+                    if (user.getAllianceId() != null && !user.getAllianceId().isEmpty()) {
+                        Toast.makeText(FriendsActivity.this, "You are already in an alliance.", Toast.LENGTH_SHORT).show();
+                    } else {
+
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(FriendsActivity.this, "Error creating alliance.", Toast.LENGTH_SHORT).show();
             }
         });
     }
