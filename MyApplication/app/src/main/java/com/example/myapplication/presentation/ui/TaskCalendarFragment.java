@@ -82,52 +82,50 @@ public class TaskCalendarFragment extends Fragment {
                         .filter(task -> {
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
-                            // Proverava da li je zadatak jednokratan i da li se poklapa sa datumom
-                            if ("one-time".equals(task.getFrequency()) && task.getStartDate() != null) {
-                                String taskDate = dateFormat.format(task.getStartDate());
-                                return taskDate.equals(date);
-                            }
+                            try {
+                                Date selectedDate = dateFormat.parse(date);
 
-                            // Proverava da li je zadatak ponavljajući i da li pada na izabrani datum
-                            if ("recurring".equals(task.getFrequency()) && task.getStartDate() != null && task.getEndDate() != null) {
-                                try {
-                                    Date selectedDate = dateFormat.parse(date);
+                                // Jednokratni zadaci
+                                if ("one-time".equals(task.getFrequency()) && task.getStartDate() != null) {
+                                    return dateFormat.format(task.getStartDate()).equals(date);
+                                }
 
-                                    // Proverava da li je datum unutar opsega ponavljanja
-                                    if (selectedDate.equals(task.getStartDate()) ||
-                                            (selectedDate.after(task.getStartDate()) && selectedDate.before(task.getEndDate())) ||
-                                            selectedDate.equals(task.getEndDate())) {
-                                        // Računa razliku u jedinicama (dan, nedelja, mesec)
-                                        long diffInMillis = selectedDate.getTime() - task.getStartDate().getTime();
-                                        long diffInDays = diffInMillis / (1000 * 60 * 60 * 24);
+                                // Ponavljajući zadaci
+                                if ("recurring".equals(task.getFrequency()) && task.getStartDate() != null && task.getEndDate() != null) {
+                                    if (!selectedDate.before(task.getStartDate()) && !selectedDate.after(task.getEndDate())) {
+                                        Calendar startCal = Calendar.getInstance();
+                                        startCal.setTime(task.getStartDate());
+
+                                        Calendar selectedCal = Calendar.getInstance();
+                                        selectedCal.setTime(selectedDate);
 
                                         switch (task.getIntervalUnit()) {
                                             case "dan":
+                                                long diffInMillis = selectedDate.getTime() - task.getStartDate().getTime();
+                                                long diffInDays = diffInMillis / (1000 * 60 * 60 * 24);
                                                 return diffInDays % task.getInterval() == 0;
-                                            case "nedelja":
-                                                // Računamo razliku u nedeljama i proveravamo parnost
-                                                long diffInWeeks = diffInDays / 7;
-                                                return diffInWeeks % task.getInterval() == 0;
-                                            case "mesec":
-                                                // Složenija logika za mesece
-                                                // Preporučujem da se koristi Calendar klasa za preciznije računanje meseci
-                                                // Ovde je pojednostavljena logika:
-                                                Calendar startCal = Calendar.getInstance();
-                                                startCal.setTime(task.getStartDate());
-                                                Calendar selectedCal = Calendar.getInstance();
-                                                selectedCal.setTime(selectedDate);
 
+                                            case "nedelja":
+                                                long diffInWeeks = (selectedCal.getTimeInMillis() - startCal.getTimeInMillis()) / (7L * 24 * 60 * 60 * 1000);
+                                                // Prikazuje se samo na isti dan u nedelji i ako je razlika u nedeljama deljiva sa intervalom
+                                                return diffInWeeks % task.getInterval() == 0 &&
+                                                        startCal.get(Calendar.DAY_OF_WEEK) == selectedCal.get(Calendar.DAY_OF_WEEK);
+
+                                            case "mesec":
                                                 int startMonth = startCal.get(Calendar.YEAR) * 12 + startCal.get(Calendar.MONTH);
                                                 int selectedMonth = selectedCal.get(Calendar.YEAR) * 12 + selectedCal.get(Calendar.MONTH);
-
                                                 int diffInMonths = selectedMonth - startMonth;
-                                                return diffInMonths % task.getInterval() == 0 && selectedCal.get(Calendar.DAY_OF_MONTH) == startCal.get(Calendar.DAY_OF_MONTH);
+                                                // Prikazuje se samo ako je dan u mesecu isti kao startDate i razlika u mesecima deljiva sa intervalom
+                                                return diffInMonths % task.getInterval() == 0 &&
+                                                        startCal.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH);
                                         }
                                     }
-                                } catch (ParseException e) {
-                                    Log.e("TaskCalendarFragment", "Error parsing date.", e);
                                 }
+
+                            } catch (ParseException e) {
+                                Log.e("TaskCalendarFragment", "Error parsing date.", e);
                             }
+
                             return false;
                         })
                         .collect(Collectors.toList());
@@ -151,6 +149,7 @@ public class TaskCalendarFragment extends Fragment {
             }
         });
     }
+
 
     @Override
     public void onResume() {

@@ -23,8 +23,9 @@ import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.presentation.ui.adapters.TaskAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,7 +43,6 @@ public class TaskListFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_task_list, container, false);
 
         if (getContext() != null) {
-            // Instanciramo Firebase repozitorijum
             taskRepository = new TaskRepositoryFirebaseImpl();
 
             FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -84,22 +84,31 @@ public class TaskListFragment extends Fragment {
 
     private void loadAllTasks() {
         if (userId == null || userId.isEmpty()) {
-            Log.e("TaskListFragment", "User email is null or empty.");
+            Log.e("TaskListFragment", "User ID is null or empty.");
             return;
         }
 
-        // Koristimo asinhroni poziv za učitavanje svih zadataka
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
             public void onSuccess(List<Task> allTasks) {
-                // Ažuriramo listu unutar callback-a
+                Calendar todayCal = Calendar.getInstance();
+                todayCal.set(Calendar.HOUR_OF_DAY, 0);
+                todayCal.set(Calendar.MINUTE, 0);
+                todayCal.set(Calendar.SECOND, 0);
+                todayCal.set(Calendar.MILLISECOND, 0);
+                Date today = todayCal.getTime();
+
+                List<Task> currentAndFutureTasks = allTasks.stream()
+                        .filter(task -> task.getStartDate() != null && !task.getStartDate().before(today))
+                        .collect(Collectors.toList());
+
                 if (taskAdapter == null) {
                     if (getContext() != null) {
-                        taskAdapter = new TaskAdapter(allTasks, getContext());
+                        taskAdapter = new TaskAdapter(currentAndFutureTasks, getContext());
                         rvAllTasks.setAdapter(taskAdapter);
                     }
                 } else {
-                    taskAdapter.updateTasks(allTasks);
+                    taskAdapter.updateTasks(currentAndFutureTasks);
                 }
             }
 
@@ -115,27 +124,38 @@ public class TaskListFragment extends Fragment {
 
     private void loadTasks(String filter) {
         if (userId == null || userId.isEmpty()) {
-            Log.e("TaskListFragment", "User email is null or empty.");
+            Log.e("TaskListFragment", "User ID is null or empty.");
             return;
         }
 
-        // Koristimo asinhroni poziv za učitavanje svih zadataka, a zatim filtriramo lokalno
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
             public void onSuccess(List<Task> allTasks) {
-                List<Task> filteredTasks;
+                Calendar todayCal = Calendar.getInstance();
+                todayCal.set(Calendar.HOUR_OF_DAY, 0);
+                todayCal.set(Calendar.MINUTE, 0);
+                todayCal.set(Calendar.SECOND, 0);
+                todayCal.set(Calendar.MILLISECOND, 0);
+                Date today = todayCal.getTime();
 
+                // Filtriramo samo trenutne i buduće zadatke
+                List<Task> currentAndFutureTasks = allTasks.stream()
+                        .filter(task -> task.getStartDate() != null && !task.getStartDate().before(today))
+                        .collect(Collectors.toList());
+
+                List<Task> filteredTasks;
                 if ("Jednokratni".equals(filter)) {
-                    filteredTasks = allTasks.stream()
+                    filteredTasks = currentAndFutureTasks.stream()
                             .filter(task -> "one-time".equals(task.getFrequency()))
                             .collect(Collectors.toList());
                 } else if ("Ponavljajući".equals(filter)) {
-                    filteredTasks = allTasks.stream()
+                    filteredTasks = currentAndFutureTasks.stream()
                             .filter(task -> "recurring".equals(task.getFrequency()))
                             .collect(Collectors.toList());
                 } else {
-                    filteredTasks = allTasks;
+                    filteredTasks = currentAndFutureTasks;
                 }
+
                 updateTaskList(filteredTasks);
             }
 
