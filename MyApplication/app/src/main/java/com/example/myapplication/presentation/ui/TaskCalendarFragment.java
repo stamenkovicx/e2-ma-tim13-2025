@@ -94,8 +94,9 @@ public class TaskCalendarFragment extends Fragment {
                                     Date selectedDate = dateFormat.parse(date);
 
                                     // Proverava da li je datum unutar opsega ponavljanja
-                                    if (selectedDate.after(task.getStartDate()) || selectedDate.equals(task.getStartDate())) {
-
+                                    if (selectedDate.equals(task.getStartDate()) ||
+                                            (selectedDate.after(task.getStartDate()) && selectedDate.before(task.getEndDate())) ||
+                                            selectedDate.equals(task.getEndDate())) {
                                         // Računa razliku u jedinicama (dan, nedelja, mesec)
                                         long diffInMillis = selectedDate.getTime() - task.getStartDate().getTime();
                                         long diffInDays = diffInMillis / (1000 * 60 * 60 * 24);
