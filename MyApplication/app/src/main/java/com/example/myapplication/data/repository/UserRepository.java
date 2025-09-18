@@ -23,4 +23,7 @@ public interface UserRepository {
     void createAlliance(Alliance alliance, OnCompleteListener<String> listener);
     void updateUserAllianceId(String userId, String allianceId, OnCompleteListener<Void> listener);
     void sendAllianceInvitation(String allianceId, String invitedUserId, OnCompleteListener<Void> listener);
+    void getAlliancesByIds(List<String> allianceIds, OnCompleteListener<List<Alliance>> onCompleteListener);
+    void acceptAllianceInvitation(String currentUserId, String allianceId, OnCompleteListener<Void> listener);
+    void rejectAllianceInvitation(String currentUserId, String allianceId, OnCompleteListener<Void> listener);
 }

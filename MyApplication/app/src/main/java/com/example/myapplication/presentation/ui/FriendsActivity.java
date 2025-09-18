@@ -35,7 +35,7 @@ public class FriendsActivity extends AppCompatActivity {
     private FriendsAdapter friendsAdapter;
     private TextView tvNoFriends;
     private LinearLayout btnSearchUsers;
-    private Button btnScanQrCode, btnCreateAlliance, btnMyAlliance;
+    private Button btnScanQrCode, btnCreateAlliance, btnMyAlliance, btnInvitations;
 
     private UserRepository userRepository;
     private String currentUserId;
@@ -53,6 +53,7 @@ public class FriendsActivity extends AppCompatActivity {
         btnScanQrCode = findViewById(R.id.btnScanQrCode);
         btnCreateAlliance = findViewById(R.id.btnCreateAlliance);
         btnMyAlliance = findViewById(R.id.btnMyAlliance);
+        btnInvitations = findViewById(R.id.btnInvitations);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -99,13 +100,17 @@ public class FriendsActivity extends AppCompatActivity {
         });
 
         btnScanQrCode.setOnClickListener(v -> {
-            // Pokretanje vaše QRScannerActivity
             Intent intent = new Intent(FriendsActivity.this, QRScannerActivity.class);
             qrCodeScannerLauncher.launch(intent);
         });
 
         btnCreateAlliance.setOnClickListener(v -> {
             showCreateAllianceDialog();
+        });
+
+        btnInvitations.setOnClickListener(v-> {
+            Intent intent = new Intent(FriendsActivity.this, AllianceInvitationsActivity.class);
+            startActivity(intent);
         });
     }
 
