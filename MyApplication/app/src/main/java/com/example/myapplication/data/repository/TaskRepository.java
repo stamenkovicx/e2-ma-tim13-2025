@@ -59,5 +59,5 @@ public interface TaskRepository {
     void getXpLast7Days(String userId, int userLevel, OnStatisticsLoadedListener<Map<String, Double>> listener);
     void updateTasksColor(String categoryId, int newColor, String userId, OnTaskUpdatedListener listener);
     void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener);
-
+    void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener);
 }

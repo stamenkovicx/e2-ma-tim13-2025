@@ -62,24 +62,38 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         String taskId = getIntent().getStringExtra("taskId");
         if (taskId != null) {
-            taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+            // Prvo proveravamo da li je zadatak istekao pre nego što ga prikažemo
+            taskRepository.checkAndDeactivateExpiredTasks(userId, new TaskRepository.OnTaskUpdatedListener() {
                 @Override
-                public void onSuccess(Task fetchedTask) {
-                    if (fetchedTask != null) {
-                        task = fetchedTask;
-                        initializeViews();
-                        displayTaskDetails(task);
-                        updateStatusButtons();
-                    } else {
-                        Toast.makeText(TaskDetailsActivity.this, "Task not found.", Toast.LENGTH_SHORT).show();
-                        finish();
-                    }
+                public void onSuccess() {
+                    // Nakon provere, dohvatamo zadatak
+                    taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+                        @Override
+                        public void onSuccess(Task fetchedTask) {
+                            if (fetchedTask != null) {
+                                task = fetchedTask;
+                                initializeViews();
+                                displayTaskDetails(task);
+                                updateStatusButtons();
+                            } else {
+                                Toast.makeText(TaskDetailsActivity.this, "Zadatak nije pronađen.", Toast.LENGTH_SHORT).show();
+                                finish();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e(TAG, "Greška pri učitavanju detalja zadatka.", e);
+                            Toast.makeText(TaskDetailsActivity.this, "Greška pri učitavanju detalja zadatka.", Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+                    });
                 }
 
                 @Override
                 public void onFailure(Exception e) {
-                    Log.e(TAG, "Failed to load task details.", e);
-                    Toast.makeText(TaskDetailsActivity.this, "Failed to load task details.", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Greška pri proveri isteklih zadataka.", e);
+                    Toast.makeText(TaskDetailsActivity.this, "Greška pri proveri statusa zadataka.", Toast.LENGTH_SHORT).show();
                     finish();
                 }
             });
@@ -164,20 +178,20 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
     private void deleteTask() {
         if (task != null) {
-            if (task.getStatus() == TaskStatus.URAĐEN) {
-                Toast.makeText(this, "You cannot delete a completed task.", Toast.LENGTH_SHORT).show();
+            if (task.getStatus() == TaskStatus.URAĐEN || task.getStatus() == TaskStatus.NEURAĐEN) {
+                Toast.makeText(this, "Ne možete obrisati završen ili neurađen zadatak.", Toast.LENGTH_SHORT).show();
             } else {
                 taskRepository.deleteTask(task.getId(), userId, new TaskRepository.OnTaskDeletedListener() {
                     @Override
                     public void onSuccess() {
-                        Toast.makeText(TaskDetailsActivity.this, "Task successfully deleted.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(TaskDetailsActivity.this, "Zadatak uspešno obrisan.", Toast.LENGTH_SHORT).show();
                         finish();
                     }
 
                     @Override
                     public void onFailure(Exception e) {
-                        Log.e(TAG, "Error deleting task", e);
-                        Toast.makeText(TaskDetailsActivity.this, "Error deleting task.", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Greška pri brisanju zadatka", e);
+                        Toast.makeText(TaskDetailsActivity.this, "Greška pri brisanju zadatka.", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -185,12 +199,17 @@ public class TaskDetailsActivity extends AppCompatActivity {
     }
 
     private void updateTaskStatus(TaskStatus newStatus) {
+        if (task.getStatus() == TaskStatus.URAĐEN || task.getStatus() == TaskStatus.NEURAĐEN) {
+            Toast.makeText(this, "Ne možete menjati status završenog ili neurađenog zadatka.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         task.setStatus(newStatus);
         taskRepository.updateTask(task, userId, new TaskRepository.OnTaskUpdatedListener() {
             @Override
             public void onSuccess() {
                 runOnUiThread(() -> {
-                    Toast.makeText(TaskDetailsActivity.this, "Task status changed to " + newStatus.name().toLowerCase(Locale.ROOT) + ".", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TaskDetailsActivity.this, "Status zadatka promenjen u " + newStatus.name().toLowerCase(Locale.ROOT) + ".", Toast.LENGTH_SHORT).show();
                     displayTaskDetails(task);
                     updateStatusButtons();
                 });
@@ -198,8 +217,8 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Exception e) {
-                Log.e(TAG, "Error updating task status", e);
-                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Failed to update task status.", Toast.LENGTH_SHORT).show());
+                Log.e(TAG, "Greška pri ažuriranju statusa zadatka", e);
+                runOnUiThread(() -> Toast.makeText(TaskDetailsActivity.this, "Neuspešno ažuriranje statusa zadatka.", Toast.LENGTH_SHORT).show());
             }
         });
     }
@@ -295,7 +314,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
     private void updateStatusButtons() {
         boolean isRecurring = "recurring".equals(task.getFrequency());
         boolean isTimeFinished = isTaskTimeFinished(task);
-        boolean isCompleted = task.getStatus() == TaskStatus.URAĐEN;
+        boolean isCompletedOrUnfinished = task.getStatus() == TaskStatus.URAĐEN || task.getStatus() == TaskStatus.NEURAĐEN;
 
         switch (task.getStatus()) {
             case AKTIVAN:
@@ -304,7 +323,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 btnActivate.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
-                btnEdit.setEnabled(!isTimeFinished && !isCompleted); // dugme aktivno samo ako nije završeno
+                btnEdit.setEnabled(!isTimeFinished && !isCompletedOrUnfinished);
                 if (isRecurring) {
                     btnPause.setVisibility(View.VISIBLE);
                 } else {
@@ -319,16 +338,19 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 btnActivate.setVisibility(View.VISIBLE);
                 btnDelete.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
-                btnEdit.setEnabled(!isTimeFinished && !isCompleted);
+                btnEdit.setEnabled(!isTimeFinished && !isCompletedOrUnfinished);
                 break;
 
-            default: // OTKAZAN, URAĐEN i drugi završeni
+            case NEURAĐEN:
+            case OTKAZAN:
+            case URAĐEN:
+            default:
                 btnComplete.setVisibility(View.GONE);
                 btnCancel.setVisibility(View.GONE);
                 btnPause.setVisibility(View.GONE);
                 btnActivate.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.GONE);
-                btnEdit.setVisibility(View.GONE);       // vidljivo
+                btnEdit.setVisibility(View.GONE);
                 break;
         }
     }
