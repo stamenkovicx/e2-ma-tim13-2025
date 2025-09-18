@@ -298,41 +298,51 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         DocumentReference allianceRef = db.collection("alliances").document(allianceId);
         DocumentReference invitedUserRef = db.collection("users").document(invitedUserId);
-        DocumentReference currentUserRef = db.collection("users").document(FirebaseAuth.getInstance().getCurrentUser().getUid()); // Referenca na trenutnog korisnika
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid(); // Ovo je u redu da ostane van transakcije
+        DocumentReference currentUserRef = db.collection("users").document(currentUserId);
 
         db.runTransaction(transaction -> {
-            // Dohvati podatke saveza
             DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+            if (!allianceSnapshot.exists()) {
+                throw new FirebaseFirestoreException("Alliance not found!", FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+
+            DocumentSnapshot invitedUserSnapshot = transaction.get(invitedUserRef);
+            if (!invitedUserSnapshot.exists()) {
+                throw new FirebaseFirestoreException("Invited user not found!", FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+
+            DocumentSnapshot currentUserSnapshot = transaction.get(currentUserRef);
+            if (!currentUserSnapshot.exists()) {
+                throw new FirebaseFirestoreException("Current user not found!", FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+
             List<String> pendingInvitations = (List<String>) allianceSnapshot.get("pendingInvitations");
             if (pendingInvitations == null) {
                 pendingInvitations = new ArrayList<>();
             }
-            pendingInvitations.add(invitedUserId);
+            if (!pendingInvitations.contains(invitedUserId)) {
+                pendingInvitations.add(invitedUserId);
+                transaction.update(allianceRef, "pendingInvitations", pendingInvitations);
+            }
 
-            // Ažuriraj listu poziva saveza
-            transaction.update(allianceRef, "pendingInvitations", pendingInvitations);
-
-            // Dohvati podatke pozvanog korisnika
-            DocumentSnapshot invitedUserSnapshot = transaction.get(invitedUserRef);
             List<String> allianceInvitationsReceived = (List<String>) invitedUserSnapshot.get("allianceInvitationsReceived");
             if (allianceInvitationsReceived == null) {
                 allianceInvitationsReceived = new ArrayList<>();
             }
-            allianceInvitationsReceived.add(allianceId);
+            if (!allianceInvitationsReceived.contains(allianceId)) {
+                allianceInvitationsReceived.add(allianceId);
+                transaction.update(invitedUserRef, "allianceInvitationsReceived", allianceInvitationsReceived);
+            }
 
-            // Ažuriraj listu primljenih poziva pozvanog korisnika
-            transaction.update(invitedUserRef, "allianceInvitationsReceived", allianceInvitationsReceived);
-
-            // Dohvati podatke trenutnog korisnika
-            DocumentSnapshot currentUserSnapshot = transaction.get(currentUserRef);
             List<String> allianceInvitationsSent = (List<String>) currentUserSnapshot.get("allianceInvitationsSent");
             if (allianceInvitationsSent == null) {
                 allianceInvitationsSent = new ArrayList<>();
             }
-            allianceInvitationsSent.add(invitedUserId);
-
-            // Ažuriraj listu poslanih poziva trenutnog korisnika
-            transaction.update(currentUserRef, "allianceInvitationsSent", allianceInvitationsSent);
+            if (!allianceInvitationsSent.contains(invitedUserId)) {
+                allianceInvitationsSent.add(invitedUserId);
+                transaction.update(currentUserRef, "allianceInvitationsSent", allianceInvitationsSent);
+            }
 
             return null;
         }).addOnSuccessListener(aVoid -> {
