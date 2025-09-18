@@ -25,6 +25,8 @@ public class User {
     private List<String> friendRequestsSent;
     private List<String> friendRequestsReceived;
     private String allianceId;
+    private List<String> allianceInvitationsSent;
+    private List<String> allianceInvitationsReceived;
 
     public User() {
     }
@@ -275,4 +277,9 @@ public class User {
             this.friendRequestsReceived.remove(userId);
         }
     }
+
+    public List<String> getAllianceInvitationsSent() { return allianceInvitationsSent; }
+    public List<String> getAllianceInvitationsReceived() { return allianceInvitationsReceived; }
+    public void setAllianceInvitationsSent(List<String> allianceInvitationsSent) { this.allianceInvitationsSent = allianceInvitationsSent; }
+    public void setAllianceInvitationsReceived(List<String> allianceInvitationsReceived) { this.allianceInvitationsReceived = allianceInvitationsReceived; }
 }

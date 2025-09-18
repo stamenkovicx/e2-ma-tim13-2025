@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.FriendsAdapter;
 import com.google.firebase.auth.FirebaseAuth;
@@ -34,13 +35,12 @@ public class FriendsActivity extends AppCompatActivity {
     private FriendsAdapter friendsAdapter;
     private TextView tvNoFriends;
     private LinearLayout btnSearchUsers;
-    private Button btnScanQrCode, btnCreateAlliance;
+    private Button btnScanQrCode, btnCreateAlliance, btnMyAlliance;
 
     private UserRepository userRepository;
     private String currentUserId;
-
-    // Deklaracija ActivityResultLauncher-a
     private ActivityResultLauncher<Intent> qrCodeScannerLauncher;
+    private User currentUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,13 +52,15 @@ public class FriendsActivity extends AppCompatActivity {
         btnSearchUsers = findViewById(R.id.btnSearchUsers);
         btnScanQrCode = findViewById(R.id.btnScanQrCode);
         btnCreateAlliance = findViewById(R.id.btnCreateAlliance);
+        btnMyAlliance = findViewById(R.id.btnMyAlliance);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
         friendsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        friendsAdapter = new FriendsAdapter(new ArrayList<>());
+        friendsAdapter = new FriendsAdapter(new ArrayList<>(), null, friend -> sendAllianceInvitation(friend));
         friendsRecyclerView.setAdapter(friendsAdapter);
+
 
         // Inicijalizacija ActivityResultLauncher-a
         qrCodeScannerLauncher = registerForActivityResult(
@@ -116,28 +118,49 @@ public class FriendsActivity extends AppCompatActivity {
     private void loadFriends() {
         userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
             @Override
-            public void onSuccess(User currentUser) {
-                if (currentUser != null && currentUser.getFriends() != null && !currentUser.getFriends().isEmpty()) {
-                    tvNoFriends.setVisibility(View.GONE);
-                    friendsRecyclerView.setVisibility(View.VISIBLE);
+            public void onSuccess(User user) {
+                if (user != null) {
+                    currentUser = user;
 
-                    userRepository.getUsersByIds(currentUser.getFriends(), new UserRepository.OnCompleteListener<List<User>>() {
-                        @Override
-                        public void onSuccess(List<User> friends) {
-                            friendsAdapter.setFriends(friends);
-                        }
+                    friendsAdapter.setCurrentUser(currentUser);
 
-                        @Override
-                        public void onFailure(Exception e) {
-                            Toast.makeText(FriendsActivity.this, "Error loading friends.", Toast.LENGTH_SHORT).show();
+                    if (currentUser.getFriends() != null && !currentUser.getFriends().isEmpty()) {
+                        tvNoFriends.setVisibility(View.GONE);
+                        friendsRecyclerView.setVisibility(View.VISIBLE);
+
+                        userRepository.getUsersByIds(currentUser.getFriends(), new UserRepository.OnCompleteListener<List<User>>() {
+                            @Override
+                            public void onSuccess(List<User> friends) {
+                                friendsAdapter.setFriends(friends);
+                                if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+                                    btnCreateAlliance.setVisibility(View.GONE);
+                                    btnMyAlliance.setVisibility(View.VISIBLE);
+                                } else {
+                                    btnCreateAlliance.setVisibility(View.VISIBLE);
+                                    btnMyAlliance.setVisibility(View.GONE);
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(FriendsActivity.this, "Error loading friends.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    } else {
+                        tvNoFriends.setVisibility(View.VISIBLE);
+                        friendsRecyclerView.setVisibility(View.GONE);
+                        if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+                            btnCreateAlliance.setVisibility(View.GONE);
+                            btnMyAlliance.setVisibility(View.VISIBLE);
+                        } else {
+                            btnCreateAlliance.setVisibility(View.VISIBLE);
+                            btnMyAlliance.setVisibility(View.GONE);
                         }
-                    });
+                    }
                 } else {
-                    tvNoFriends.setVisibility(View.VISIBLE);
-                    friendsRecyclerView.setVisibility(View.GONE);
+                    Toast.makeText(FriendsActivity.this, "Error loading user data.", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(Exception e) {
                 Toast.makeText(FriendsActivity.this, "Error loading user data.", Toast.LENGTH_SHORT).show();
@@ -212,6 +235,8 @@ public class FriendsActivity extends AppCompatActivity {
     }
 
     private void createAlliance(String allianceName) {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
         userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
             @Override
             public void onSuccess(User user) {
@@ -219,7 +244,44 @@ public class FriendsActivity extends AppCompatActivity {
                     if (user.getAllianceId() != null && !user.getAllianceId().isEmpty()) {
                         Toast.makeText(FriendsActivity.this, "You are already in an alliance.", Toast.LENGTH_SHORT).show();
                     } else {
+                        // Kreiranje novog Alliance objekta
+                        List<String> memberIds = new ArrayList<>();
+                        memberIds.add(currentUserId);
 
+                        Alliance newAlliance = new Alliance(
+                                null,
+                                allianceName,
+                                currentUserId,
+                                memberIds,
+                                new ArrayList<>()
+                        );
+
+                        userRepository.createAlliance(newAlliance, new UserRepository.OnCompleteListener<String>() {
+                            @Override
+                            public void onSuccess(String allianceId) {
+                                userRepository.updateUserAllianceId(currentUserId, allianceId, new UserRepository.OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onSuccess(Void aVoid) {
+                                        Toast.makeText(FriendsActivity.this, "Alliance '" + allianceName + "' created successfully!", Toast.LENGTH_SHORT).show();
+                                        // Skloni dugme za kreiranje saveza jer je korisnik sada u savezu (moze da bude samo u jednom)
+                                        btnCreateAlliance.setVisibility(View.GONE);
+                                        btnMyAlliance.setVisibility(View.VISIBLE);
+                                        loadFriends();
+                                        // TODO Prebaciti korisnika na stranicu saveza
+                                    }
+
+                                    @Override
+                                    public void onFailure(Exception e) {
+                                        Toast.makeText(FriendsActivity.this, "Error updating user's alliance ID: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(FriendsActivity.this, "Error creating alliance: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            }
+                        });
                     }
                 }
             }
@@ -229,5 +291,27 @@ public class FriendsActivity extends AppCompatActivity {
                 Toast.makeText(FriendsActivity.this, "Error creating alliance.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void sendAllianceInvitation(User invitedFriend) {
+        if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+            String allianceId = currentUser.getAllianceId();
+            String invitedUserId = invitedFriend.getUserId();
+
+            userRepository.sendAllianceInvitation(allianceId, invitedUserId, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Toast.makeText(FriendsActivity.this, "Invitation sent to " + invitedFriend.getUsername() + "!", Toast.LENGTH_SHORT).show();
+                    loadFriends();
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(FriendsActivity.this, "Error sending invitation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Toast.makeText(this, "You must be in an alliance to invite friends.", Toast.LENGTH_SHORT).show();
+        }
     }
 }

@@ -36,4 +36,11 @@
             android:text="Level: 1" />
     </LinearLayout>
 
+    <Button
+        android:id="@+id/btnInviteFriend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Invite to Alliance"
+        android:visibility="gone" />
+
 </LinearLayout>

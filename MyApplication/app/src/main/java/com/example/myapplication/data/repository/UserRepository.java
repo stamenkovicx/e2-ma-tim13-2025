@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository;
 
+import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.User;
 
 import java.util.List;
@@ -19,4 +20,7 @@ public interface UserRepository {
     }
     void getUserById(String userId, OnCompleteListener<User> onCompleteListener);
     void updateUser(User user, OnCompleteListener<Void> onCompleteListener);
+    void createAlliance(Alliance alliance, OnCompleteListener<String> listener);
+    void updateUserAllianceId(String userId, String allianceId, OnCompleteListener<Void> listener);
+    void sendAllianceInvitation(String allianceId, String invitedUserId, OnCompleteListener<Void> listener);
 }

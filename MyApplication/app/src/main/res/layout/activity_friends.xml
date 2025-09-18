@@ -66,6 +66,14 @@
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="Create Alliance" />
+
+        <Button
+            android:id="@+id/btnMyAlliance"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="My Alliance" />
     </LinearLayout>
 
     <TextView

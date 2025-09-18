@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.data.repository.UserRepository;
+import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
@@ -262,5 +263,82 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
             }
             onCompleteListener.onSuccess(friendUsers);
         }).addOnFailureListener(onCompleteListener::onFailure);
+    }
+
+    @Override
+    public void createAlliance(Alliance alliance, OnCompleteListener<String> listener) {
+        CollectionReference alliancesRef = db.collection("alliances");
+        alliancesRef.add(alliance)
+                .addOnSuccessListener(documentReference -> {
+                    String allianceId = documentReference.getId();
+                    documentReference.update("allianceId", allianceId)
+                            .addOnSuccessListener(aVoid -> {
+                                // Pozivamo listener.onSuccess TEK nakon što je dokument uspešno ažuriran
+                                listener.onSuccess(allianceId);
+                            })
+                            .addOnFailureListener(e -> {
+                                listener.onFailure(e);
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    listener.onFailure(e);
+                });
+    }
+
+    @Override
+    public void updateUserAllianceId(String userId, String allianceId, OnCompleteListener<Void> listener) {
+        DocumentReference userRef = db.collection("users").document(userId);
+        userRef.update("allianceId", allianceId)
+                .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> listener.onFailure(e));
+    }
+
+    @Override
+    public void sendAllianceInvitation(String allianceId, String invitedUserId, OnCompleteListener<Void> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference allianceRef = db.collection("alliances").document(allianceId);
+        DocumentReference invitedUserRef = db.collection("users").document(invitedUserId);
+        DocumentReference currentUserRef = db.collection("users").document(FirebaseAuth.getInstance().getCurrentUser().getUid()); // Referenca na trenutnog korisnika
+
+        db.runTransaction(transaction -> {
+            // Dohvati podatke saveza
+            DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+            List<String> pendingInvitations = (List<String>) allianceSnapshot.get("pendingInvitations");
+            if (pendingInvitations == null) {
+                pendingInvitations = new ArrayList<>();
+            }
+            pendingInvitations.add(invitedUserId);
+
+            // Ažuriraj listu poziva saveza
+            transaction.update(allianceRef, "pendingInvitations", pendingInvitations);
+
+            // Dohvati podatke pozvanog korisnika
+            DocumentSnapshot invitedUserSnapshot = transaction.get(invitedUserRef);
+            List<String> allianceInvitationsReceived = (List<String>) invitedUserSnapshot.get("allianceInvitationsReceived");
+            if (allianceInvitationsReceived == null) {
+                allianceInvitationsReceived = new ArrayList<>();
+            }
+            allianceInvitationsReceived.add(allianceId);
+
+            // Ažuriraj listu primljenih poziva pozvanog korisnika
+            transaction.update(invitedUserRef, "allianceInvitationsReceived", allianceInvitationsReceived);
+
+            // Dohvati podatke trenutnog korisnika
+            DocumentSnapshot currentUserSnapshot = transaction.get(currentUserRef);
+            List<String> allianceInvitationsSent = (List<String>) currentUserSnapshot.get("allianceInvitationsSent");
+            if (allianceInvitationsSent == null) {
+                allianceInvitationsSent = new ArrayList<>();
+            }
+            allianceInvitationsSent.add(invitedUserId);
+
+            // Ažuriraj listu poslanih poziva trenutnog korisnika
+            transaction.update(currentUserRef, "allianceInvitationsSent", allianceInvitationsSent);
+
+            return null;
+        }).addOnSuccessListener(aVoid -> {
+            listener.onSuccess(null);
+        }).addOnFailureListener(e -> {
+            listener.onFailure(e);
+        });
     }
 }
