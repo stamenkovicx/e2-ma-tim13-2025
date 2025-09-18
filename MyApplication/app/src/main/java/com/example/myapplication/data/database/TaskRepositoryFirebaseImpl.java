@@ -10,6 +10,7 @@ import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -39,6 +40,10 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
     private static final String FIELD_COMPLETION_DATE = "completionDate";
     private static final String FIELD_XP_VALUE = "xpValue";
     private static final String FIELD_CATEGORY_ID = "category.id";
+    private static final String QUOTAS_COLLECTION = "xp_quotas";
+    private static final String FIELD_LAST_UPDATED = "lastUpdated";
+    // Ispravljeno: konstanta je neophodna za rad
+    private static final String FIELD_COMPLETED_COUNT = "completedCount";
 
     private final FirebaseFirestore db;
 
@@ -447,6 +452,140 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                         Log.e(TAG, "Greška pri updateTasksColor (query)", task.getException());
                         listener.onFailure(task.getException() != null ? task.getException() : new Exception("Unknown error fetching tasks."));
                     }
+                });
+    }
+    private String getQuotaKey(Task task) {
+        if (task.getDifficultyType() == DifficultyType.VERY_EASY && task.getImportanceType() == ImportanceType.NORMAL) {
+            return "VEOMA_LAK_NORMALAN";
+        }
+        if (task.getDifficultyType() == DifficultyType.EASY && task.getImportanceType() == ImportanceType.IMPORTANT) {
+            return "LAK_VAZAN";
+        }
+        if (task.getDifficultyType() == DifficultyType.HARD && task.getImportanceType() == ImportanceType.EXTREMELY_IMPORTANT) {
+            return "TEZAK_EKSTREMNO_VAZAN";
+        }
+        if (task.getDifficultyType() == DifficultyType.EXTREMELY_HARD) {
+            return "EKSTREMNO_TEZAK";
+        }
+        if (task.getImportanceType() == ImportanceType.SPECIAL) {
+            return "SPECIJALAN";
+        }
+        return "DEFAULT";
+    }
+
+    private String getQuotaId(Task task) {
+        if (task.getDifficultyType() == DifficultyType.EXTREMELY_HARD) {
+            return "weekly";
+        }
+        if (task.getImportanceType() == ImportanceType.SPECIAL) {
+            return "monthly";
+        }
+        return "daily";
+    }
+
+    private int getQuotaLimit(Task task) {
+        String quotaKey = getQuotaKey(task);
+        switch (quotaKey) {
+            case "VEOMA_LAK_NORMALAN":
+            case "LAK_VAZAN":
+                return 5;
+            case "TEZAK_EKSTREMNO_VAZAN":
+                return 2;
+            case "EKSTREMNO_TEZAK":
+                return 1;
+            case "SPECIJALAN":
+                return 1;
+            default:
+                return Integer.MAX_VALUE;
+        }
+    }
+
+    private boolean isQuotaExpired(Timestamp lastUpdated, Task task) {
+        if (lastUpdated == null) return true;
+        Calendar now = Calendar.getInstance();
+        Calendar last = Calendar.getInstance();
+        last.setTime(lastUpdated.toDate());
+
+        switch (getQuotaId(task)) {
+            case "daily":
+                return now.get(Calendar.DAY_OF_YEAR) != last.get(Calendar.DAY_OF_YEAR) ||
+                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+            case "weekly":
+                return now.get(Calendar.WEEK_OF_YEAR) != last.get(Calendar.WEEK_OF_YEAR) ||
+                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+            case "monthly":
+                return now.get(Calendar.MONTH) != last.get(Calendar.MONTH) ||
+                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+            default:
+                return true;
+        }
+    }
+    // Unutar klase TaskRepositoryFirebaseImpl, dodajte ovu metodu
+    @Override
+    public void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener) {
+        db.runTransaction(transaction -> {
+                    DocumentReference taskRef = getTasksCollection(userId).document(taskId);
+                    DocumentSnapshot taskSnapshot = transaction.get(taskRef);
+
+                    if (!taskSnapshot.exists()) {
+                        throw new RuntimeException("Zadatak nije pronađen.");
+                    }
+
+                    Task task = taskSnapshot.toObject(Task.class);
+                    if (task == null) {
+                        throw new RuntimeException("Greška pri mapiranju zadatka.");
+                    }
+                    if (task.getStatus() == TaskStatus.URAĐEN) {
+                        throw new RuntimeException("Zadatak je već završen.");
+                    }
+
+                    String quotaKey = getQuotaKey(task);
+                    String quotaId = getQuotaId(task);
+
+                    DocumentReference quotaRef = db.collection(USERS_COLLECTION)
+                            .document(userId)
+                            .collection(QUOTAS_COLLECTION)
+                            .document(quotaId);
+                    DocumentSnapshot quotaSnapshot = transaction.get(quotaRef);
+
+                    Map<String, Object> quotaData = new HashMap<>();
+                    long completedCount = 0;
+                    boolean shouldAwardXp = false;
+
+                    if (quotaSnapshot.exists()) {
+                        quotaData = quotaSnapshot.getData();
+                        if (quotaData != null) {
+                            completedCount = (long) quotaData.getOrDefault(quotaKey, 0L);
+                            Timestamp lastUpdated = quotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
+                            if (isQuotaExpired(lastUpdated, task)) {
+                                completedCount = 0;
+                            }
+                        }
+                    }
+
+                    if (completedCount < getQuotaLimit(task)) {
+                        shouldAwardXp = true;
+                        completedCount++;
+                    }
+
+                    Map<String, Object> updates = new HashMap<>();
+                    updates.put(FIELD_STATUS, TaskStatus.URAĐEN.name());
+                    updates.put(FIELD_COMPLETION_DATE, new Timestamp(new Date()));
+                    // Vraćamo liniju koja ažurira xpValue u zadatku
+                    updates.put(FIELD_XP_VALUE, shouldAwardXp ? task.getXpValue() : 0);
+
+                    transaction.update(taskRef, updates);
+
+                    Map<String, Object> quotaUpdates = new HashMap<>();
+                    quotaUpdates.put(quotaKey, completedCount);
+                    quotaUpdates.put(FIELD_LAST_UPDATED, new Timestamp(new Date()));
+                    transaction.set(quotaRef, quotaUpdates, SetOptions.merge());
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess())
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Transakcija neuspešna: " + e.getMessage(), e);
+                    listener.onFailure(e);
                 });
     }
 }
