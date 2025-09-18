@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class TaskRepositoryFirebaseImpl implements TaskRepository {
@@ -586,6 +587,60 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Transakcija neuspešna: " + e.getMessage(), e);
                     listener.onFailure(e);
+                });
+    }
+// U TaskRepositoryFirebaseImpl.java
+
+    public void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener) {
+        // Dohvati sve aktivne zadatke
+        getTasksCollection(userId)
+                .whereEqualTo("status", TaskStatus.AKTIVAN.name())
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        WriteBatch batch = db.batch();
+                        AtomicInteger tasksToUpdate = new AtomicInteger(0);
+
+                        // Trenutni datum
+                        Calendar now = Calendar.getInstance();
+
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Task currentTask = document.toObject(Task.class);
+
+                            // Provera roka
+                            if (currentTask.getEndDate() != null) {
+                                Calendar expiryCalendar = Calendar.getInstance();
+                                expiryCalendar.setTime(currentTask.getEndDate());
+                                expiryCalendar.add(Calendar.DAY_OF_YEAR, 3); // Dodajemo 3 dana na endDate
+
+                                // Ako je današnji datum nakon datuma isteka, zadatak je neurađen
+                                if (now.after(expiryCalendar)) {
+                                    DocumentReference taskRef = document.getReference();
+                                    batch.update(taskRef, "status", TaskStatus.NEURAĐEN.name());
+                                    tasksToUpdate.incrementAndGet();
+                                }
+                            }
+                        }
+
+                        if (tasksToUpdate.get() > 0) {
+                            batch.commit()
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Successfully deactivated " + tasksToUpdate.get() + " expired tasks.");
+                                        listener.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Greška pri masovnom ažuriranju neaktivnih zadataka.", e);
+                                        listener.onFailure(e);
+                                    });
+                        } else {
+                            Log.d(TAG, "Nema isteklih zadataka za deaktivaciju.");
+                            listener.onSuccess();
+                        }
+
+                    } else {
+                        Log.e(TAG, "Greška pri dohvatanju isteklih zadataka", task.getException());
+                        listener.onFailure(task.getException() != null ? task.getException() : new Exception("Unknown error fetching tasks."));
+                    }
                 });
     }
 }
