@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:gravity="center_horizontal"
     android:padding="16dp">
@@ -13,11 +14,10 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:background="#FFD54F"
+        android:background="#FFC107"
         android:visibility="gone"
         android:gravity="center_vertical"
-        android:layout_marginBottom="20dp"
-        android:layout_marginTop="20dp">
+        android:layout_marginBottom="16dp">
 
         <ImageView
             android:layout_width="24dp"
@@ -41,6 +41,41 @@
             android:src="@drawable/outline_arrow_right_alt_24"
             android:contentDescription="Go to invitations" />
     </LinearLayout>
+
+    <RelativeLayout
+        android:id="@+id/notificationsButtonContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginBottom="16dp">
+
+        <ImageButton
+            android:id="@+id/btnNotifications"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/outline_notifications_24"
+            app:tint="?attr/colorControlNormal"
+            android:contentDescription="Notifications"
+            android:scaleType="fitCenter"
+            android:padding="8dp"/>
+
+        <TextView
+            android:id="@+id/tvUnreadNotificationsCount"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_alignTop="@id/btnNotifications"
+            android:layout_alignEnd="@id/btnNotifications"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/badge_background"
+            android:gravity="center"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
+    </RelativeLayout>
 
     <TextView
         android:id="@+id/tvWelcomeMessage"

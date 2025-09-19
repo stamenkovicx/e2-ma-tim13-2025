@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
+import com.example.myapplication.domain.models.Notification;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
@@ -660,6 +661,59 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
 
                     return null;
                 }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void addNotification(Notification notification, OnCompleteListener<Void> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("notifications")
+                .add(notification)
+                .addOnSuccessListener(documentReference -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void getUnreadNotificationsCount(String userId, OnCompleteListener<Integer> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isRead", false)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    listener.onSuccess(queryDocumentSnapshots.size());
+                })
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void getAllNotifications(String userId, OnCompleteListener<List<Notification>> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Notification> notifications = new ArrayList<>();
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        Notification notification = doc.toObject(Notification.class);
+                        if (notification != null) {
+                            notification.setNotificationId(doc.getId());
+                            notifications.add(notification);
+                        }
+                    }
+                    listener.onSuccess(notifications);
+                })
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void markNotificationAsRead(String notificationId, OnCompleteListener<Void> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("notifications")
+                .document(notificationId)
+                .update("isRead", true)
+                .addOnSuccessListener(aVoid -> listener.onSuccess(null))
                 .addOnFailureListener(listener::onFailure);
     }
 }

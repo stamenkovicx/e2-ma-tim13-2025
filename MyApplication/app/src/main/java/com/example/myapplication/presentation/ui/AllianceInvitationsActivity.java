@@ -19,7 +19,9 @@ import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.AllianceInvitationsAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import com.example.myapplication.domain.models.Notification;
 
 public class AllianceInvitationsActivity extends AppCompatActivity {
 
@@ -93,24 +95,55 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
     }
 
     private void acceptInvitation(Alliance alliance) {
-        // 1. Prvo dohvatamo trenutnog korisnika da bismo provjerili njegov status
         userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
             @Override
             public void onSuccess(User currentUser) {
                 if (currentUser != null && currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
-                    // 2. Ako korisnik već ima allianceId, znači da je u savezu.
-                    // U ovom slučaju prikazujemo dijalog.
                     showSwitchAllianceDialog(currentUser, alliance);
                 } else {
-                    // 3. Ako korisnik nije u savezu, direktno prihvatamo poziv.
                     userRepository.acceptAllianceInvitation(currentUserId, alliance.getAllianceId(), new UserRepository.OnCompleteListener<Void>() {
                         @Override
                         public void onSuccess(Void aVoid) {
                             Toast.makeText(AllianceInvitationsActivity.this, "You have joined '" + alliance.getName() + "'!", Toast.LENGTH_SHORT).show();
-                            loadInvitations();
 
+                            // SLANJE NOTIFIKACIJE LIDERU:
+                            String leaderId = alliance.getLeaderId();
+                            userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+                                @Override
+                                public void onSuccess(User user) {
+                                    if (user != null) {
+                                        String notificationMessage = user.getUsername() + " has accepted your alliance invitation!";
+                                        Notification notification = new Notification(
+                                                leaderId,
+                                                "alliance_invitation_accepted",
+                                                notificationMessage,
+                                                false,
+                                                alliance.getAllianceId()
+                                        );
+                                        notification.setTimestamp(new Date());
+                                        userRepository.addNotification(notification, new UserRepository.OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                // Uspješno kreirano, ali nema povratne informacije.
+                                            }
+                                            @Override
+                                            public void onFailure(Exception e) {
+                                                // Dodata toast poruka
+                                                Toast.makeText(AllianceInvitationsActivity.this, "Failed to create notification: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                            }
+                                        });
+                                    }
+                                }
+                                @Override
+                                public void onFailure(Exception e) {
+                                    // Dodata toast poruka
+                                    Toast.makeText(AllianceInvitationsActivity.this, "Failed to get accepting user data for notification: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            });
+
+                            loadInvitations();
                             Intent intent = new Intent(AllianceInvitationsActivity.this, AllianceActivity.class);
-                            intent.putExtra("allianceId", currentUser.getAllianceId());
+                            intent.putExtra("allianceId", alliance.getAllianceId()); // Koristi ID novog saveza
                             startActivity(intent);
                         }
 
@@ -121,7 +154,6 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
                     });
                 }
             }
-
             @Override
             public void onFailure(Exception e) {
                 Toast.makeText(AllianceInvitationsActivity.this, "Error checking user status: " + e.getMessage(), Toast.LENGTH_LONG).show();

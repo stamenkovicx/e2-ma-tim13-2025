@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,6 +27,9 @@ public class HomeActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private String currentUserId;
     private TextView tvAllianceInvitationNotification;
+    private RelativeLayout notificationsButtonContainer;
+    private ImageButton btnNotifications;
+    private TextView tvUnreadNotificationsCount;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +49,9 @@ public class HomeActivity extends AppCompatActivity {
         btnViewFriends = findViewById(R.id.btnViewFriends);
         notificationContainer = findViewById(R.id.notificationContainer);
         tvAllianceInvitationNotification = findViewById(R.id.tvAllianceInvitationNotification);
+        notificationsButtonContainer = findViewById(R.id.notificationsButtonContainer);
+        btnNotifications = findViewById(R.id.btnNotifications);
+        tvUnreadNotificationsCount = findViewById(R.id.tvUnreadNotificationsCount);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -85,15 +92,39 @@ public class HomeActivity extends AppCompatActivity {
             Intent intent = new Intent(HomeActivity.this, AllianceInvitationsActivity.class);
             startActivity(intent);
         });
+        btnNotifications.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, NotificationsActivity.class);
+            startActivity(intent);
+        });
     }
     @Override
     protected void onResume() {
         super.onResume();
-        // Proverite notifikacije svaki put kada se aktivnost nastavi
-        checkForAllianceInvitations();
+        checkAndLoadAllianceInvitations();
+        updateUnreadNotificationsCount();
     }
 
-    private void checkForAllianceInvitations() {
+    private void updateUnreadNotificationsCount() {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        userRepository.getUnreadNotificationsCount(currentUserId, new UserRepository.OnCompleteListener<Integer>() {
+            @Override
+            public void onSuccess(Integer count) {
+                if (count > 0) {
+                    tvUnreadNotificationsCount.setText(String.valueOf(count));
+                    tvUnreadNotificationsCount.setVisibility(View.VISIBLE);
+                } else {
+                    tvUnreadNotificationsCount.setVisibility(View.GONE);
+                }
+            }
+            @Override
+            public void onFailure(Exception e) {
+                // Ako dođe do greške, sakrij brojač
+                tvUnreadNotificationsCount.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void checkAndLoadAllianceInvitations() {
         userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
             @Override
             public void onSuccess(User user) {
@@ -106,7 +137,7 @@ public class HomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Exception e) {
-                // Skrijte notifikaciju u slučaju greške
+                // Skrijt notifikaciju u slučaju greške
                 notificationContainer.setVisibility(View.GONE);
                 Toast.makeText(HomeActivity.this, "Error checking for alliance invitations.", Toast.LENGTH_SHORT).show();
             }
