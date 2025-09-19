@@ -1,5 +1,6 @@
 package com.example.myapplication.presentation.ui;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -90,16 +91,63 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
     }
 
     private void acceptInvitation(Alliance alliance) {
-        userRepository.acceptAllianceInvitation(currentUserId, alliance.getAllianceId(), new UserRepository.OnCompleteListener<Void>() {
+        // 1. Prvo dohvatamo trenutnog korisnika da bismo provjerili njegov status
+        userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User currentUser) {
+                if (currentUser != null && currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+                    // 2. Ako korisnik već ima allianceId, znači da je u savezu.
+                    // U ovom slučaju prikazujemo dijalog.
+                    showSwitchAllianceDialog(currentUser, alliance);
+                } else {
+                    // 3. Ako korisnik nije u savezu, direktno prihvatamo poziv.
+                    userRepository.acceptAllianceInvitation(currentUserId, alliance.getAllianceId(), new UserRepository.OnCompleteListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            Toast.makeText(AllianceInvitationsActivity.this, "You have joined '" + alliance.getName() + "'!", Toast.LENGTH_SHORT).show();
+                            loadInvitations();
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(AllianceInvitationsActivity.this, "Failed to accept invitation: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(AllianceInvitationsActivity.this, "Error checking user status: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showSwitchAllianceDialog(User currentUser, Alliance newAlliance) {
+        new AlertDialog.Builder(this)
+                .setTitle("Switch Alliance?")
+                .setMessage("You are already in an alliance. Joining '" + newAlliance.getName() + "' will make you leave your current alliance. Do you want to proceed?")
+                .setPositiveButton("Proceed", (dialog, which) -> {
+                    // Pozivamo metodu za prelazak na novi savez
+                    switchAlliance(currentUser, newAlliance);
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    dialog.dismiss();
+                })
+                .show();
+    }
+
+    private void switchAlliance(User currentUser, Alliance newAlliance) {
+        userRepository.switchAlliance(currentUser.getUserId(), currentUser.getAllianceId(), newAlliance.getAllianceId(), new UserRepository.OnCompleteListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
-                Toast.makeText(AllianceInvitationsActivity.this, "You have joined '" + alliance.getName() + "'!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(AllianceInvitationsActivity.this, "You have successfully switched to '" + newAlliance.getName() + "'!", Toast.LENGTH_SHORT).show();
                 loadInvitations();
             }
 
             @Override
             public void onFailure(Exception e) {
-                Toast.makeText(AllianceInvitationsActivity.this, "Failed to accept invitation: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(AllianceInvitationsActivity.this, "Failed to switch alliance: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

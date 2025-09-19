@@ -26,4 +26,7 @@ public interface UserRepository {
     void getAlliancesByIds(List<String> allianceIds, OnCompleteListener<List<Alliance>> onCompleteListener);
     void acceptAllianceInvitation(String currentUserId, String allianceId, OnCompleteListener<Void> listener);
     void rejectAllianceInvitation(String currentUserId, String allianceId, OnCompleteListener<Void> listener);
+    public void switchAlliance(String userId, String oldAllianceId, String newAllianceId, OnCompleteListener<Void> listener);
+    public void getAllianceById(String allianceId, OnCompleteListener<Alliance> listener);
+
 }
