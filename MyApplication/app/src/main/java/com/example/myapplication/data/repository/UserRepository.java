@@ -28,5 +28,6 @@ public interface UserRepository {
     void rejectAllianceInvitation(String currentUserId, String allianceId, OnCompleteListener<Void> listener);
     public void switchAlliance(String userId, String oldAllianceId, String newAllianceId, OnCompleteListener<Void> listener);
     public void getAllianceById(String allianceId, OnCompleteListener<Alliance> listener);
-
+    public void leaveAlliance(String userId, String allianceId, OnCompleteListener<Void> listener);
+    public void disbandAlliance(String allianceId, OnCompleteListener<Void> listener);
 }

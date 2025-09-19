@@ -49,7 +49,8 @@
         android:text="@string/welcome_message"  android:textSize="24sp"
         android:textStyle="bold"
         android:textColor="@color/text_color_primary"
-        android:layout_marginBottom="32dp"/>
+        android:layout_marginBottom="32dp"
+        android:layout_marginTop="32dp"/>
 
     <Button
         android:id="@+id/btnProfile"

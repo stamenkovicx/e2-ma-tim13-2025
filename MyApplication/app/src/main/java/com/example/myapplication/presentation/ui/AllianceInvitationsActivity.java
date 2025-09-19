@@ -2,6 +2,8 @@ package com.example.myapplication.presentation.ui;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -106,6 +108,10 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
                         public void onSuccess(Void aVoid) {
                             Toast.makeText(AllianceInvitationsActivity.this, "You have joined '" + alliance.getName() + "'!", Toast.LENGTH_SHORT).show();
                             loadInvitations();
+
+                            Intent intent = new Intent(AllianceInvitationsActivity.this, AllianceActivity.class);
+                            intent.putExtra("allianceId", currentUser.getAllianceId());
+                            startActivity(intent);
                         }
 
                         @Override
@@ -143,6 +149,10 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
             public void onSuccess(Void aVoid) {
                 Toast.makeText(AllianceInvitationsActivity.this, "You have successfully switched to '" + newAlliance.getName() + "'!", Toast.LENGTH_SHORT).show();
                 loadInvitations();
+
+                Intent intent = new Intent(AllianceInvitationsActivity.this, AllianceActivity.class);
+                intent.putExtra("allianceId", currentUser.getAllianceId());
+                startActivity(intent);
             }
 
             @Override

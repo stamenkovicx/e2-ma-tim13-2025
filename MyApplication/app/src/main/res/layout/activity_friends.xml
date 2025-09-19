@@ -14,7 +14,7 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="32dp"
         android:layout_marginTop="16dp"/>
 
     <LinearLayout
@@ -69,7 +69,7 @@
 
         <Button
             android:id="@+id/btnCreateAlliance"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
@@ -78,19 +78,11 @@
 
         <Button
             android:id="@+id/btnMyAlliance"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="My Alliance" />
-
-        <Button
-            android:id="@+id/btnInvitations"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Alliance Invitations" />
 
     </LinearLayout>
 
@@ -107,6 +99,7 @@
         android:id="@+id/friendsRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="32dp"
         android:layout_weight="1" />
 
 

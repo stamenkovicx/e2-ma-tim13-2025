@@ -579,4 +579,87 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 })
                 .addOnFailureListener(e -> listener.onFailure(e));
     }
+
+    @Override
+    public void leaveAlliance(String userId, String allianceId, OnCompleteListener<Void> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference userRef = db.collection("users").document(userId);
+        DocumentReference allianceRef = db.collection("alliances").document(allianceId);
+
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot userSnapshot = transaction.get(userRef);
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+
+                    if (!userSnapshot.exists() || !allianceSnapshot.exists()) {
+                        throw new FirebaseFirestoreException("User or Alliance document not found!", FirebaseFirestoreException.Code.NOT_FOUND);
+                    }
+
+                    // 1. Ukloni korisnika iz liste članova saveza
+                    List<String> memberIds = (List<String>) allianceSnapshot.get("memberIds");
+                    if (memberIds != null) {
+                        memberIds.remove(userId);
+                        transaction.update(allianceRef, "memberIds", memberIds);
+                    }
+
+                    // 2. Ažuriraj korisnikov allianceId na null
+                    transaction.update(userRef, "allianceId", null);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void disbandAlliance(String allianceId, OnCompleteListener<Void> listener) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference allianceRef = db.collection("alliances").document(allianceId);
+
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+
+                    if (!allianceSnapshot.exists()) {
+                        throw new FirebaseFirestoreException("Alliance not found!", FirebaseFirestoreException.Code.NOT_FOUND);
+                    }
+
+                    List<String> memberIds = (List<String>) allianceSnapshot.get("memberIds");
+                    String leaderId = (String) allianceSnapshot.get("leaderId");
+                    List<String> pendingInvitations = (List<String>) allianceSnapshot.get("pendingInvitations");
+
+                    // 1. Ažuriraj korisnike koji su bili u savezu
+                    if (memberIds != null) {
+                        for (String memberId : memberIds) {
+                            DocumentReference userRef = db.collection("users").document(memberId);
+                            transaction.update(userRef, "allianceId", null);
+                        }
+                    }
+
+                    // 2. Obriši poslate pozive vođe saveza
+                    if (leaderId != null) {
+                        DocumentReference leaderRef = db.collection("users").document(leaderId);
+                        transaction.update(leaderRef, "allianceInvitationsSent", new ArrayList<>());
+                    }
+
+                    // 3. Obriši primljene pozive kod korisnika koji su bili pozvani
+                    if (pendingInvitations != null) {
+                        for (String invitedUserId : pendingInvitations) {
+                            DocumentReference invitedUserRef = db.collection("users").document(invitedUserId);
+                            DocumentSnapshot invitedUserSnapshot = transaction.get(invitedUserRef);
+
+                            if (invitedUserSnapshot.exists()) {
+                                List<String> receivedInvitations = (List<String>) invitedUserSnapshot.get("allianceInvitationsReceived");
+                                if (receivedInvitations != null) {
+                                    receivedInvitations.remove(allianceId);
+                                    transaction.update(invitedUserRef, "allianceInvitationsReceived", receivedInvitations);
+                                }
+                            }
+                        }
+                    }
+
+                    // 4. Obriši sam dokument saveza
+                    transaction.delete(allianceRef);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
 }

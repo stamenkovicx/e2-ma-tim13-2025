@@ -35,7 +35,7 @@ public class FriendsActivity extends AppCompatActivity {
     private FriendsAdapter friendsAdapter;
     private TextView tvNoFriends;
     private LinearLayout btnSearchUsers;
-    private Button btnScanQrCode, btnCreateAlliance, btnMyAlliance, btnInvitations;
+    private Button btnScanQrCode, btnCreateAlliance, btnMyAlliance;
 
     private UserRepository userRepository;
     private String currentUserId;
@@ -53,7 +53,6 @@ public class FriendsActivity extends AppCompatActivity {
         btnScanQrCode = findViewById(R.id.btnScanQrCode);
         btnCreateAlliance = findViewById(R.id.btnCreateAlliance);
         btnMyAlliance = findViewById(R.id.btnMyAlliance);
-        btnInvitations = findViewById(R.id.btnInvitations);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -108,8 +107,9 @@ public class FriendsActivity extends AppCompatActivity {
             showCreateAllianceDialog();
         });
 
-        btnInvitations.setOnClickListener(v-> {
-            Intent intent = new Intent(FriendsActivity.this, AllianceInvitationsActivity.class);
+        btnMyAlliance.setOnClickListener(v -> {
+            Intent intent = new Intent(FriendsActivity.this, AllianceActivity.class);
+            intent.putExtra("allianceId", currentUser.getAllianceId());
             startActivity(intent);
         });
     }
@@ -299,7 +299,10 @@ public class FriendsActivity extends AppCompatActivity {
                                         btnCreateAlliance.setVisibility(View.GONE);
                                         btnMyAlliance.setVisibility(View.VISIBLE);
                                         loadFriends();
-                                        // TODO Prebaciti korisnika na stranicu saveza
+
+                                        Intent intent = new Intent(FriendsActivity.this, AllianceActivity.class);
+                                        intent.putExtra("allianceId", currentUser.getAllianceId());
+                                        startActivity(intent);
                                     }
 
                                     @Override
