@@ -58,7 +58,7 @@ public class FriendsActivity extends AppCompatActivity {
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
         friendsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        friendsAdapter = new FriendsAdapter(new ArrayList<>(), null, friend -> sendAllianceInvitation(friend));
+        friendsAdapter = new FriendsAdapter(new ArrayList<>(), null, friend -> sendAllianceInvitation(friend), null);
         friendsRecyclerView.setAdapter(friendsAdapter);
 
 
@@ -99,13 +99,18 @@ public class FriendsActivity extends AppCompatActivity {
         });
 
         btnScanQrCode.setOnClickListener(v -> {
-            // Pokretanje vaše QRScannerActivity
             Intent intent = new Intent(FriendsActivity.this, QRScannerActivity.class);
             qrCodeScannerLauncher.launch(intent);
         });
 
         btnCreateAlliance.setOnClickListener(v -> {
             showCreateAllianceDialog();
+        });
+
+        btnMyAlliance.setOnClickListener(v -> {
+            Intent intent = new Intent(FriendsActivity.this, AllianceActivity.class);
+            intent.putExtra("allianceId", currentUser.getAllianceId());
+            startActivity(intent);
         });
     }
 
@@ -122,40 +127,18 @@ public class FriendsActivity extends AppCompatActivity {
                 if (user != null) {
                     currentUser = user;
 
-                    friendsAdapter.setCurrentUser(currentUser);
-
+                    // Provjera da li korisnik ima prijatelje
                     if (currentUser.getFriends() != null && !currentUser.getFriends().isEmpty()) {
                         tvNoFriends.setVisibility(View.GONE);
                         friendsRecyclerView.setVisibility(View.VISIBLE);
 
-                        userRepository.getUsersByIds(currentUser.getFriends(), new UserRepository.OnCompleteListener<List<User>>() {
-                            @Override
-                            public void onSuccess(List<User> friends) {
-                                friendsAdapter.setFriends(friends);
-                                if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
-                                    btnCreateAlliance.setVisibility(View.GONE);
-                                    btnMyAlliance.setVisibility(View.VISIBLE);
-                                } else {
-                                    btnCreateAlliance.setVisibility(View.VISIBLE);
-                                    btnMyAlliance.setVisibility(View.GONE);
-                                }
-                            }
+                        // Dohvati saveze
+                        checkAndLoadAlliance();
 
-                            @Override
-                            public void onFailure(Exception e) {
-                                Toast.makeText(FriendsActivity.this, "Error loading friends.", Toast.LENGTH_SHORT).show();
-                            }
-                        });
                     } else {
                         tvNoFriends.setVisibility(View.VISIBLE);
                         friendsRecyclerView.setVisibility(View.GONE);
-                        if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
-                            btnCreateAlliance.setVisibility(View.GONE);
-                            btnMyAlliance.setVisibility(View.VISIBLE);
-                        } else {
-                            btnCreateAlliance.setVisibility(View.VISIBLE);
-                            btnMyAlliance.setVisibility(View.GONE);
-                        }
+                        checkAndLoadAlliance();
                     }
                 } else {
                     Toast.makeText(FriendsActivity.this, "Error loading user data.", Toast.LENGTH_SHORT).show();
@@ -164,6 +147,55 @@ public class FriendsActivity extends AppCompatActivity {
             @Override
             public void onFailure(Exception e) {
                 Toast.makeText(FriendsActivity.this, "Error loading user data.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void checkAndLoadAlliance() {
+        if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+            userRepository.getAllianceById(currentUser.getAllianceId(), new UserRepository.OnCompleteListener<Alliance>() {
+                @Override
+                public void onSuccess(Alliance alliance) {
+                    // Postavi vidljivost dugmadi i učitaj prijatelje s podacima o savezu
+                    btnCreateAlliance.setVisibility(View.GONE);
+                    btnMyAlliance.setVisibility(View.VISIBLE);
+                    loadFriendsListWithAlliance(alliance);
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(FriendsActivity.this, "Error loading alliance data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    // Ako saveza nema (npr. obrisan je), nastavi bez njega
+                    loadFriendsListWithAlliance(null);
+                }
+            });
+        } else {
+            // Korisnik nije u savezu
+            btnCreateAlliance.setVisibility(View.VISIBLE);
+            btnMyAlliance.setVisibility(View.GONE);
+            loadFriendsListWithAlliance(null);
+        }
+    }
+
+    private void loadFriendsListWithAlliance(Alliance currentAlliance) {
+        if (currentUser.getFriends() == null || currentUser.getFriends().isEmpty()) {
+            friendsAdapter.setFriends(new ArrayList<>());
+            friendsAdapter.setCurrentUser(currentUser);
+            friendsAdapter.setCurrentAlliance(currentAlliance);
+            return;
+        }
+
+        userRepository.getUsersByIds(currentUser.getFriends(), new UserRepository.OnCompleteListener<List<User>>() {
+            @Override
+            public void onSuccess(List<User> friends) {
+                friendsAdapter.setFriends(friends);
+                friendsAdapter.setCurrentUser(currentUser);
+                friendsAdapter.setCurrentAlliance(currentAlliance);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(FriendsActivity.this, "Error loading friends.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -267,7 +299,10 @@ public class FriendsActivity extends AppCompatActivity {
                                         btnCreateAlliance.setVisibility(View.GONE);
                                         btnMyAlliance.setVisibility(View.VISIBLE);
                                         loadFriends();
-                                        // TODO Prebaciti korisnika na stranicu saveza
+
+                                        Intent intent = new Intent(FriendsActivity.this, AllianceActivity.class);
+                                        intent.putExtra("allianceId", currentUser.getAllianceId());
+                                        startActivity(intent);
                                     }
 
                                     @Override

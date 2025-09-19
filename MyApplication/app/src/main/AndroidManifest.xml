@@ -12,6 +12,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
+            android:name=".presentation.ui.NotificationsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".presentation.ui.AllianceActivity"
+            android:exported="false" />
+        <activity
+            android:name=".presentation.ui.AllianceInvitationsActivity"
+            android:exported="false" />
+        <activity
             android:name=".presentation.ui.FriendsActivity"
             android:exported="false" />
         <activity
@@ -51,9 +60,9 @@
             android:name=".presentation.ui.SearchUsersActivity"
             android:exported="true" />
         <activity android:name=".presentation.ui.UserProfileActivity" />
-        <activity android:name=".presentation.ui.QRScannerActivity"
+        <activity
+            android:name=".presentation.ui.QRScannerActivity"
             android:exported="true" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true">

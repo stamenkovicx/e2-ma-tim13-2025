@@ -242,8 +242,14 @@ public class TaskDetailsActivity extends AppCompatActivity {
                                 @Override
                                 public void onSuccess(User user) {
                                     if (user != null) {
+                                        int totalXpGained;
                                         int previousLevel = user.getLevel();
-                                        int totalXpGained = task.getXpValue(); // Vrednost može biti 0 zbog kvote
+                                        if(task.getXpValue() != 0) // Vrednost može biti 0 zbog kvote
+                                            totalXpGained = LevelingSystemHelper.calculateFinalXp(task.getImportanceType(), task.getDifficultyType(), previousLevel);
+                                        else {
+                                            totalXpGained = 0;
+                                        }
+
                                         user.setXp(user.getXp() + totalXpGained);
 
                                         while (true) {

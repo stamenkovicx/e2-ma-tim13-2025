@@ -12,25 +12,29 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
+import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.UserProfileActivity;
 
 import java.util.List;
+import java.util.Objects;
 
 public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendViewHolder> {
 
     private List<User> friends;
     private User currentUser;
+    private Alliance currentAlliance;
     private OnInviteClickListener listener;
 
     public interface OnInviteClickListener {
         void onInviteClick(User friend);
     }
 
-    public FriendsAdapter(List<User> friends, User currentUser, OnInviteClickListener listener) {
+    public FriendsAdapter(List<User> friends, User currentUser, OnInviteClickListener listener, Alliance currentAlliance) {
         this.friends = friends;
         this.currentUser = currentUser;
         this.listener = listener;
+        this.currentAlliance = currentAlliance;
     }
     public void setFriends(List<User> friends) {
         this.friends = friends;
@@ -48,22 +52,22 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendVi
     public void onBindViewHolder(@NonNull FriendViewHolder holder, int position) {
         User friend = friends.get(position);
         holder.bind(friend);
-       // holder.tvFriendUsername.setText(friend.getUsername());
 
-        // Logika za prikazivanje/skrivanje dugmeta "Invite to Alliance"
-        if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty() &&
-                (friend.getAllianceId() == null || friend.getAllianceId().isEmpty())) {
+        // Provjeri da li je trenutni korisnik lider saveza
+        boolean isCurrentUserLeader = currentAlliance != null && currentUser != null && currentAlliance.getLeaderId().equals(currentUser.getUserId());
 
-            // Provera da li je poziv već poslat
+        // Provjeri da li je dugme 'Invite to Alliance' vidljivo
+        boolean isInviteButtonVisible = isCurrentUserLeader && friend.getAllianceId() != currentAlliance.getAllianceId();
+
+        if (isInviteButtonVisible) {
+            holder.btnInviteFriend.setVisibility(View.VISIBLE);
+            // Logika za 'Invitation Sent'
             if (currentUser.getAllianceInvitationsSent() != null && currentUser.getAllianceInvitationsSent().contains(friend.getUserId())) {
                 holder.btnInviteFriend.setText("Invitation Sent");
                 holder.btnInviteFriend.setEnabled(false);
-                holder.btnInviteFriend.setVisibility(View.VISIBLE);
             } else {
                 holder.btnInviteFriend.setText("Invite to Alliance");
                 holder.btnInviteFriend.setEnabled(true);
-                holder.btnInviteFriend.setVisibility(View.VISIBLE);
-
                 holder.btnInviteFriend.setOnClickListener(v -> {
                     if (listener != null) {
                         listener.onInviteClick(friend);
@@ -82,6 +86,11 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendVi
 
     public void setCurrentUser(User currentUser) {
         this.currentUser = currentUser;
+    }
+
+    public void setCurrentAlliance(Alliance currentAlliance) {
+        this.currentAlliance = currentAlliance;
+        notifyDataSetChanged();
     }
 
     class FriendViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {

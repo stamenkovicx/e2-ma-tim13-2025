@@ -14,34 +14,49 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="32dp"
+        android:layout_marginTop="16dp"/>
 
     <LinearLayout
-        android:id="@+id/btnSearchUsers"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_gravity="center_horizontal"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="8dp"
-        android:layout_margin="16dp">
+        android:gravity="center_horizontal">
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/btnSearchUsers"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Find new friends"
-            android:textSize="18sp"
-            android:textColor="@color/text_color_primary"
-            android:layout_marginEnd="8dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_gravity="center_horizontal"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp">
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/ic_menu_search"
-            android:contentDescription="@string/search_button_description"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Find new friends"
+                android:textSize="18sp"
+                android:textColor="@color/text_color_primary"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@android:drawable/ic_menu_search"
+                android:contentDescription="@string/search_button_description"/>
+        </LinearLayout>
+    <Button
+        android:id="@+id/btnScanQrCode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="Add Friend via QR"
+        style="?attr/materialButtonOutlinedStyle" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -53,15 +68,8 @@
         android:gravity="center">
 
         <Button
-            android:id="@+id/btnScanQrCode"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Scan QR Code" />
-
-        <Button
             android:id="@+id/btnCreateAlliance"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
@@ -70,11 +78,12 @@
 
         <Button
             android:id="@+id/btnMyAlliance"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="My Alliance" />
+
     </LinearLayout>
 
     <TextView
@@ -90,6 +99,7 @@
         android:id="@+id/friendsRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="32dp"
         android:layout_weight="1" />
 
 
