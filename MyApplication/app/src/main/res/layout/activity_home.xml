@@ -4,8 +4,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
+    android:gravity="center_horizontal"
     android:padding="16dp">
+
+    <LinearLayout
+        android:id="@+id/notificationContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="#FFD54F"
+        android:visibility="gone"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="20dp"
+        android:layout_marginTop="20dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/outline_notifications_active_24"
+            android:contentDescription="Notification Icon" />
+
+        <TextView
+            android:id="@+id/tvAllianceInvitationNotification"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="You have new alliance invitations!"
+            android:textColor="@android:color/black"
+            android:textStyle="bold"/>
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/outline_arrow_right_alt_24"
+            android:contentDescription="Go to invitations" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvWelcomeMessage"

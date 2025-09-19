@@ -9,13 +9,18 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
+import com.example.myapplication.domain.models.User;
+
 import java.util.List;
 
 public class AllianceInvitationsAdapter extends RecyclerView.Adapter<AllianceInvitationsAdapter.InvitationViewHolder> {
 
     private List<Alliance> invitations;
     private OnInvitationActionListener listener;
+    private UserRepository userRepository;
 
     public interface OnInvitationActionListener {
         void onAccept(Alliance alliance);
@@ -25,6 +30,7 @@ public class AllianceInvitationsAdapter extends RecyclerView.Adapter<AllianceInv
     public AllianceInvitationsAdapter(List<Alliance> invitations, OnInvitationActionListener listener) {
         this.invitations = invitations;
         this.listener = listener;
+        this.userRepository = new UserRepositoryFirebaseImpl();
     }
 
     public void setInvitations(List<Alliance> invitations) {
@@ -43,6 +49,22 @@ public class AllianceInvitationsAdapter extends RecyclerView.Adapter<AllianceInv
     public void onBindViewHolder(@NonNull InvitationViewHolder holder, int position) {
         Alliance alliance = invitations.get(position);
         holder.tvAllianceName.setText(alliance.getName());
+
+        userRepository.getUserById(alliance.getLeaderId(), new UserRepository.OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User leader) {
+                if (leader != null) {
+                    holder.tvAllianceLeader.setText("From: " + leader.getUsername());
+                } else {
+                    holder.tvAllianceLeader.setText("From: Unknown User");
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                holder.tvAllianceLeader.setText("From: Error loading user");
+            }
+        });
 
         // Postavljanje listenera za dugmad
         holder.btnAccept.setOnClickListener(v -> {
@@ -64,7 +86,7 @@ public class AllianceInvitationsAdapter extends RecyclerView.Adapter<AllianceInv
     }
 
     static class InvitationViewHolder extends RecyclerView.ViewHolder {
-        TextView tvAllianceName;
+        TextView tvAllianceName, tvAllianceLeader;
         Button btnAccept;
         Button btnReject;
 
@@ -73,6 +95,7 @@ public class AllianceInvitationsAdapter extends RecyclerView.Adapter<AllianceInv
             tvAllianceName = itemView.findViewById(R.id.tvAllianceName);
             btnAccept = itemView.findViewById(R.id.btnAcceptInvitation);
             btnReject = itemView.findViewById(R.id.btnRejectInvitation);
+            tvAllianceLeader = itemView.findViewById(R.id.tvAllianceLeader);
         }
     }
 }
