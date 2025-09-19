@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".presentation.ui.ChatActivity">
@@ -38,7 +39,9 @@
             android:inputType="textMultiLine"
             android:maxLines="5"
             android:padding="12dp"
-            android:background="@drawable/message_input_background"/>
+            android:background="@drawable/message_input_background"
+            android:textColor="#000000"
+            android:textColorHint="#777777"/>
 
         <ImageButton
             android:id="@+id/sendButton"

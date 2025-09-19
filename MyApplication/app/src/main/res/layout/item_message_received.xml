@@ -15,15 +15,29 @@
         android:layout_marginBottom="4dp"
         android:text="Username"/>
 
-    <TextView
-        android:id="@+id/messageTextView"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:background="@drawable/message_bubble_received"
-        android:padding="12dp"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
-        android:maxWidth="250dp"
-        android:text="This is a message received from another user." />
+        android:padding="12dp">
 
+        <TextView
+            android:id="@+id/messageTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/black"
+            android:textSize="16sp"
+            android:maxWidth="250dp"
+            android:text="This is a message received from another user." />
+
+        <TextView
+            android:id="@+id/timestampTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginTop="4dp"
+            android:text="10:00 AM" />
+    </LinearLayout>
 </LinearLayout>
