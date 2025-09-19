@@ -4,6 +4,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -26,7 +28,7 @@ public class AllianceActivity extends AppCompatActivity {
 
     private TextView tvAllianceName, tvAllianceLeader;
     private RecyclerView membersRecyclerView;
-    private Button btnLeaveAlliance, btnDisbandAlliance;
+    private Button btnLeaveAlliance, btnDisbandAlliance, btnOpenChat; ;
     private UserRepository userRepository;
     private String currentUserId;
     private String allianceId;
@@ -42,6 +44,7 @@ public class AllianceActivity extends AppCompatActivity {
         membersRecyclerView = findViewById(R.id.membersRecyclerView);
         btnLeaveAlliance = findViewById(R.id.btnLeaveAlliance);
         btnDisbandAlliance = findViewById(R.id.btnDisbandAlliance);
+        btnOpenChat = findViewById(R.id.btnOpenChat);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
@@ -55,8 +58,13 @@ public class AllianceActivity extends AppCompatActivity {
 
         btnLeaveAlliance.setOnClickListener(v -> leaveAlliance());
         btnDisbandAlliance.setOnClickListener(v -> disbandAlliance());
+        btnOpenChat.setOnClickListener(v -> openChat());
     }
-
+    private void openChat() {
+        Intent intent = new Intent(this, ChatActivity.class);
+        intent.putExtra("allianceId", allianceId);
+        startActivity(intent);
+    }
     private void loadAllianceDetails() {
         if (allianceId == null || allianceId.isEmpty()) {
             Toast.makeText(this, "Alliance not found.", Toast.LENGTH_SHORT).show();

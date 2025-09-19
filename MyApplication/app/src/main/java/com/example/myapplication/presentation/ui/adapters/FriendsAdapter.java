@@ -57,7 +57,7 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendVi
         boolean isCurrentUserLeader = currentAlliance != null && currentUser != null && currentAlliance.getLeaderId().equals(currentUser.getUserId());
 
         // Provjeri da li je dugme 'Invite to Alliance' vidljivo
-        boolean isInviteButtonVisible = isCurrentUserLeader && friend.getAllianceId() != currentAlliance.getAllianceId();
+        boolean isInviteButtonVisible = isCurrentUserLeader && !Objects.equals(friend.getAllianceId(), currentAlliance.getAllianceId());
 
         if (isInviteButtonVisible) {
             holder.btnInviteFriend.setVisibility(View.VISIBLE);

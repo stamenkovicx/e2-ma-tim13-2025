@@ -57,4 +57,12 @@
         android:layout_marginTop="16dp"
         android:visibility="gone"/>
 
+    <Button
+        android:id="@+id/btnOpenChat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Alliance Chat"
+        android:layout_marginTop="16dp"
+        style="?attr/materialButtonOutlinedStyle"/>
+
 </LinearLayout>
