@@ -67,6 +67,10 @@
             android:name=".presentation.ui.QRScannerActivity"
             android:exported="true" />
         <activity
+            android:name=".presentation.ui.BossFightActivity"
+            android:exported="false"
+            android:label="Boss Fight" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

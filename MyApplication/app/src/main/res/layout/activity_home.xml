@@ -136,6 +136,12 @@
         android:text="Manage Categories"
         android:padding="12dp"
         android:layout_marginBottom="16dp"/>
+    <Button
+        android:id="@+id/bossButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Borba sa Bosom"
+        android:layout_marginTop="16dp"/>
 
     <Button
         android:id="@+id/btnLogout"
