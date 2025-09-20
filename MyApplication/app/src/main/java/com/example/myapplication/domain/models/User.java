@@ -177,6 +177,8 @@ public class User {
     public void setPowerPoints(int powerPoints) {
         this.powerPoints = powerPoints;
     }
+
+    //racuna ukupan broj poena PP
     @Exclude
     public int getTotalPowerPoints() {
         int totalPower = this.powerPoints;

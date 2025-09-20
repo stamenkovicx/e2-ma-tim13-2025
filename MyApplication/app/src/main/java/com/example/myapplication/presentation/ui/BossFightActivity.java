@@ -12,6 +12,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Boss;
 
 import java.util.Random;
@@ -19,22 +21,29 @@ import java.util.Random;
 public class BossFightActivity extends AppCompatActivity {
 
     private Boss boss;
-    private ProgressBar bossHpBar;
-    private TextView bossHpText, attemptsText, successChanceText;
+    private ProgressBar bossHpBar,userPPBar;
+    private TextView bossHpText, attemptsText, successChanceText,userPPText;
     private Button attackButton;
     private AnimationDrawable bossAnimation;
     private ImageView bossImage;
 
     private int attemptsLeft = 5;
-    private int userPP = 50; // primer, ovo ćeš kasnije vući iz User klase
+    private int userPP = 0; // sada će se učitati iz baze
     private int userSuccessChance = 70; // npr. 70% šanse da pogodi
+    private com.example.myapplication.domain.models.User currentUser;
+
 
     private Random random = new Random();
+    private UserRepository userRepository; // tvoja implementacija
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_boss_fight);
+
+        // inicijalizacija repozitorijuma sa konkretnom implementacijom
+        userRepository = new UserRepositoryFirebaseImpl();
+
 
         // inicijalizacija bosa (level 1, nema prethodnog HP-a)
         boss = new Boss(1, 0);
@@ -45,6 +54,10 @@ public class BossFightActivity extends AppCompatActivity {
         successChanceText = findViewById(R.id.successChanceText);
         attackButton = findViewById(R.id.attackButton);
         bossImage = findViewById(R.id.bossImage);
+        userPPBar = findViewById(R.id.userPPBar);
+        userPPText = findViewById(R.id.userPPText);
+
+        attackButton.setEnabled(false); // dok se ne učita user
 
         // postavljanje idle animacije
         bossImage.setImageResource(R.drawable.boss_idle_animation);
@@ -59,6 +72,8 @@ public class BossFightActivity extends AppCompatActivity {
         bossHpBar.setProgress(boss.getHp());
 
         updateUI();
+
+        loadCurrentUser();
 
         attackButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -127,6 +142,42 @@ public class BossFightActivity extends AppCompatActivity {
             bossImage.postDelayed(this::startIdleAnimation, totalDuration);
         });
     }
+    // metoda za učitavanje PP bodova iz baze
+    private void loadCurrentUser() {
+        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+            String currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<com.example.myapplication.domain.models.User>() {
+                @Override
+                public void onSuccess(com.example.myapplication.domain.models.User user) {
+                    if (user != null) {
+                        currentUser = user;
+                        userPP = currentUser.getPowerPoints(); // učitaj PP iz usera
+                        int maxPP = currentUser.getTotalPowerPoints(); // ili koliko god korisnik može maksimalno imati
+                        userPPBar.setMax(maxPP);
+                        userPPBar.setProgress(userPP); // stvarni PP iz baze
+                        userPPText.setText("PP: " + userPP + "/"+maxPP); // samo tvoj broj iz baze
+
+                        attackButton.setEnabled(true); // sada korisnik može napadati
+                        Toast.makeText(BossFightActivity.this, "Korisnik učitan, PP: " + userPP, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(BossFightActivity.this, "Korisnik nije pronađen", Toast.LENGTH_SHORT).show();
+                        userPP = 0;
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(BossFightActivity.this, "Greška pri učitavanju korisnika", Toast.LENGTH_SHORT).show();
+                    userPP = 0;
+                }
+            });
+        } else {
+            Toast.makeText(this, "Nije prijavljen nijedan korisnik", Toast.LENGTH_SHORT).show();
+            userPP = 0;
+        }
+    }
+
 
 
 }
