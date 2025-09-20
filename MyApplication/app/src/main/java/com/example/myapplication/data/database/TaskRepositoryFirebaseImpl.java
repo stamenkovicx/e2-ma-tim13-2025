@@ -643,4 +643,29 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                     }
                 });
     }
+    public void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener) {
+        String quotaKey = getQuotaKey(task);
+        String quotaId = getQuotaId(task);
+
+        DocumentReference quotaRef = db.collection(USERS_COLLECTION)
+                .document(userId)
+                .collection(QUOTAS_COLLECTION)
+                .document(quotaId);
+
+        quotaRef.get()
+                .addOnSuccessListener(quotaSnapshot -> {
+                    long completedCount = 0;
+                    if (quotaSnapshot.exists()) {
+                        completedCount = quotaSnapshot.getLong(quotaKey) != null ? quotaSnapshot.getLong(quotaKey) : 0;
+                        Timestamp lastUpdated = quotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
+                        if (isQuotaExpired(lastUpdated, task)) {
+                            completedCount = 0;
+                        }
+                    }
+                    boolean overQuota = completedCount >= getQuotaLimit(task);
+                    listener.onResult(overQuota);
+                })
+                .addOnFailureListener(listener::onFailure);
+    }
+
 }

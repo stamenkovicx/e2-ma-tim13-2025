@@ -12,11 +12,19 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Boss;
+import com.example.myapplication.domain.models.Task;
+import com.example.myapplication.domain.models.TaskStatus;
+import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentReference;
 
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BossFightActivity extends AppCompatActivity {
 
@@ -29,12 +37,13 @@ public class BossFightActivity extends AppCompatActivity {
 
     private int attemptsLeft = 5;
     private int userPP = 0; // sada će se učitati iz baze
-    private int userSuccessChance = 70; // npr. 70% šanse da pogodi
+    private int userSuccessChance = 2; //svakako ce promeniti vrednost uzece da gleda iz zads
     private com.example.myapplication.domain.models.User currentUser;
 
 
     private Random random = new Random();
-    private UserRepository userRepository; // tvoja implementacija
+    private UserRepository userRepository;
+    private TaskRepository taskRepository;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +52,7 @@ public class BossFightActivity extends AppCompatActivity {
 
         // inicijalizacija repozitorijuma sa konkretnom implementacijom
         userRepository = new UserRepositoryFirebaseImpl();
-
+        taskRepository = new TaskRepositoryFirebaseImpl();
 
         // inicijalizacija bosa (level 1, nema prethodnog HP-a)
         boss = new Boss(1, 0);
@@ -160,6 +169,7 @@ public class BossFightActivity extends AppCompatActivity {
 
                         attackButton.setEnabled(true); // sada korisnik može napadati
                         Toast.makeText(BossFightActivity.this, "Korisnik učitan, PP: " + userPP, Toast.LENGTH_SHORT).show();
+                        loadUserSuccessChance(currentUser.getUserId());;
                     } else {
                         Toast.makeText(BossFightActivity.this, "Korisnik nije pronađen", Toast.LENGTH_SHORT).show();
                         userPP = 0;
@@ -178,6 +188,62 @@ public class BossFightActivity extends AppCompatActivity {
         }
     }
 
+    //racunannje sanse da korisnikov napad uspe
+    private void loadUserSuccessChance(String userId) {
+        taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
+            @Override
+            public void onSuccess(List<Task> tasks) {
+                if (tasks == null || tasks.isEmpty()) {
+                    userSuccessChance = 0;
+                    successChanceText.setText("Šansa za pogodak: 0%");
+                    return;
+                }
 
+                AtomicInteger completed = new AtomicInteger(0);
+                AtomicInteger total = new AtomicInteger(0);
+                AtomicInteger processedTasks = new AtomicInteger(0);
 
+                for (Task task : tasks) {
+                    if (task.getStatus() == TaskStatus.PAUZIRAN || task.getStatus() == TaskStatus.OTKAZAN) {
+                        processedTasks.incrementAndGet();
+                        continue;
+                    }
+
+                    taskRepository.isTaskOverQuota(task, userId, new TaskRepository.OnQuotaCheckedListener() {
+                        @Override
+                        public void onResult(boolean overQuota) {
+                            if (!overQuota) {
+                                total.incrementAndGet();
+                                if (task.getCompletionDate() != null) {
+                                    completed.incrementAndGet();
+                                }
+                            }
+
+                            if (processedTasks.incrementAndGet() == tasks.size()) {
+                                int chance = total.get() == 0 ? 0 : (int)((completed.get() * 100.0) / total.get());
+                                userSuccessChance = chance;
+                                successChanceText.setText("Šansa za pogodak: " + userSuccessChance + "%");
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            processedTasks.incrementAndGet();
+                            if (processedTasks.get() == tasks.size()) {
+                                int chance = total.get() == 0 ? 0 : (int)((completed.get() * 100.0) / total.get());
+                                userSuccessChance = chance;
+                                successChanceText.setText("Šansa za pogodak: " + userSuccessChance + "%");
+                            }
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                userSuccessChance = 0;
+                successChanceText.setText("Šansa za pogodak: 0%");
+            }
+        });
+    }
 }

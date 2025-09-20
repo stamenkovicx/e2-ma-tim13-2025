@@ -60,4 +60,10 @@ public interface TaskRepository {
     void updateTasksColor(String categoryId, int newColor, String userId, OnTaskUpdatedListener listener);
     void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener);
     void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener);
+
+    interface OnQuotaCheckedListener {
+        void onResult(boolean overQuota);
+        void onFailure(Exception e);
+    }
+    void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener);
 }
