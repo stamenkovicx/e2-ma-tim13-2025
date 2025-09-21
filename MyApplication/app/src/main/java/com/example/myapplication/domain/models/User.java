@@ -284,4 +284,33 @@ public class User {
     public List<String> getAllianceInvitationsReceived() { return allianceInvitationsReceived; }
     public void setAllianceInvitationsSent(List<String> allianceInvitationsSent) { this.allianceInvitationsSent = allianceInvitationsSent; }
     public void setAllianceInvitationsReceived(List<String> allianceInvitationsReceived) { this.allianceInvitationsReceived = allianceInvitationsReceived; }
-}
+
+    /*    @Exclude
+        public double getCurrentStageProgress() {
+            int xpForPreviousLevel = 0;
+            if (this.level > 0) {
+                // XP potrebna za prethodni nivo
+                xpForPreviousLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level - 1);
+            }
+
+            // XP potrebna za trenutni nivo
+            int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+
+            int xpInCurrentStage = this.xp; // XP koji je korisnik sakupio za trenutni nivo
+
+            // Napredak u procentima (0-100)
+            double progress = ((double) xpInCurrentStage / xpForNextLevel) * 100;
+
+            // Za slučaj da XP prelazi potrebnu količinu
+            if (progress > 100) progress = 100;
+
+            return progress;
+        }
+
+        // Metoda koja vraća XP potrebnu za prelazak na sledeći nivo
+        @Exclude
+        public int getXpToNextLevel() {
+            int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+            return xpForNextLevel - this.xp;
+        }*/
+    }

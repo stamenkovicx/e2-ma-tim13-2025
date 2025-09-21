@@ -85,6 +85,34 @@
                 android:textColor="@android:color/black"
                 android:layout_gravity="center_horizontal"/>
         </LinearLayout>
+        <!-- User Stage Progress Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <ProgressBar
+                android:id="@+id/userStageProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@android:color/holo_blue_dark"
+                android:progressBackgroundTint="@android:color/darker_gray"
+                android:indeterminate="false"/>
+
+            <TextView
+                android:id="@+id/userStageProgressText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Napredak etape: 0%"
+                android:textSize="16sp"
+                android:textColor="@android:color/black"
+                android:layout_gravity="center_horizontal"/>
+        </LinearLayout>
+
 
         <!-- Info Texts -->
         <TextView
@@ -115,5 +143,24 @@
             android:textColor="@android:color/white"
             android:backgroundTint="@android:color/holo_purple"
             android:elevation="6dp"/>
+        <ImageView
+            android:id="@+id/chestImage"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:src="@drawable/cup1"
+            android:contentDescription="Chest"
+            android:layout_marginTop="24dp"
+            android:visibility="gone"
+            android:scaleType="centerInside"/>
+        <TextView
+            android:id="@+id/chestRewardText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:textColor="#FFD700"
+            android:textStyle="bold"
+            android:layout_centerInParent="true"
+            android:visibility="gone"/>
+
     </LinearLayout>
 </ScrollView>

@@ -1,6 +1,10 @@
 package com.example.myapplication.presentation.ui;
 
+import android.animation.ObjectAnimator;
+import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -8,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.media.MediaPlayer;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -17,6 +22,7 @@ import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Boss;
+import com.example.myapplication.domain.models.ShakeDetector;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.google.firebase.Timestamp;
@@ -30,10 +36,13 @@ public class BossFightActivity extends AppCompatActivity {
 
     private Boss boss;
     private ProgressBar bossHpBar,userPPBar;
-    private TextView bossHpText, attemptsText, successChanceText,userPPText;
+    private TextView bossHpText, attemptsText, successChanceText,userPPText,chestRewardText;
     private Button attackButton;
     private AnimationDrawable bossAnimation;
     private ImageView bossImage;
+    private int baseReward = 200;
+    private int bossCount = 0; // broj poraženih bosova
+
 
     private int attemptsLeft = 5;
     private int userPP = 0; // sada će se učitati iz baze
@@ -44,6 +53,17 @@ public class BossFightActivity extends AppCompatActivity {
     private Random random = new Random();
     private UserRepository userRepository;
     private TaskRepository taskRepository;
+
+    private ProgressBar userStageProgressBar;
+    private TextView userStageProgressText;
+    private ImageView chestImage;
+    private AnimationDrawable chestAnimation;
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private ShakeDetector shakeDetector;
+    private int lastReward; // globalno polje klase
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +85,18 @@ public class BossFightActivity extends AppCompatActivity {
         bossImage = findViewById(R.id.bossImage);
         userPPBar = findViewById(R.id.userPPBar);
         userPPText = findViewById(R.id.userPPText);
+        userStageProgressBar = findViewById(R.id.userStageProgressBar);
+        userStageProgressText = findViewById(R.id.userStageProgressText);
+        chestImage = findViewById(R.id.chestImage);
+        chestImage.setVisibility(View.GONE);
+        chestRewardText = findViewById(R.id.chestRewardText);
 
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        shakeDetector = new ShakeDetector(() -> {
+            // otvori kovčeg kad korisnik prodrma telefon
+            openChestAnimation(lastReward);
+        });
         attackButton.setEnabled(false); // dok se ne učita user
 
         // postavljanje idle animacije
@@ -113,6 +144,8 @@ public class BossFightActivity extends AppCompatActivity {
 
         if (boss.isDefeated()) {
             attackButton.setEnabled(false);
+            bossCount++;
+            giveReward();
             Toast.makeText(this, "Pobedio si bosa!", Toast.LENGTH_LONG).show();
         } else if (attemptsLeft == 0) {
             attackButton.setEnabled(false);
@@ -161,6 +194,8 @@ public class BossFightActivity extends AppCompatActivity {
                 public void onSuccess(com.example.myapplication.domain.models.User user) {
                     if (user != null) {
                         currentUser = user;
+                       // updateUserStageProgress();
+
                         userPP = currentUser.getPowerPoints(); // učitaj PP iz usera
                         int maxPP = currentUser.getTotalPowerPoints(); // ili koliko god korisnik može maksimalno imati
                         userPPBar.setMax(maxPP);
@@ -246,4 +281,86 @@ public class BossFightActivity extends AppCompatActivity {
             }
         });
     }
+  /*  private void updateUserStageProgress() {
+        if (currentUser != null) {
+            double progress = currentUser.getCurrentStageProgress(); // metoda iz User klase
+            userStageProgressBar.setProgress((int) progress);
+            userStageProgressText.setText("Napredak etape: " + (int) progress + "%");
+        }
+    }*/
+
+    private void giveReward() {
+        // izračunaj pravi reward
+        int reward = (int) (baseReward * Math.pow(1.2, bossCount));
+
+        if (!boss.isDefeated() && boss.getHp() <= boss.getMaxHp() / 2) {
+            reward /= 2;
+        }
+
+        // povećaj korisniku coins
+        currentUser.setCoins(currentUser.getCoins() + reward);
+        userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        lastReward = reward; // sačuvaj reward za shake
+        chestImage.setVisibility(View.VISIBLE);
+        Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
+    }
+
+
+    private void openChestAnimation(int reward) {
+
+        // prvo postavi tekst i učini ga vidljivim
+        chestRewardText.setText("+" + reward + " coins");
+        chestRewardText.setVisibility(View.VISIBLE);
+        chestRewardText.setAlpha(1f); // osiguraj da je vidljiv
+
+        chestImage.setImageResource(R.drawable.chest_open_animation);
+        chestAnimation = (AnimationDrawable) chestImage.getDrawable();
+        chestAnimation.start();
+
+        MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.cup);
+        mediaPlayer.start();
+        mediaPlayer.setOnCompletionListener(mp -> mp.release());
+
+        // animacija letenja teksta nagore
+        ObjectAnimator animator = ObjectAnimator.ofFloat(chestRewardText, "translationY", 0f, -200f);
+        animator.setDuration(1000);
+        animator.start();
+
+        int totalDuration = 0;
+        for (int i = 0; i < chestAnimation.getNumberOfFrames(); i++) {
+            totalDuration += chestAnimation.getDuration(i);
+        }
+
+        chestImage.postDelayed(() -> {
+            Toast.makeText(this, "Osvojio si " + reward + " coins!", Toast.LENGTH_LONG).show();
+          //  chestRewardText.setVisibility(View.GONE); // sakrij tekst nakon animacije
+            chestRewardText.setTranslationY(0f); // resetuj poziciju
+        }, totalDuration);
+    }
+
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sensorManager.registerListener(shakeDetector, accelerometer, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(shakeDetector);
+    }
+
 }
