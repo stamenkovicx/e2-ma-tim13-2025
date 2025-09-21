@@ -100,8 +100,10 @@ public class BossFightActivity extends AppCompatActivity {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         shakeDetector = new ShakeDetector(() -> {
-            // otvori kovčeg kad korisnik prodrma telefon
-            openChestAnimation(lastReward);
+            if (chestImage.getVisibility() == View.VISIBLE) {
+                openChestAnimation(lastReward);
+
+            }
         });
         attackButton.setEnabled(false); // dok se ne učita user
 
@@ -175,6 +177,7 @@ public class BossFightActivity extends AppCompatActivity {
             Toast.makeText(this, "Pobedio si bosa!", Toast.LENGTH_LONG).show();
         } else if (attemptsLeft == 0) {
             attackButton.setEnabled(false);
+            giveReward(); // dodat i za slucaj da prezivi
             Toast.makeText(this, "Kraj borbe! Bos preživeo.", Toast.LENGTH_LONG).show();
         }
     }
@@ -317,30 +320,43 @@ public class BossFightActivity extends AppCompatActivity {
     }*/
 
     private void giveReward() {
-        // izračunaj pravi reward
-        int reward = (int) (baseReward * Math.pow(1.2, bossCount));
+        double rawReward;
 
-        if (!boss.isDefeated() && boss.getHp() <= boss.getMaxHp() / 2) {
-            reward /= 2;
+        // Boss je pobijeđen
+        if (boss.isDefeated()) {
+            rawReward = baseReward * Math.pow(1.2, bossCount); // puna nagrada
+            bossCount++; // povećaj broj poraženih bosova
+        }
+        // Boss nije pobijeđen, HP ≤ 50%
+        else if (boss.getHp() <= boss.getMaxHp() / 2) {
+            rawReward = (baseReward * Math.pow(1.2, bossCount)) / 2.0; // nagrada upola
+        }
+        // Boss nije pobijeđen, HP > 50%
+        else {
+            rawReward = 0; // nema nagrade
         }
 
-        // povećaj korisniku coins
-        currentUser.setCoins(currentUser.getCoins() + reward);
-        userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
-            }
+        // Zaokruži na najbliži ceo broj
+        int reward = (int) Math.round(rawReward);
 
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (reward > 0 && currentUser != null) {
+            currentUser.setCoins(currentUser.getCoins() + reward);
+            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
+                }
 
-        lastReward = reward; // sačuvaj reward za shake
-        chestImage.setVisibility(View.VISIBLE);
-        Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            lastReward = reward;
+            chestImage.setVisibility(View.VISIBLE);
+            Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
+        }
     }
 
 
