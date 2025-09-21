@@ -12,11 +12,13 @@ public class Boss {
     private boolean isDefeated;
     private int attemptsLeft;
     private int baseReward;
+    private int userLevelOnEncounter;
 
     public Boss() {}
 
-    public Boss(int level, int previousHp) {
+    public Boss(int level, int previousHp, int userLevel) {
         this.level = level;
+        this.userLevelOnEncounter = userLevel; // nivo korisnika
         this.attemptsLeft = 5;
         this.baseReward = 200;
         this.isDefeated = false;
@@ -44,6 +46,9 @@ public class Boss {
     public void setBaseReward(int baseReward) { this.baseReward = baseReward; }
     public boolean getIsDefeated() { return isDefeated; }
     public void setIsDefeated(boolean isDefeated) { this.isDefeated = isDefeated; }
+    public int getUserLevelOnEncounter() { return userLevelOnEncounter; }
+    public void setUserLevelOnEncounter(int userLevelOnEncounter) { this.userLevelOnEncounter = userLevelOnEncounter; }
+
 
     public void takeDamage(int damage) {
         hp -= damage;

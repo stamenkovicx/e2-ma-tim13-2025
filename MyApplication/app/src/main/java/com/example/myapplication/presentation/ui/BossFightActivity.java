@@ -148,7 +148,7 @@ public class BossFightActivity extends AppCompatActivity {
                     if (loadedBoss != null) {
                         boss = loadedBoss;
                     } else {
-                        boss = new Boss(1, 0);
+                        boss = new Boss(1, 0, 1);
                         boss.setId(currentUserId);
                         saveBoss();
                     }
@@ -214,10 +214,15 @@ public class BossFightActivity extends AppCompatActivity {
 
             if (bossDefeated) {
                 Toast.makeText(this, "Pobedio si bosa!", Toast.LENGTH_LONG).show();
+
+                // Postavi flag da je pobeđen pre kreiranja novog
+                boss.setIsDefeated(true);
+
+                saveBoss(); // Opciono, da se sačuva da je stari pobeđen
                 // Pripremi sledećeg bosa
                 int nextLevel = boss.getLevel() + 1;
                 int previousHp = boss.getMaxHp();
-                Boss newBoss = new Boss(nextLevel, previousHp);
+                Boss newBoss = new Boss(nextLevel, previousHp, currentUser.getLevel());
                 newBoss.setId(currentUserId);
                 boss = newBoss;
             } else {
@@ -301,15 +306,29 @@ public class BossFightActivity extends AppCompatActivity {
                 public void onSuccess(User user) {
                     if (user != null) {
                         currentUser = user;
-                        playerState = new PlayerState(currentUserId, currentUser.getPowerPoints(), 0, 0); // inicijalizacija
+
+                        //  LOGIKA ZA NEPORAZENOG BOSA
+                        if (!boss.getIsDefeated() && currentUser.getLevel() > boss.getUserLevelOnEncounter()) {
+
+                            boss.setHp(boss.getMaxHp());
+                            boss.setAttemptsLeft(5);
+                            boss.setUserLevelOnEncounter(currentUser.getLevel());
+
+                            saveBoss();
+
+                            Toast.makeText(BossFightActivity.this, "Neporaženi bos se vratio sa punom snagom!", Toast.LENGTH_LONG).show();
+                        }
+
+                        playerState = new PlayerState(currentUserId, currentUser.getPowerPoints(), 0, 0);
                         userPPBar.setMax(currentUser.getTotalPowerPoints());
                         userPPBar.setProgress(playerState.getPowerPoints());
                         userPPText.setText("PP: " + playerState.getPowerPoints() + "/" + currentUser.getTotalPowerPoints());
 
                         updateActiveEquipment(currentUser);
+
                         attackButton.setEnabled(true);
 
-                        updateUI(); // <<< Poziv ovde je siguran, playerState postoji
+                        updateUI();
                         loadUserSuccessChance(currentUser.getUserId());
                         canAttack = true;
                     }
