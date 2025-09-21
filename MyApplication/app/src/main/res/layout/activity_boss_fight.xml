@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:background="@android:color/white">
+    android:background="@android:color/white"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,178 +13,107 @@
         android:gravity="center_horizontal"
         android:padding="16dp">
 
-        <!-- Boss Image -->
         <ImageView
             android:id="@+id/bossImage"
             android:layout_width="220dp"
             android:layout_height="220dp"
             android:src="@drawable/boss_idle_animation"
             android:contentDescription="Boss"
-            android:elevation="8dp"
-            android:layout_marginBottom="24dp"
-            android:scaleType="centerInside"/>
+            android:layout_marginBottom="24dp"/>
 
-        <!-- Boss HP Bar container -->
-        <LinearLayout
+        <ProgressBar
+            android:id="@+id/bossHpBar"
+            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:progressDrawable="@drawable/custom_progress_bar"/>
+        <TextView
+            android:id="@+id/bossHpText"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:text="HP: 200/200"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
 
-            <ProgressBar
-                android:id="@+id/bossHpBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="24dp"
-                android:progressTint="@android:color/holo_red_dark"
-                android:progressBackgroundTint="@android:color/darker_gray"
-                android:layout_marginBottom="4dp"
-                android:max="200"
-                android:progress="200"
-                android:indeterminate="false"
-                android:clipToOutline="true"
-                android:backgroundTint="@android:color/darker_gray"
-                android:progressDrawable="@drawable/custom_progress_bar"/>
-
-            <TextView
-                android:id="@+id/bossHpText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="HP: 200/200"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black"
-                android:layout_gravity="center_horizontal"/>
-        </LinearLayout>
-
-        <!-- User PP Bar container -->
-        <LinearLayout
+        <ProgressBar
+            android:id="@+id/userPPBar"
+            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:progressDrawable="@drawable/custom_pp_progress"/>
+        <TextView
+            android:id="@+id/userPPText"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:text="PP: 0/100"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
 
-            <ProgressBar
-                android:id="@+id/userPPBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="24dp"
-                android:max="100"
-                android:progress="0"
-                android:progressDrawable="@drawable/custom_pp_progress"
-                android:indeterminate="false"
-                android:clipToOutline="true"/>
-
-
-            <TextView
-                android:id="@+id/userPPText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="PP: 0/100"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black"
-                android:layout_gravity="center_horizontal"/>
-        </LinearLayout>
-        <!-- User Stage Progress Bar -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
-
-            <ProgressBar
-                android:id="@+id/userStageProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="24dp"
-                android:max="100"
-                android:progress="0"
-                android:progressTint="@android:color/holo_blue_dark"
-                android:progressBackgroundTint="@android:color/darker_gray"
-                android:indeterminate="false"/>
-
-            <TextView
-                android:id="@+id/userStageProgressText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Napredak etape: 0%"
-                android:textSize="16sp"
-                android:textColor="@android:color/black"
-                android:layout_gravity="center_horizontal"/>
-        </LinearLayout>
-
-
-        <!-- Info Texts -->
         <TextView
             android:id="@+id/attemptsText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pokušaji: 5/5"
-            android:textSize="16sp"
-            android:layout_marginBottom="8dp"
-            android:textColor="@android:color/black"/>
-
+            android:text="Pokušaji: 5/5"/>
         <TextView
             android:id="@+id/successChanceText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Šansa za pogodak: 70%"
-            android:textSize="16sp"
-            android:layout_marginBottom="24dp"
-            android:textColor="@android:color/black"/>
-        <!--aktivacija opreme -->
-        <TextView
-            android:id="@+id/tvActiveEquipmentLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Aktivna oprema:"
-            android:textSize="16sp"
-            android:textColor="@android:color/black"
-            android:layout_marginTop="16dp"/>
+            android:text="Šansa za pogodak: 0%"
+            android:layout_marginBottom="16dp"/>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Aktivna oprema:"/>
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:scrollbars="none"
             android:layout_marginBottom="16dp">
-
             <LinearLayout
                 android:id="@+id/layoutActiveEquipment"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="50dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"/>
         </HorizontalScrollView>
 
-        <!-- Attack Button -->
         <Button
             android:id="@+id/attackButton"
             android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:text="Napadni"
-            android:textSize="16sp"
-            android:textColor="@android:color/white"
-            android:backgroundTint="@android:color/holo_purple"
-            android:elevation="6dp"/>
-        <ImageView
-            android:id="@+id/chestImage"
-            android:layout_width="150dp"
-            android:layout_height="150dp"
-            android:src="@drawable/cup1"
-            android:contentDescription="Chest"
-            android:layout_marginTop="24dp"
-            android:visibility="gone"
-            android:scaleType="centerInside"/>
-        <TextView
-            android:id="@+id/chestRewardText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="24sp"
-            android:textColor="#FFD700"
-            android:textStyle="bold"
-            android:layout_centerInParent="true"
-            android:visibility="gone"/>
+            android:text="Napadni" />
 
+        <RelativeLayout
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_marginTop="24dp">
+
+            <ImageView
+                android:id="@+id/chestImage"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:src="@drawable/cup1"
+                android:layout_centerInParent="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/chestRewardText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:textColor="#FFD700"
+                android:textStyle="bold"
+                android:layout_centerInParent="true"
+                android:visibility="gone"
+                android:gravity="center"/>
+
+            <ImageView
+                android:id="@+id/ivDroppedItemIcon"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_centerInParent="true"
+                android:visibility="gone"
+                android:elevation="5dp"/>
+        </RelativeLayout>
     </LinearLayout>
 </ScrollView>

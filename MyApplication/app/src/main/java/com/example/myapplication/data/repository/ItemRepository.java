@@ -7,6 +7,7 @@ import com.example.myapplication.domain.models.EquipmentType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public class ItemRepository {
 
@@ -78,5 +79,34 @@ public class ItemRepository {
             }
         }
         return null;
+    }
+    // METODE ZA NAGRADE
+
+    public static Equipment getRandomClothing() {
+        List<Equipment> clothingItems = new ArrayList<>();
+        for (Equipment item : ALL_EQUIPMENT) {
+            if (item.getType() == EquipmentType.CLOTHING) {
+                clothingItems.add(item);
+            }
+        }
+        if (clothingItems.isEmpty()) {
+            return null;
+        }
+        Random random = new Random();
+        return clothingItems.get(random.nextInt(clothingItems.size()));
+    }
+
+    public static Equipment getRandomWeapon() {
+        List<Equipment> weaponItems = new ArrayList<>();
+        for (Equipment item : ALL_EQUIPMENT) {
+            if (item.getType() == EquipmentType.WEAPON) {
+                weaponItems.add(item);
+            }
+        }
+        if (weaponItems.isEmpty()) {
+            return null;
+        }
+        Random random = new Random();
+        return weaponItems.get(random.nextInt(weaponItems.size()));
     }
 }
