@@ -1,12 +1,23 @@
 package com.example.myapplication.domain.models;
 
+import com.google.firebase.firestore.DocumentId;
+
 public class Boss {
+
+    @DocumentId
+    private String id;
     private int level;
     private int hp;
     private int maxHp;
+    private boolean isDefeated; //status poraza
+    private int attemptsLeft; // za praćenje pokušaja
+
+    public Boss() {}
 
     public Boss(int level, int previousHp) {
         this.level = level;
+        this.attemptsLeft = 5;
+        this.isDefeated = false;
 
         if (level == 1) {
             this.hp = 200;
@@ -16,21 +27,20 @@ public class Boss {
         this.maxHp = this.hp;
     }
 
-    public int getLevel() {
-        return level;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
+    public int getHp() { return hp; }
+    public void setHp(int hp) { this.hp = hp; }
+    public int getMaxHp() { return maxHp; }
+    public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
+    public int getAttemptsLeft() { return attemptsLeft; }
+    public void setAttemptsLeft(int attemptsLeft) { this.attemptsLeft = attemptsLeft; }
 
-    public int getHp() {
-        return hp;
-    }
 
-    public int getMaxHp() {
-        return maxHp;
-    }
-
-    public boolean isDefeated() {
-        return hp <= 0;
-    }
+    public boolean getIsDefeated() { return isDefeated; }
+    public void setIsDefeated(boolean isDefeated) { this.isDefeated = isDefeated; }
 
     public void takeDamage(int damage) {
         hp -= damage;

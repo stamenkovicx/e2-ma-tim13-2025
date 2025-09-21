@@ -19,8 +19,10 @@ import android.media.MediaPlayer;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.myapplication.R;
+import com.example.myapplication.data.database.BossRepositoryFirebaseImpl; // Nova klasa
 import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.BossRepository; // Novi interfejs
 import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
@@ -41,46 +43,43 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class BossFightActivity extends AppCompatActivity {
 
     private Boss boss;
-    private ProgressBar bossHpBar,userPPBar;
-    private TextView bossHpText, attemptsText, successChanceText,userPPText,chestRewardText;
+    private ProgressBar bossHpBar, userPPBar;
+    private TextView bossHpText, attemptsText, successChanceText, userPPText, chestRewardText;
     private Button attackButton;
-    private AnimationDrawable bossAnimation,chestAnimation;
-    private ImageView bossImage,chestImage;
+    private AnimationDrawable bossAnimation, chestAnimation;
+    private ImageView bossImage, chestImage;
     private int baseReward = 200;
-    private int bossCount = 0; // broj poraženih bosova
+    // Oprez: bossCount se više neće koristiti direktno za nagradu, već će level bosa biti merilo.
+    // Uklonimo je, jer je suvišna kada stanje čuvamo u Boss objektu.
 
-
-    private int attemptsLeft = 5;
-    private int userPP = 0; // sada će se učitati iz baze
-    private int userSuccessChance = 2; //svakako ce promeniti vrednost uzece da gleda iz zads
+    private int attemptsLeft = 5; // Ostavićemo je ovde za početnu vrednost
+    private int userPP = 0;
+    private int userSuccessChance = 2;
     private com.example.myapplication.domain.models.User currentUser;
-
 
     private Random random = new Random();
     private UserRepository userRepository;
     private TaskRepository taskRepository;
+    private BossRepository bossRepository; // Novi repozitorijum
+    private String currentUserId; // ID trenutno ulogovanog korisnika
 
     private ProgressBar userStageProgressBar;
     private TextView userStageProgressText;
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private ShakeDetector shakeDetector;
-    private int lastReward; // globalno polje klase
+    private int lastReward;
     private LinearLayout layoutActiveEquipment;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_boss_fight);
 
-        // inicijalizacija repozitorijuma sa konkretnom implementacijom
+        // Inicijalizacija repozitorijuma
         userRepository = new UserRepositoryFirebaseImpl();
         taskRepository = new TaskRepositoryFirebaseImpl();
-
-        // inicijalizacija bosa (level 1, nema prethodnog HP-a)
-        boss = new Boss(1, 0);
+        bossRepository = new BossRepositoryFirebaseImpl(); // Inicijalizacija Boss repozitorijuma
 
         bossHpBar = findViewById(R.id.bossHpBar);
         bossHpText = findViewById(R.id.bossHpText);
@@ -102,35 +101,22 @@ public class BossFightActivity extends AppCompatActivity {
         shakeDetector = new ShakeDetector(() -> {
             if (chestImage.getVisibility() == View.VISIBLE) {
                 openChestAnimation(lastReward);
-
             }
         });
-        attackButton.setEnabled(false); // dok se ne učita user
+        attackButton.setEnabled(false);
 
-        // postavljanje idle animacije
+        // Prikaz idle animacije
         bossImage.setImageResource(R.drawable.boss_idle_animation);
-
-        // startuj animaciju kada ImageView bude spreman
         bossImage.post(() -> {
             bossAnimation = (AnimationDrawable) bossImage.getDrawable();
             bossAnimation.start();
         });
 
-        bossHpBar.setMax(boss.getMaxHp());
-        bossHpBar.setProgress(boss.getHp());
+        // Početno učitavanje bosa i korisnika
+        loadBossAndUser();
 
-        updateUI();
+        attackButton.setOnClickListener(v -> attackBoss());
 
-        loadCurrentUser();
-
-        attackButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                attackBoss();
-            }
-        });
-
-        //otvaranje dijaloga za aktivaciju opreme
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Priprema za borbu")
                 .setMessage("Da li želiš da aktiviraš opremu pre borbe?")
@@ -143,49 +129,116 @@ public class BossFightActivity extends AppCompatActivity {
                     Toast.makeText(BossFightActivity.this, "Borba počinje bez dodatne opreme.", Toast.LENGTH_SHORT).show();
                 })
                 .show();
-
     }
 
+    private void loadBossAndUser() {
+        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+            currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            // Prvo učitaj bosa
+            bossRepository.getBoss(currentUserId, new BossRepository.OnBossLoadedListener() {
+                @Override
+                public void onSuccess(Boss loadedBoss) {
+                    if (loadedBoss != null) {
+                        boss = loadedBoss;
+                    } else {
+                        // Kreiraj novog bosa ako ne postoji u bazi
+                        boss = new Boss(1, 0);
+                        boss.setId(currentUserId);
+                        saveBoss();
+                    }
+                    // Ažuriraj UI sa podacima iz baze
+                    bossHpBar.setMax(boss.getMaxHp());
+                    bossHpBar.setProgress(boss.getHp());
+                    attemptsLeft = boss.getAttemptsLeft();
+                    updateUI();
+
+                    // Zatim učitaj korisnika
+                    loadCurrentUser();
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(BossFightActivity.this, "Greška pri učitavanju bosa", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void saveBoss() {
+        if (boss != null && boss.getId() != null) {
+            bossRepository.saveBoss(boss, new BossRepository.OnBossSavedListener() {
+                @Override
+                public void onSuccess() {
+                    // Boss je uspešno sačuvan
+                }
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(BossFightActivity.this, "Greška pri čuvanju bosa", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    // Prilagođena metoda attackBoss() sa ispravljenom logikom
+    // Izmenjena metoda attackBoss() sa ispravnom logikom
     private void attackBoss() {
-        if (attemptsLeft <= 0) {
+        if (boss.getAttemptsLeft() <= 0) {
             Toast.makeText(this, "Nema više pokušaja!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        attemptsLeft--;
+        boss.setAttemptsLeft(boss.getAttemptsLeft() - 1);
 
-        int roll = random.nextInt(100); // 0-99
+        int roll = random.nextInt(100);
         if (roll < userSuccessChance) {
             boss.takeDamage(userPP);
-            playHitAnimation(); // animacija na udarac
-            // Pusti zvuk kada se klikne
+            playHitAnimation();
             MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.crush_boss);
             mediaPlayer.start();
             mediaPlayer.setOnCompletionListener(mp -> mp.release());
-
             Toast.makeText(this, "Pogodak! -" + userPP + " HP", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, "Promašaj!", Toast.LENGTH_SHORT).show();
         }
 
-        updateUI();
+        // Provera da li je bos pobeđen nakon napada
+        if (boss.getHp() <= 0) {
+            // Postavi trajno stanje pobeđenosti na 'true'
+            boss.setIsDefeated(true);
 
-        if (boss.isDefeated()) {
-            attackButton.setEnabled(false);
-            bossCount++;
+            // Zatim pozovi metodu za nagradu
             giveReward();
-            Toast.makeText(this, "Pobedio si bosa!", Toast.LENGTH_LONG).show();
-        } else if (attemptsLeft == 0) {
+
             attackButton.setEnabled(false);
-            giveReward(); // dodat i za slucaj da prezivi
+            Toast.makeText(this, "Pobedio si bosa!", Toast.LENGTH_LONG).show();
+
+            // Priprema za sledećeg bosa
+            int nextLevel = boss.getLevel() + 1;
+            int previousHp = boss.getMaxHp();
+            Boss newBoss = new Boss(nextLevel, previousHp);
+            newBoss.setId(currentUserId);
+            boss = newBoss;
+
+            // Sačuvaj i trenutnog (pobeđenog) i novog bosa
+            saveBoss();
+
+        } else if (boss.getAttemptsLeft() == 0) {
+            // Opcionalna nagrada ako je borba završena
+            giveReward();
+            attackButton.setEnabled(false);
             Toast.makeText(this, "Kraj borbe! Bos preživeo.", Toast.LENGTH_LONG).show();
         }
+
+        // Na kraju, sačuvaj trenutno stanje bosa (HP, attemptsLeft)
+        updateUI();
+        saveBoss();
     }
 
     private void updateUI() {
         bossHpBar.setProgress(boss.getHp());
         bossHpText.setText("HP: " + boss.getHp() + "/" + boss.getMaxHp());
-        attemptsText.setText("Pokušaji: " + attemptsLeft + "/5");
+        attemptsText.setText("Pokušaji: " + boss.getAttemptsLeft() + "/5");
         successChanceText.setText("Šansa za pogodak: " + userSuccessChance + "%");
     }
 
@@ -203,57 +256,45 @@ public class BossFightActivity extends AppCompatActivity {
             bossAnimation = (AnimationDrawable) bossImage.getDrawable();
             bossAnimation.start();
 
-            // ukupno trajanje animacije
             int totalDuration = 0;
             for (int i = 0; i < bossAnimation.getNumberOfFrames(); i++) {
                 totalDuration += bossAnimation.getDuration(i);
             }
 
-            // Vrati idle animaciju nakon završetka hit animacije
             bossImage.postDelayed(this::startIdleAnimation, totalDuration);
         });
     }
-    // metoda za učitavanje PP bodova iz baze
-    private void loadCurrentUser() {
-        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
-            String currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
 
+    private void loadCurrentUser() {
+        if (currentUserId != null) {
             userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<com.example.myapplication.domain.models.User>() {
                 @Override
                 public void onSuccess(com.example.myapplication.domain.models.User user) {
                     if (user != null) {
                         currentUser = user;
-                       // updateUserStageProgress();
                         updateActiveEquipment(currentUser);
-
-                        userPP = currentUser.getPowerPoints(); // učitaj PP iz usera
-                        int maxPP = currentUser.getTotalPowerPoints(); // ili koliko god korisnik može maksimalno imati
+                        userPP = currentUser.getPowerPoints();
+                        int maxPP = currentUser.getTotalPowerPoints();
                         userPPBar.setMax(maxPP);
-                        userPPBar.setProgress(userPP); // stvarni PP iz baze
-                        userPPText.setText("PP: " + userPP + "/"+maxPP); // samo tvoj broj iz baze
-
-                        attackButton.setEnabled(true); // sada korisnik može napadati
+                        userPPBar.setProgress(userPP);
+                        userPPText.setText("PP: " + userPP + "/" + maxPP);
+                        attackButton.setEnabled(true);
                         Toast.makeText(BossFightActivity.this, "Korisnik učitan, PP: " + userPP, Toast.LENGTH_SHORT).show();
-                        loadUserSuccessChance(currentUser.getUserId());;
+                        loadUserSuccessChance(currentUser.getUserId());
                     } else {
                         Toast.makeText(BossFightActivity.this, "Korisnik nije pronađen", Toast.LENGTH_SHORT).show();
                         userPP = 0;
                     }
                 }
-
                 @Override
                 public void onFailure(Exception e) {
                     Toast.makeText(BossFightActivity.this, "Greška pri učitavanju korisnika", Toast.LENGTH_SHORT).show();
                     userPP = 0;
                 }
             });
-        } else {
-            Toast.makeText(this, "Nije prijavljen nijedan korisnik", Toast.LENGTH_SHORT).show();
-            userPP = 0;
         }
     }
 
-    //racunannje sanse da korisnikov napad uspe
     private void loadUserSuccessChance(String userId) {
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
@@ -273,7 +314,6 @@ public class BossFightActivity extends AppCompatActivity {
                         processedTasks.incrementAndGet();
                         continue;
                     }
-
                     taskRepository.isTaskOverQuota(task, userId, new TaskRepository.OnQuotaCheckedListener() {
                         @Override
                         public void onResult(boolean overQuota) {
@@ -283,14 +323,12 @@ public class BossFightActivity extends AppCompatActivity {
                                     completed.incrementAndGet();
                                 }
                             }
-
                             if (processedTasks.incrementAndGet() == tasks.size()) {
                                 int chance = total.get() == 0 ? 0 : (int)((completed.get() * 100.0) / total.get());
                                 userSuccessChance = chance;
                                 successChanceText.setText("Šansa za pogodak: " + userSuccessChance + "%");
                             }
                         }
-
                         @Override
                         public void onFailure(Exception e) {
                             processedTasks.incrementAndGet();
@@ -311,61 +349,64 @@ public class BossFightActivity extends AppCompatActivity {
             }
         });
     }
-  /*  private void updateUserStageProgress() {
-        if (currentUser != null) {
-            double progress = currentUser.getCurrentStageProgress(); // metoda iz User klase
-            userStageProgressBar.setProgress((int) progress);
-            userStageProgressText.setText("Napredak etape: " + (int) progress + "%");
-        }
-    }*/
 
     private void giveReward() {
-        double rawReward;
+        // Proveri da li je nagrada već dodeljena
+        if (boss.getIsDefeated()) {
+            // Puna nagrada, ali samo ako je bos tek poražen
+            double rawReward = baseReward * Math.pow(1.2, boss.getLevel());
+            int reward = (int) Math.round(rawReward);
 
-        // Boss je pobijeđen
-        if (boss.isDefeated()) {
-            rawReward = baseReward * Math.pow(1.2, bossCount); // puna nagrada
-            bossCount++; // povećaj broj poraženih bosova
-        }
-        // Boss nije pobijeđen, HP ≤ 50%
-        else if (boss.getHp() <= boss.getMaxHp() / 2) {
-            rawReward = (baseReward * Math.pow(1.2, bossCount)) / 2.0; // nagrada upola
-        }
-        // Boss nije pobijeđen, HP > 50%
-        else {
-            rawReward = 0; // nema nagrade
-        }
+            if (reward > 0 && currentUser != null) {
+                currentUser.setCoins(currentUser.getCoins() + reward);
+                userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
 
-        // Zaokruži na najbliži ceo broj
-        int reward = (int) Math.round(rawReward);
+                lastReward = reward;
+                chestImage.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
 
-        if (reward > 0 && currentUser != null) {
-            currentUser.setCoins(currentUser.getCoins() + reward);
-            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
-                @Override
-                public void onSuccess(Void result) {
-                    Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
-                }
+                // Resetuj isDefeated status nakon dodele nagrade da se ne bi ponovo dodeljivala
+                boss.setIsDefeated(false);
+                saveBoss();
+            }
+        } else if (boss.getAttemptsLeft() == 0 && boss.getHp() <= boss.getMaxHp() / 2) {
+            // Pola nagrade, samo ako se borba završila bez pobede, a HP je nizak
+            double rawReward = (baseReward * Math.pow(1.2, boss.getLevel())) / 2.0;
+            int reward = (int) Math.round(rawReward);
 
-                @Override
-                public void onFailure(Exception e) {
-                    Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            });
+            if (reward > 0 && currentUser != null) {
+                currentUser.setCoins(currentUser.getCoins() + reward);
+                userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        Toast.makeText(getApplicationContext(), "User updated!", Toast.LENGTH_SHORT).show();
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(getApplicationContext(), "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
 
-            lastReward = reward;
-            chestImage.setVisibility(View.VISIBLE);
-            Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
+                lastReward = reward;
+                chestImage.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Prodrmaj telefon da otvoriš kovčeg!", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
-
     private void openChestAnimation(int reward) {
-
-        // prvo postavi tekst i učini ga vidljivim
         chestRewardText.setText("+" + reward + " coins");
         chestRewardText.setVisibility(View.VISIBLE);
-        chestRewardText.setAlpha(1f); // osiguraj da je vidljiv
+        chestRewardText.setAlpha(1f);
 
         chestImage.setImageResource(R.drawable.chest_open_animation);
         chestAnimation = (AnimationDrawable) chestImage.getDrawable();
@@ -375,7 +416,6 @@ public class BossFightActivity extends AppCompatActivity {
         mediaPlayer.start();
         mediaPlayer.setOnCompletionListener(mp -> mp.release());
 
-        // animacija letenja teksta nagore
         ObjectAnimator animator = ObjectAnimator.ofFloat(chestRewardText, "translationY", 0f, -200f);
         animator.setDuration(1000);
         animator.start();
@@ -387,21 +427,15 @@ public class BossFightActivity extends AppCompatActivity {
 
         chestImage.postDelayed(() -> {
             Toast.makeText(this, "Osvojio si " + reward + " coins!", Toast.LENGTH_LONG).show();
-          //  chestRewardText.setVisibility(View.GONE); // sakrij tekst nakon animacije
-            chestRewardText.setTranslationY(0f); // resetuj poziciju
+            chestRewardText.setTranslationY(0f);
         }, totalDuration);
     }
-
-
 
     @Override
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(shakeDetector, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        loadCurrentUser();
-        if (currentUser != null) {
-            updateActiveEquipment(currentUser);
-        }
+        loadBossAndUser();
     }
 
     @Override
@@ -409,45 +443,30 @@ public class BossFightActivity extends AppCompatActivity {
         super.onPause();
         sensorManager.unregisterListener(shakeDetector);
     }
+
     private void updateActiveEquipment(User user) {
-        layoutActiveEquipment.removeAllViews(); // očisti prethodni prikaz
+        layoutActiveEquipment.removeAllViews();
 
         if (user.getEquipment() != null && !user.getEquipment().isEmpty()) {
             boolean hasActive = false;
-
             for (UserEquipment ue : user.getEquipment()) {
                 if (ue != null && ue.isActive()) {
                     Equipment eqDetails = ItemRepository.getEquipmentById(ue.getEquipmentId());
                     if (eqDetails != null) {
                         hasActive = true;
-
                         ImageView icon = new ImageView(this);
-                        icon.setLayoutParams(new LinearLayout.LayoutParams(
-                                200, // širina ikonice u dp
-                                200  // visina ikonice u dp
-                        ));
-
-                        // Konvertuj string u int resurs
-                        int resId = getResources().getIdentifier(
-                                eqDetails.getIconResourceId(), // npr. "sword_icon"
-                                "drawable",
-                                getPackageName()
-                        );
-
+                        icon.setLayoutParams(new LinearLayout.LayoutParams(200, 200));
+                        int resId = getResources().getIdentifier(eqDetails.getIconResourceId(), "drawable", getPackageName());
                         if (resId != 0) {
                             icon.setImageResource(resId);
                         } else {
-                            icon.setImageResource(R.drawable.elixir_greatness); // fallback ikonica
+                            icon.setImageResource(R.drawable.elixir_greatness);
                         }
-
                         icon.setPadding(16, 0, 16, 0);
-
-                        // dodaj u layout
                         layoutActiveEquipment.addView(icon);
                     }
                 }
             }
-
             if (!hasActive) {
                 addNoEquipmentText();
             }
@@ -463,5 +482,4 @@ public class BossFightActivity extends AppCompatActivity {
         noEq.setTextColor(getResources().getColor(android.R.color.darker_gray));
         layoutActiveEquipment.addView(noEq);
     }
-
 }
