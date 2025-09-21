@@ -156,6 +156,11 @@ public class BossFightActivity extends AppCompatActivity {
         if (roll < userSuccessChance) {
             boss.takeDamage(userPP);
             playHitAnimation(); // animacija na udarac
+            // Pusti zvuk kada se klikne
+            MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.crush_boss);
+            mediaPlayer.start();
+            mediaPlayer.setOnCompletionListener(mp -> mp.release());
+
             Toast.makeText(this, "Pogodak! -" + userPP + " HP", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, "Promašaj!", Toast.LENGTH_SHORT).show();
