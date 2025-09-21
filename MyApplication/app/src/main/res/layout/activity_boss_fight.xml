@@ -109,8 +109,8 @@
 
             <ImageView
                 android:id="@+id/ivDroppedItemIcon"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
                 android:layout_centerInParent="true"
                 android:visibility="gone"
                 android:elevation="5dp"/>

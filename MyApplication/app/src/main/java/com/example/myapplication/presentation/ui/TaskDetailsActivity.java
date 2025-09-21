@@ -269,7 +269,11 @@ public class TaskDetailsActivity extends AppCompatActivity {
                             Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je kvota za XP ispunjena.", Toast.LENGTH_SHORT).show();
                         }
                         if (user.getLevel() > previousLevel) {
-                            Toast.makeText(TaskDetailsActivity.this, "Čestitamo! Podigli ste nivo na " + user.getLevel() + "!", Toast.LENGTH_LONG).show();
+                            // POZIVAMO NOVU METODU UMESTO TOAST-A
+                            showBossFightDialog(user.getLevel());
+                        } else {
+                            // Ako nema level-upa, samo osveži UI
+                            loadTaskDetails(task.getId());
                         }
 
                         displayTaskDetails(task);
@@ -354,5 +358,23 @@ public class TaskDetailsActivity extends AppCompatActivity {
         taskEnd.set(Calendar.SECOND, 59);
 
         return Calendar.getInstance().after(taskEnd);
+    }
+    private void showBossFightDialog(int newLevel) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Novi Nivo!")
+                .setMessage("Čestitamo, dostigli ste " + newLevel + ". nivo!\n\nPojavio se novi Bos. Da li želite da se borite sada?")
+                .setCancelable(false)
+                .setPositiveButton("Bori se", (dialog, which) -> {
+                    // Pokreni BossFightActivity
+                    Intent intent = new Intent(TaskDetailsActivity.this, BossFightActivity.class);
+                    startActivity(intent);
+                    finish(); // Zatvori trenutni ekran
+                })
+                .setNegativeButton("Kasnije", (dialog, which) -> {
+                    // Ako korisnik odbije, samo osveži trenutni ekran
+                    dialog.dismiss();
+                    loadTaskDetails(task.getId());
+                })
+                .show();
     }
 }

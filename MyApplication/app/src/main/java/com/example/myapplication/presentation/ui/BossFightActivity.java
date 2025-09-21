@@ -194,7 +194,11 @@ public class BossFightActivity extends AppCompatActivity {
 
         boss.setAttemptsLeft(boss.getAttemptsLeft() - 1);
 
-        if (random.nextInt(100) < playerState.getSuccessChance()) {
+        // Generisanje i prikaz nasumičnog broja za napad
+        int attackRoll = random.nextInt(100);
+        Toast.makeText(this, "Napad: " + attackRoll + " | Šansa: " + playerState.getSuccessChance() + "%", Toast.LENGTH_SHORT).show();
+
+        if (attackRoll < playerState.getSuccessChance()) {
             boss.takeDamage(playerState.getPowerPoints());
             playHitAnimation();
             MediaPlayer.create(this, R.raw.crush_boss).start();
@@ -246,8 +250,16 @@ public class BossFightActivity extends AppCompatActivity {
         int dropChance = 20;
         if (!isDefeated) dropChance /= 2;
 
-        if (random.nextInt(100) < dropChance) {
-            if (random.nextInt(100) < 95) {
+        // Prikaz nasumičnog broja za šansu za opremu
+        int dropChanceRoll = random.nextInt(100);
+        Toast.makeText(this, "Šansa za opremu: " + dropChanceRoll + " | Potrebno: <" + dropChance + "%", Toast.LENGTH_LONG).show();
+
+        if (dropChanceRoll < dropChance) {
+            // Prikaz nasumičnog broja za tip opreme
+            int itemTypeRoll = random.nextInt(100);
+            Toast.makeText(this, "Šansa za tip opreme: " + itemTypeRoll + " | <95% za odeću", Toast.LENGTH_LONG).show();
+
+            if (itemTypeRoll < 95) {
                 droppedItem = ItemRepository.getRandomClothing();
             } else {
                 droppedItem = ItemRepository.getRandomWeapon();
