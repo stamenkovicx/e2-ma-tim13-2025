@@ -230,7 +230,8 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         updates.put("equipment", user.getEquipment());
         updates.put("xp", user.getXp());
         updates.put("level", user.getLevel());
-        updates.put("powerPoints", user.getPowerPoints()); // DODAJTE OVU LINIJU
+        updates.put("powerPoints", user.getPowerPoints());
+        updates.put("dateOfLastLevelUp", user.getDateOfLastLevelUp());
 
         userRef.update(updates)
                 .addOnSuccessListener(aVoid -> onCompleteListener.onSuccess(null))

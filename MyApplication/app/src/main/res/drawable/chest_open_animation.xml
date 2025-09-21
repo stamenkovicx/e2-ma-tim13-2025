@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="true">
+
+    <item android:drawable="@drawable/cup1" android:duration="800"/>
+    <item android:drawable="@drawable/cup2" android:duration="800"/>
+    <item android:drawable="@drawable/cup3" android:duration="800"/>
+    <item android:drawable="@drawable/cup4" android:duration="800"/>
+    <item android:drawable="@drawable/cup5" android:duration="1500"/>
+
+</animation-list>

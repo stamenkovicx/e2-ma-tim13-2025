@@ -21,7 +21,7 @@ import com.example.myapplication.R;
 public class HomeActivity extends AppCompatActivity {
 
     private Button btnLogout, btnProfile, btnGoToCreateTask, btnGoToTaskViewer, btnManageCategories,
-            btnViewStatistics, btnViewFriends;
+            btnViewStatistics, btnViewFriends,btnBossFight;
     private FirebaseAuth mAuth;
     private LinearLayout notificationContainer;
     private UserRepository userRepository;
@@ -52,6 +52,7 @@ public class HomeActivity extends AppCompatActivity {
         notificationsButtonContainer = findViewById(R.id.notificationsButtonContainer);
         btnNotifications = findViewById(R.id.btnNotifications);
         tvUnreadNotificationsCount = findViewById(R.id.tvUnreadNotificationsCount);
+        btnBossFight = findViewById(R.id.bossButton);
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
@@ -96,6 +97,11 @@ public class HomeActivity extends AppCompatActivity {
             Intent intent = new Intent(HomeActivity.this, NotificationsActivity.class);
             startActivity(intent);
         });
+        btnBossFight.setOnClickListener(v -> {
+            Intent intent = new Intent(HomeActivity.this, BossFightActivity.class);
+            startActivity(intent);
+        });
+
     }
     @Override
     protected void onResume() {

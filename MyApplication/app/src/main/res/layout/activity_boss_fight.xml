@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@android:color/white"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/bossImage"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:src="@drawable/boss_idle_animation"
+            android:contentDescription="Boss"
+            android:layout_marginBottom="24dp"/>
+
+        <ProgressBar
+            android:id="@+id/bossHpBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:progressDrawable="@drawable/custom_progress_bar"/>
+        <TextView
+            android:id="@+id/bossHpText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HP: 200/200"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <ProgressBar
+            android:id="@+id/userPPBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:progressDrawable="@drawable/custom_pp_progress"/>
+        <TextView
+            android:id="@+id/userPPText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PP: 0/100"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/attemptsText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pokušaji: 5/5"/>
+        <TextView
+            android:id="@+id/successChanceText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Šansa za pogodak: 0%"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Aktivna oprema:"/>
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+            <LinearLayout
+                android:id="@+id/layoutActiveEquipment"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"/>
+        </HorizontalScrollView>
+
+        <Button
+            android:id="@+id/attackButton"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:text="Napadni" />
+
+        <RelativeLayout
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_marginTop="24dp">
+
+            <ImageView
+                android:id="@+id/chestImage"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:src="@drawable/cup1"
+                android:layout_centerInParent="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/chestRewardText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:textColor="#FFD700"
+                android:textStyle="bold"
+                android:layout_centerInParent="true"
+                android:visibility="gone"
+                android:gravity="center"/>
+
+            <ImageView
+                android:id="@+id/ivDroppedItemIcon"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_centerInParent="true"
+                android:visibility="gone"
+                android:elevation="5dp"/>
+        </RelativeLayout>
+    </LinearLayout>
+</ScrollView>

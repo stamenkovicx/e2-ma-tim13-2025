@@ -24,6 +24,7 @@ public class Task implements Serializable {
     private int xpValue;
     private String userId;
     private TaskStatus status;
+    private Date creationDate;
 
     public Task() {
         this.status = TaskStatus.AKTIVAN;
@@ -46,6 +47,7 @@ public class Task implements Serializable {
         this.xpValue = xpValue;
         this.userId = userId;
         this.status = TaskStatus.AKTIVAN;
+        this.creationDate = new Date(); // Odmah postavi datum kreiranja
     }
 
     @Exclude
@@ -112,4 +114,6 @@ public class Task implements Serializable {
     public void setUserId(String userId) { this.userId = userId; }
     public TaskStatus getStatus() { return status; }
     public void setStatus(TaskStatus status) { this.status = status; }
+    public Date getCreationDate() { return creationDate; }
+    public void setCreationDate(Date creationDate) { this.creationDate = creationDate; }
 }

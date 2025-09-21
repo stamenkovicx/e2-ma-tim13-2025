@@ -6,6 +6,7 @@ import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.PropertyName;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class User {
@@ -27,6 +28,7 @@ public class User {
     private String allianceId;
     private List<String> allianceInvitationsSent;
     private List<String> allianceInvitationsReceived;
+    private Date dateOfLastLevelUp;
 
     public User() {
     }
@@ -177,6 +179,10 @@ public class User {
     public void setPowerPoints(int powerPoints) {
         this.powerPoints = powerPoints;
     }
+    public Date getDateOfLastLevelUp() { return dateOfLastLevelUp; }
+    public void setDateOfLastLevelUp(Date dateOfLastLevelUp) { this.dateOfLastLevelUp = dateOfLastLevelUp; }
+
+    //racuna ukupan broj poena PP
     @Exclude
     public int getTotalPowerPoints() {
         int totalPower = this.powerPoints;
@@ -236,6 +242,7 @@ public class User {
             this.title = LevelingSystemHelper.getTitleForLevel(this.level);
             this.powerPoints += LevelingSystemHelper.getPowerPointsRewardForLevel(this.level);
             this.xp -= requiredXp;
+            this.dateOfLastLevelUp = new Date();
             if (this.level > 0) {
                 requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
             } else {
@@ -282,4 +289,33 @@ public class User {
     public List<String> getAllianceInvitationsReceived() { return allianceInvitationsReceived; }
     public void setAllianceInvitationsSent(List<String> allianceInvitationsSent) { this.allianceInvitationsSent = allianceInvitationsSent; }
     public void setAllianceInvitationsReceived(List<String> allianceInvitationsReceived) { this.allianceInvitationsReceived = allianceInvitationsReceived; }
-}
+
+    /*    @Exclude
+        public double getCurrentStageProgress() {
+            int xpForPreviousLevel = 0;
+            if (this.level > 0) {
+                // XP potrebna za prethodni nivo
+                xpForPreviousLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level - 1);
+            }
+
+            // XP potrebna za trenutni nivo
+            int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+
+            int xpInCurrentStage = this.xp; // XP koji je korisnik sakupio za trenutni nivo
+
+            // Napredak u procentima (0-100)
+            double progress = ((double) xpInCurrentStage / xpForNextLevel) * 100;
+
+            // Za slučaj da XP prelazi potrebnu količinu
+            if (progress > 100) progress = 100;
+
+            return progress;
+        }
+
+        // Metoda koja vraća XP potrebnu za prelazak na sledeći nivo
+        @Exclude
+        public int getXpToNextLevel() {
+            int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
+            return xpForNextLevel - this.xp;
+        }*/
+    }

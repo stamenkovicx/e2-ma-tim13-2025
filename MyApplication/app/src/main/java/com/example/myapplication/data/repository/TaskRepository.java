@@ -5,6 +5,7 @@ import android.util.Pair;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -60,4 +61,12 @@ public interface TaskRepository {
     void updateTasksColor(String categoryId, int newColor, String userId, OnTaskUpdatedListener listener);
     void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener);
     void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener);
+
+    interface OnQuotaCheckedListener {
+        void onResult(boolean overQuota);
+        void onFailure(Exception e);
+    }
+    void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener);
+    void getTasksCreatedAfter(String userId, Date afterDate, OnTasksLoadedListener listener);
+
 }
