@@ -9,14 +9,16 @@ public class Boss {
     private int level;
     private int hp;
     private int maxHp;
-    private boolean isDefeated; //status poraza
-    private int attemptsLeft; // za praćenje pokušaja
+    private boolean isDefeated;
+    private int attemptsLeft;
+    private int baseReward;
 
     public Boss() {}
 
     public Boss(int level, int previousHp) {
         this.level = level;
         this.attemptsLeft = 5;
+        this.baseReward = 200;
         this.isDefeated = false;
 
         if (level == 1) {
@@ -27,6 +29,7 @@ public class Boss {
         this.maxHp = this.hp;
     }
 
+    // Getteri i setteri za sva polja
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public int getLevel() { return level; }
@@ -37,8 +40,8 @@ public class Boss {
     public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
     public int getAttemptsLeft() { return attemptsLeft; }
     public void setAttemptsLeft(int attemptsLeft) { this.attemptsLeft = attemptsLeft; }
-
-
+    public int getBaseReward() { return baseReward; }
+    public void setBaseReward(int baseReward) { this.baseReward = baseReward; }
     public boolean getIsDefeated() { return isDefeated; }
     public void setIsDefeated(boolean isDefeated) { this.isDefeated = isDefeated; }
 
