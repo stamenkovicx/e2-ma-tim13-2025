@@ -20,6 +20,7 @@ import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.domain.models.Task;
+import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.presentation.ui.adapters.TaskAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -99,9 +100,11 @@ public class TaskListFragment extends Fragment {
                 Date today = todayCal.getTime();
 
                 // Filtriramo zadatke: počeli u prošlosti i još traju ili počinju danas/ubudućnosti
+                // Dodata provera za status Otkazan
                 List<Task> visibleTasks = allTasks.stream()
                         .filter(task -> task.getStartDate() != null &&
-                                (task.getEndDate() == null || !task.getEndDate().before(today)))
+                                (task.getEndDate() == null || !task.getEndDate().before(today)) &&
+                                task.getStatus() != TaskStatus.OTKAZAN)
                         .collect(Collectors.toList());
 
                 updateTaskList(visibleTasks);
@@ -136,7 +139,8 @@ public class TaskListFragment extends Fragment {
                 // Filtriramo zadatke: počeli u prošlosti i još traju ili počinju danas/ubudućnosti
                 List<Task> visibleTasks = allTasks.stream()
                         .filter(task -> task.getStartDate() != null &&
-                                (task.getEndDate() == null || !task.getEndDate().before(today)))
+                                (task.getEndDate() == null || !task.getEndDate().before(today)) &&
+                                task.getStatus() != TaskStatus.OTKAZAN)
                         .collect(Collectors.toList());
 
                 // Primena filtera po tipu
