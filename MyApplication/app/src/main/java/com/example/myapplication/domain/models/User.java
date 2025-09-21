@@ -6,6 +6,7 @@ import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.PropertyName;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class User {
@@ -27,6 +28,7 @@ public class User {
     private String allianceId;
     private List<String> allianceInvitationsSent;
     private List<String> allianceInvitationsReceived;
+    private Date dateOfLastLevelUp;
 
     public User() {
     }
@@ -177,6 +179,8 @@ public class User {
     public void setPowerPoints(int powerPoints) {
         this.powerPoints = powerPoints;
     }
+    public Date getDateOfLastLevelUp() { return dateOfLastLevelUp; }
+    public void setDateOfLastLevelUp(Date dateOfLastLevelUp) { this.dateOfLastLevelUp = dateOfLastLevelUp; }
 
     //racuna ukupan broj poena PP
     @Exclude
@@ -238,6 +242,7 @@ public class User {
             this.title = LevelingSystemHelper.getTitleForLevel(this.level);
             this.powerPoints += LevelingSystemHelper.getPowerPointsRewardForLevel(this.level);
             this.xp -= requiredXp;
+            this.dateOfLastLevelUp = new Date();
             if (this.level > 0) {
                 requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
             } else {

@@ -5,6 +5,7 @@ import android.util.Pair;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -66,4 +67,6 @@ public interface TaskRepository {
         void onFailure(Exception e);
     }
     void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener);
+    void getTasksCreatedAfter(String userId, Date afterDate, OnTasksLoadedListener listener);
+
 }

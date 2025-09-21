@@ -29,6 +29,7 @@ import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.*;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -392,20 +393,29 @@ public class BossFightActivity extends AppCompatActivity {
     }
 
     private void loadUserSuccessChance(String userId) {
-        taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
+        Date lastLevelUpDate = (currentUser != null) ? currentUser.getDateOfLastLevelUp() : null;
+
+        taskRepository.getTasksCreatedAfter(userId, lastLevelUpDate, new TaskRepository.OnTasksLoadedListener() {
             @Override
-            public void onSuccess(List<Task> tasks) {
-                if (tasks == null || tasks.isEmpty()) {
+            public void onSuccess(List<Task> tasksFromStage) {
+                if (tasksFromStage == null || tasksFromStage.isEmpty()) {
                     if(playerState != null) playerState.setSuccessChance(0);
                     updateUI();
                     return;
                 }
+
+                // Ostatak metode ostaje isti, samo koristi 'tasksFromStage'
                 AtomicInteger completed = new AtomicInteger(0);
                 AtomicInteger total = new AtomicInteger(0);
-                int taskCount = tasks.size();
+                int taskCount = tasksFromStage.size();
                 AtomicInteger processedCount = new AtomicInteger(0);
 
-                for (Task task : tasks) {
+                if (taskCount == 0) {
+                    calculateAndSetChance(0, 0);
+                    return;
+                }
+
+                for (Task task : tasksFromStage) {
                     if (task.getStatus() == TaskStatus.PAUZIRAN || task.getStatus() == TaskStatus.OTKAZAN) {
                         if (processedCount.incrementAndGet() == taskCount) {
                             calculateAndSetChance(completed.get(), total.get());

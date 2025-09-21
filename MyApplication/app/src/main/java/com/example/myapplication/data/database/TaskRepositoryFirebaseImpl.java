@@ -22,6 +22,7 @@ import com.google.firebase.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -82,6 +83,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
         taskMap.put("xpValue", task.getXpValue());
         taskMap.put("userId", task.getUserId());
         taskMap.put("status", task.getStatus().name());
+        taskMap.put("creationDate", new Timestamp(task.getCreationDate()));
 
         getTasksCollection(userId)
                 .document(documentId)
@@ -455,6 +457,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                     }
                 });
     }
+
     private String getQuotaKey(Task task) {
         if (task.getDifficultyType() == DifficultyType.VERY_EASY && task.getImportanceType() == ImportanceType.NORMAL) {
             return "VEOMA_LAK_NORMALAN";
@@ -521,6 +524,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 return true;
         }
     }
+
     // Unutar klase TaskRepositoryFirebaseImpl, dodajte ovu metodu
     @Override
     public void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener) {
@@ -643,6 +647,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                     }
                 });
     }
+
     public void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener) {
         String quotaKey = getQuotaKey(task);
         String quotaId = getQuotaId(task);
@@ -668,4 +673,29 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 .addOnFailureListener(listener::onFailure);
     }
 
+    @Override
+    public void getTasksCreatedAfter(String userId, Date afterDate, OnTasksLoadedListener listener) {
+        if (afterDate == null) {
+            getAllTasks(userId, listener);
+            return;
+        }
+
+        getTasksCollection(userId)
+                .whereGreaterThanOrEqualTo("creationDate", new Timestamp(afterDate))
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        List<Task> tasks = new ArrayList<>();
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Task currentTask = document.toObject(Task.class);
+                            currentTask.setId(document.getId());
+                            tasks.add(currentTask);
+                        }
+                        listener.onSuccess(tasks);
+                    } else {
+                        Log.e("TaskRepo", "Greška pri getTasksCreatedAfter", task.getException());
+                        listener.onFailure(task.getException());
+                    }
+                });
+    }
 }
