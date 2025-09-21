@@ -22,7 +22,6 @@ import com.google.firebase.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -30,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -44,8 +44,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
     private static final String FIELD_CATEGORY_ID = "category.id";
     private static final String QUOTAS_COLLECTION = "xp_quotas";
     private static final String FIELD_LAST_UPDATED = "lastUpdated";
-    // Ispravljeno: konstanta je neophodna za rad
-    private static final String FIELD_COMPLETED_COUNT = "completedCount";
+    private static final int TASK_EXPIRATION_GRACE_PERIOD_DAYS = 3;
 
     private final FirebaseFirestore db;
 
@@ -458,145 +457,257 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 });
     }
 
-    private String getQuotaKey(Task task) {
-        if (task.getDifficultyType() == DifficultyType.VERY_EASY && task.getImportanceType() == ImportanceType.NORMAL) {
-            return "VEOMA_LAK_NORMALAN";
-        }
-        if (task.getDifficultyType() == DifficultyType.EASY && task.getImportanceType() == ImportanceType.IMPORTANT) {
-            return "LAK_VAZAN";
-        }
-        if (task.getDifficultyType() == DifficultyType.HARD && task.getImportanceType() == ImportanceType.EXTREMELY_IMPORTANT) {
-            return "TEZAK_EKSTREMNO_VAZAN";
-        }
-        if (task.getDifficultyType() == DifficultyType.EXTREMELY_HARD) {
-            return "EKSTREMNO_TEZAK";
-        }
-        if (task.getImportanceType() == ImportanceType.SPECIAL) {
-            return "SPECIJALAN";
-        }
-        return "DEFAULT";
+    /**
+     * Ažurira status zadatka na URAĐEN i VRAĆA tačan broj osvojenih poena.
+     */
+    @Override
+    public void updateTaskStatusToDone(String taskId, String userId, OnTaskCompletedListener listener) {
+        final AtomicInteger awardedXp = new AtomicInteger(0);
+
+        db.runTransaction(transaction -> {
+            // 1. DOHVATANJE ZADATKA
+            DocumentReference taskRef = getTasksCollection(userId).document(taskId);
+            DocumentSnapshot taskSnapshot = transaction.get(taskRef);
+
+            if (!taskSnapshot.exists()) {
+                throw new RuntimeException("Zadatak nije pronađen.");
+            }
+
+            Task task = taskSnapshot.toObject(Task.class);
+            if (task == null) {
+                throw new RuntimeException("Greška pri mapiranju zadatka.");
+            }
+            if (task.getStatus() == TaskStatus.URAĐEN) {
+                throw new RuntimeException("Zadatak je već završen.");
+            }
+            task.setCategory(mapCategory(taskSnapshot.get("category")));
+
+            // 2. DEFINISANJE KVOTA I XP VREDNOSTI
+            DifficultyType difficulty = task.getDifficultyType();
+            ImportanceType importance = task.getImportanceType();
+
+            int difficultyXp = getDifficultyXp(difficulty);
+            String difficultyQuotaKey = getDifficultyQuotaKey(difficulty);
+            String difficultyQuotaPeriod = getDifficultyQuotaPeriod(difficulty);
+            int difficultyQuotaLimit = getDifficultyQuotaLimit(difficulty);
+
+            int importanceXp = getImportanceXp(importance);
+            String importanceQuotaKey = getImportanceQuotaKey(importance);
+            String importanceQuotaPeriod = getImportanceQuotaPeriod(importance);
+            int importanceQuotaLimit = getImportanceQuotaLimit(importance);
+
+            // 3. PROVERA KVOTE ZA TEŽINU
+            boolean awardDifficultyXp = false;
+            long newDifficultyCount = 0;
+            DocumentSnapshot difficultyQuotaSnapshot = null;
+            if (difficultyQuotaPeriod != null) {
+                DocumentReference difficultyQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                        .collection(QUOTAS_COLLECTION).document(difficultyQuotaPeriod);
+                difficultyQuotaSnapshot = transaction.get(difficultyQuotaRef);
+
+                long currentCount = 0;
+                if (difficultyQuotaSnapshot.exists()) {
+                    Timestamp lastUpdated = difficultyQuotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
+                    if (!isQuotaPeriodExpired(lastUpdated, difficultyQuotaPeriod)) {
+                        currentCount = difficultyQuotaSnapshot.getLong(difficultyQuotaKey) != null ? difficultyQuotaSnapshot.getLong(difficultyQuotaKey) : 0;
+                    }
+                }
+
+                if (currentCount < difficultyQuotaLimit) {
+                    awardDifficultyXp = true;
+                    newDifficultyCount = currentCount + 1;
+                }
+            } else {
+                awardDifficultyXp = true; // Nema kvote za ovu težinu
+            }
+
+            // 4. PROVERA KVOTE ZA BITNOST
+            boolean awardImportanceXp = false;
+            long newImportanceCount = 0;
+            if (importanceQuotaPeriod != null) {
+                DocumentSnapshot importanceQuotaSnapshot;
+                if (difficultyQuotaPeriod != null && difficultyQuotaPeriod.equals(importanceQuotaPeriod)) {
+                    importanceQuotaSnapshot = difficultyQuotaSnapshot;
+                } else {
+                    DocumentReference importanceQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                            .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
+                    importanceQuotaSnapshot = transaction.get(importanceQuotaRef);
+                }
+
+                long currentCount = 0;
+                if (importanceQuotaSnapshot != null && importanceQuotaSnapshot.exists()) {
+                    Timestamp lastUpdated = importanceQuotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
+                    if (!isQuotaPeriodExpired(lastUpdated, importanceQuotaPeriod)) {
+                        currentCount = importanceQuotaSnapshot.getLong(importanceQuotaKey) != null ? importanceQuotaSnapshot.getLong(importanceQuotaKey) : 0;
+                    }
+                }
+
+                if (currentCount < importanceQuotaLimit) {
+                    awardImportanceXp = true;
+                    newImportanceCount = currentCount + 1;
+                }
+            } else {
+                awardImportanceXp = true; // Nema kvote za ovu bitnost
+            }
+
+            // 5. OBRAČUN FINALNOG XP-a I AŽURIRANJE ZADATKA
+            int finalXp = (awardDifficultyXp ? difficultyXp : 0) + (awardImportanceXp ? importanceXp : 0);
+            awardedXp.set(finalXp); // Postavi vrednost koja će biti vraćena
+
+            Map<String, Object> taskUpdates = new HashMap<>();
+            taskUpdates.put(FIELD_STATUS, TaskStatus.URAĐEN.name());
+            taskUpdates.put(FIELD_COMPLETION_DATE, new Timestamp(new Date()));
+            taskUpdates.put(FIELD_XP_VALUE, finalXp);
+            transaction.update(taskRef, taskUpdates);
+
+            // 6. AŽURIRANJE KVOTA
+            Timestamp now = new Timestamp(new Date());
+            if (awardDifficultyXp && difficultyQuotaPeriod != null) {
+                DocumentReference difficultyQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                        .collection(QUOTAS_COLLECTION).document(difficultyQuotaPeriod);
+                Map<String, Object> quotaUpdates = new HashMap<>();
+                quotaUpdates.put(difficultyQuotaKey, newDifficultyCount);
+                quotaUpdates.put(FIELD_LAST_UPDATED, now);
+                transaction.set(difficultyQuotaRef, quotaUpdates, SetOptions.merge());
+            }
+
+            if (awardImportanceXp && importanceQuotaPeriod != null) {
+                DocumentReference importanceQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                        .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
+                Map<String, Object> quotaUpdates = new HashMap<>();
+                quotaUpdates.put(importanceQuotaKey, newImportanceCount);
+                quotaUpdates.put(FIELD_LAST_UPDATED, now);
+                transaction.set(importanceQuotaRef, quotaUpdates, SetOptions.merge());
+            }
+
+            return null; // Uspeh transakcije
+        }).addOnSuccessListener(aVoid -> {
+            listener.onSuccess(awardedXp.get());
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "Transakcija neuspešna: " + e.getMessage(), e);
+            listener.onFailure(e);
+        });
     }
 
-    private String getQuotaId(Task task) {
-        if (task.getDifficultyType() == DifficultyType.EXTREMELY_HARD) {
-            return "weekly";
+    // --- NOVE POMOĆNE METODE ZA KVOTE I XP ---
+
+    private int getDifficultyXp(DifficultyType type) {
+        if (type == null) return 0;
+        switch (type) {
+            case VERY_EASY: return 1;
+            case EASY: return 3;
+            case HARD: return 7;
+            case EXTREMELY_HARD: return 15;
+            default: return 0;
         }
-        if (task.getImportanceType() == ImportanceType.SPECIAL) {
-            return "monthly";
-        }
-        return "daily";
     }
 
-    private int getQuotaLimit(Task task) {
-        String quotaKey = getQuotaKey(task);
-        switch (quotaKey) {
-            case "VEOMA_LAK_NORMALAN":
-            case "LAK_VAZAN":
+    private int getImportanceXp(ImportanceType type) {
+        if (type == null) return 0;
+        switch (type) {
+            case NORMAL: return 1;
+            case IMPORTANT: return 3;
+            case EXTREMELY_IMPORTANT: return 7;
+            case SPECIAL: return 20;
+            default: return 0;
+        }
+    }
+
+    // --- METODE ZA TEŽINU ---
+    private String getDifficultyQuotaKey(DifficultyType type) {
+        return "DIFFICULTY_" + type.name();
+    }
+
+    private String getDifficultyQuotaPeriod(DifficultyType type) {
+        if (type == null) return null;
+        switch (type) {
+            case VERY_EASY:
+            case EASY:
+            case HARD:
+                return "daily";
+            case EXTREMELY_HARD:
+                return "weekly";
+            default:
+                return null; // Nema kvote
+        }
+    }
+
+    private int getDifficultyQuotaLimit(DifficultyType type) {
+        if (type == null) return Integer.MAX_VALUE;
+        switch (type) {
+            case VERY_EASY:
+            case EASY:
                 return 5;
-            case "TEZAK_EKSTREMNO_VAZAN":
+            case HARD:
                 return 2;
-            case "EKSTREMNO_TEZAK":
-                return 1;
-            case "SPECIJALAN":
+            case EXTREMELY_HARD:
                 return 1;
             default:
-                return Integer.MAX_VALUE;
+                return Integer.MAX_VALUE; // Nema ograničenja
         }
     }
 
-    private boolean isQuotaExpired(Timestamp lastUpdated, Task task) {
+    // --- METODE ZA BITNOST ---
+    private String getImportanceQuotaKey(ImportanceType type) {
+        return "IMPORTANCE_" + type.name();
+    }
+
+    private String getImportanceQuotaPeriod(ImportanceType type) {
+        if (type == null) return null;
+        switch (type) {
+            case NORMAL:
+            case IMPORTANT:
+            case EXTREMELY_IMPORTANT:
+                return "daily";
+            case SPECIAL:
+                return "monthly";
+            default:
+                return null; // Nema kvote
+        }
+    }
+
+    private int getImportanceQuotaLimit(ImportanceType type) {
+        if (type == null) return Integer.MAX_VALUE;
+        switch (type) {
+            case NORMAL:
+            case IMPORTANT:
+                return 5;
+            case EXTREMELY_IMPORTANT:
+                return 2;
+            case SPECIAL:
+                return 1;
+            default:
+                return Integer.MAX_VALUE; // Nema ograničenja
+        }
+    }
+
+    // --- UNIVERZALNA METODA ZA PROVERU PERIODA ---
+    private boolean isQuotaPeriodExpired(Timestamp lastUpdated, String period) {
         if (lastUpdated == null) return true;
+
         Calendar now = Calendar.getInstance();
         Calendar last = Calendar.getInstance();
         last.setTime(lastUpdated.toDate());
 
-        switch (getQuotaId(task)) {
+        switch (period) {
             case "daily":
-                return now.get(Calendar.DAY_OF_YEAR) != last.get(Calendar.DAY_OF_YEAR) ||
-                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+                return now.get(Calendar.DAY_OF_YEAR) != last.get(Calendar.DAY_OF_YEAR)
+                        || now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
             case "weekly":
-                return now.get(Calendar.WEEK_OF_YEAR) != last.get(Calendar.WEEK_OF_YEAR) ||
-                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+                now.setFirstDayOfWeek(Calendar.MONDAY);
+                last.setFirstDayOfWeek(Calendar.MONDAY);
+                return now.get(Calendar.WEEK_OF_YEAR) != last.get(Calendar.WEEK_OF_YEAR)
+                        || now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
             case "monthly":
-                return now.get(Calendar.MONTH) != last.get(Calendar.MONTH) ||
-                        now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
+                return now.get(Calendar.MONTH) != last.get(Calendar.MONTH)
+                        || now.get(Calendar.YEAR) != last.get(Calendar.YEAR);
             default:
                 return true;
         }
     }
 
-    // Unutar klase TaskRepositoryFirebaseImpl, dodajte ovu metodu
-    @Override
-    public void updateTaskStatusToDone(String taskId, String userId, OnTaskUpdatedListener listener) {
-        db.runTransaction(transaction -> {
-                    DocumentReference taskRef = getTasksCollection(userId).document(taskId);
-                    DocumentSnapshot taskSnapshot = transaction.get(taskRef);
-
-                    if (!taskSnapshot.exists()) {
-                        throw new RuntimeException("Zadatak nije pronađen.");
-                    }
-
-                    Task task = taskSnapshot.toObject(Task.class);
-                    if (task == null) {
-                        throw new RuntimeException("Greška pri mapiranju zadatka.");
-                    }
-                    if (task.getStatus() == TaskStatus.URAĐEN) {
-                        throw new RuntimeException("Zadatak je već završen.");
-                    }
-
-                    String quotaKey = getQuotaKey(task);
-                    String quotaId = getQuotaId(task);
-
-                    DocumentReference quotaRef = db.collection(USERS_COLLECTION)
-                            .document(userId)
-                            .collection(QUOTAS_COLLECTION)
-                            .document(quotaId);
-                    DocumentSnapshot quotaSnapshot = transaction.get(quotaRef);
-
-                    Map<String, Object> quotaData = new HashMap<>();
-                    long completedCount = 0;
-                    boolean shouldAwardXp = false;
-
-                    if (quotaSnapshot.exists()) {
-                        quotaData = quotaSnapshot.getData();
-                        if (quotaData != null) {
-                            completedCount = (long) quotaData.getOrDefault(quotaKey, 0L);
-                            Timestamp lastUpdated = quotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
-                            if (isQuotaExpired(lastUpdated, task)) {
-                                completedCount = 0;
-                            }
-                        }
-                    }
-
-                    if (completedCount < getQuotaLimit(task)) {
-                        shouldAwardXp = true;
-                        completedCount++;
-                    }
-
-                    Map<String, Object> updates = new HashMap<>();
-                    updates.put(FIELD_STATUS, TaskStatus.URAĐEN.name());
-                    updates.put(FIELD_COMPLETION_DATE, new Timestamp(new Date()));
-                    // Vraćamo liniju koja ažurira xpValue u zadatku
-                    updates.put(FIELD_XP_VALUE, shouldAwardXp ? task.getXpValue() : 0);
-
-                    transaction.update(taskRef, updates);
-
-                    Map<String, Object> quotaUpdates = new HashMap<>();
-                    quotaUpdates.put(quotaKey, completedCount);
-                    quotaUpdates.put(FIELD_LAST_UPDATED, new Timestamp(new Date()));
-                    transaction.set(quotaRef, quotaUpdates, SetOptions.merge());
-
-                    return null;
-                }).addOnSuccessListener(aVoid -> listener.onSuccess())
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Transakcija neuspešna: " + e.getMessage(), e);
-                    listener.onFailure(e);
-                });
-    }
-// U TaskRepositoryFirebaseImpl.java
 
     public void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener) {
-        // Dohvati sve aktivne zadatke
         getTasksCollection(userId)
                 .whereEqualTo("status", TaskStatus.AKTIVAN.name())
                 .get()
@@ -604,20 +715,16 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                     if (task.isSuccessful() && task.getResult() != null) {
                         WriteBatch batch = db.batch();
                         AtomicInteger tasksToUpdate = new AtomicInteger(0);
-
-                        // Trenutni datum
                         Calendar now = Calendar.getInstance();
 
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Task currentTask = document.toObject(Task.class);
 
-                            // Provera roka
                             if (currentTask.getEndDate() != null) {
                                 Calendar expiryCalendar = Calendar.getInstance();
                                 expiryCalendar.setTime(currentTask.getEndDate());
-                                expiryCalendar.add(Calendar.DAY_OF_YEAR, 3); // Dodajemo 3 dana na endDate
+                                expiryCalendar.add(Calendar.DAY_OF_YEAR, TASK_EXPIRATION_GRACE_PERIOD_DAYS);
 
-                                // Ako je današnji datum nakon datuma isteka, zadatak je neurađen
                                 if (now.after(expiryCalendar)) {
                                     DocumentReference taskRef = document.getReference();
                                     batch.update(taskRef, "status", TaskStatus.NEURAĐEN.name());
@@ -648,30 +755,87 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 });
     }
 
+    /**
+     * Proverava da li je zadatak preko kvote za BILO KOJU od svoje dve komponente (težina ili bitnost).
+     * Vraća 'true' ako je bar jedna kvota prekoračena.
+     */
+    @Override
     public void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener) {
-        String quotaKey = getQuotaKey(task);
-        String quotaId = getQuotaId(task);
+        DifficultyType difficulty = task.getDifficultyType();
+        String difficultyQuotaKey = getDifficultyQuotaKey(difficulty);
+        String difficultyQuotaPeriod = getDifficultyQuotaPeriod(difficulty);
+        int difficultyQuotaLimit = getDifficultyQuotaLimit(difficulty);
 
-        DocumentReference quotaRef = db.collection(USERS_COLLECTION)
-                .document(userId)
-                .collection(QUOTAS_COLLECTION)
-                .document(quotaId);
+        AtomicBoolean isOverQuota = new AtomicBoolean(false);
 
-        quotaRef.get()
-                .addOnSuccessListener(quotaSnapshot -> {
-                    long completedCount = 0;
-                    if (quotaSnapshot.exists()) {
-                        completedCount = quotaSnapshot.getLong(quotaKey) != null ? quotaSnapshot.getLong(quotaKey) : 0;
-                        Timestamp lastUpdated = quotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
-                        if (isQuotaExpired(lastUpdated, task)) {
-                            completedCount = 0;
-                        }
+        // 1. Proveri kvotu za težinu
+        if (difficultyQuotaPeriod == null) {
+            checkImportanceQuota(task, userId, listener, false);
+            return;
+        }
+
+        DocumentReference difficultyQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                .collection(QUOTAS_COLLECTION).document(difficultyQuotaPeriod);
+
+        difficultyQuotaRef.get().addOnCompleteListener(task1 -> {
+            if (task1.isSuccessful()) {
+                DocumentSnapshot snapshot = task1.getResult();
+                long currentCount = 0;
+                if (snapshot != null && snapshot.exists()) {
+                    Timestamp lastUpdated = snapshot.getTimestamp(FIELD_LAST_UPDATED);
+                    if (!isQuotaPeriodExpired(lastUpdated, difficultyQuotaPeriod)) {
+                        currentCount = snapshot.getLong(difficultyQuotaKey) != null ? snapshot.getLong(difficultyQuotaKey) : 0;
                     }
-                    boolean overQuota = completedCount >= getQuotaLimit(task);
-                    listener.onResult(overQuota);
-                })
-                .addOnFailureListener(listener::onFailure);
+                }
+                if (currentCount >= difficultyQuotaLimit) {
+                    isOverQuota.set(true);
+                }
+                // 2. Bez obzira na rezultat, proveri i kvotu za bitnost
+                checkImportanceQuota(task, userId, listener, isOverQuota.get());
+            } else {
+                listener.onFailure(task1.getException());
+            }
+        });
     }
+
+    private void checkImportanceQuota(Task task, String userId, OnQuotaCheckedListener listener, boolean isAlreadyOverQuota) {
+        // Ako je kvota za težinu već prekoračena, odmah vrati true.
+        if (isAlreadyOverQuota) {
+            listener.onResult(true);
+            return;
+        }
+
+        ImportanceType importance = task.getImportanceType();
+        String importanceQuotaKey = getImportanceQuotaKey(importance);
+        String importanceQuotaPeriod = getImportanceQuotaPeriod(importance);
+        int importanceQuotaLimit = getImportanceQuotaLimit(importance);
+
+        if (importanceQuotaPeriod == null) {
+            listener.onResult(false); // Ni težina ni bitnost nemaju kvotu
+            return;
+        }
+
+        DocumentReference importanceQuotaRef = db.collection(USERS_COLLECTION).document(userId)
+                .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
+
+        importanceQuotaRef.get().addOnCompleteListener(task2 -> {
+            if (task2.isSuccessful()) {
+                DocumentSnapshot snapshot = task2.getResult();
+                long currentCount = 0;
+                if (snapshot != null && snapshot.exists()) {
+                    Timestamp lastUpdated = snapshot.getTimestamp(FIELD_LAST_UPDATED);
+                    if (!isQuotaPeriodExpired(lastUpdated, importanceQuotaPeriod)) {
+                        currentCount = snapshot.getLong(importanceQuotaKey) != null ? snapshot.getLong(importanceQuotaKey) : 0;
+                    }
+                }
+                // Finalni rezultat je true ako je BILO KOJA kvota prekoračena
+                listener.onResult(currentCount >= importanceQuotaLimit);
+            } else {
+                listener.onFailure(task2.getException());
+            }
+        });
+    }
+
 
     @Override
     public void getTasksCreatedAfter(String userId, Date afterDate, OnTasksLoadedListener listener) {
