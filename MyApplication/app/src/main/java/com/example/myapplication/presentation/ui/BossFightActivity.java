@@ -2,6 +2,7 @@ package com.example.myapplication.presentation.ui;
 
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.AnimationDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -9,6 +10,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,12 +21,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.ItemRepository;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Boss;
+import com.example.myapplication.domain.models.Equipment;
 import com.example.myapplication.domain.models.ShakeDetector;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
+import com.example.myapplication.domain.models.User;
+import com.example.myapplication.domain.models.UserEquipment;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentReference;
 
@@ -38,8 +44,8 @@ public class BossFightActivity extends AppCompatActivity {
     private ProgressBar bossHpBar,userPPBar;
     private TextView bossHpText, attemptsText, successChanceText,userPPText,chestRewardText;
     private Button attackButton;
-    private AnimationDrawable bossAnimation;
-    private ImageView bossImage;
+    private AnimationDrawable bossAnimation,chestAnimation;
+    private ImageView bossImage,chestImage;
     private int baseReward = 200;
     private int bossCount = 0; // broj poraženih bosova
 
@@ -56,12 +62,11 @@ public class BossFightActivity extends AppCompatActivity {
 
     private ProgressBar userStageProgressBar;
     private TextView userStageProgressText;
-    private ImageView chestImage;
-    private AnimationDrawable chestAnimation;
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private ShakeDetector shakeDetector;
     private int lastReward; // globalno polje klase
+    private LinearLayout layoutActiveEquipment;
 
 
 
@@ -90,6 +95,7 @@ public class BossFightActivity extends AppCompatActivity {
         chestImage = findViewById(R.id.chestImage);
         chestImage.setVisibility(View.GONE);
         chestRewardText = findViewById(R.id.chestRewardText);
+        layoutActiveEquipment = findViewById(R.id.layoutActiveEquipment);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -121,6 +127,21 @@ public class BossFightActivity extends AppCompatActivity {
                 attackBoss();
             }
         });
+
+        //otvaranje dijaloga za aktivaciju opreme
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Priprema za borbu")
+                .setMessage("Da li želiš da aktiviraš opremu pre borbe?")
+                .setCancelable(false)
+                .setPositiveButton("Da", (dialog, which) -> {
+                    Intent intent = new Intent(BossFightActivity.this, InventoryActivity.class);
+                    startActivity(intent);
+                })
+                .setNegativeButton("Ne", (dialog, which) -> {
+                    Toast.makeText(BossFightActivity.this, "Borba počinje bez dodatne opreme.", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+
     }
 
     private void attackBoss() {
@@ -195,6 +216,7 @@ public class BossFightActivity extends AppCompatActivity {
                     if (user != null) {
                         currentUser = user;
                        // updateUserStageProgress();
+                        updateActiveEquipment(currentUser);
 
                         userPP = currentUser.getPowerPoints(); // učitaj PP iz usera
                         int maxPP = currentUser.getTotalPowerPoints(); // ili koliko god korisnik može maksimalno imati
@@ -355,12 +377,70 @@ public class BossFightActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(shakeDetector, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        loadCurrentUser();
+        if (currentUser != null) {
+            updateActiveEquipment(currentUser);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(shakeDetector);
+    }
+    private void updateActiveEquipment(User user) {
+        layoutActiveEquipment.removeAllViews(); // očisti prethodni prikaz
+
+        if (user.getEquipment() != null && !user.getEquipment().isEmpty()) {
+            boolean hasActive = false;
+
+            for (UserEquipment ue : user.getEquipment()) {
+                if (ue != null && ue.isActive()) {
+                    Equipment eqDetails = ItemRepository.getEquipmentById(ue.getEquipmentId());
+                    if (eqDetails != null) {
+                        hasActive = true;
+
+                        ImageView icon = new ImageView(this);
+                        icon.setLayoutParams(new LinearLayout.LayoutParams(
+                                200, // širina ikonice u dp
+                                200  // visina ikonice u dp
+                        ));
+
+                        // Konvertuj string u int resurs
+                        int resId = getResources().getIdentifier(
+                                eqDetails.getIconResourceId(), // npr. "sword_icon"
+                                "drawable",
+                                getPackageName()
+                        );
+
+                        if (resId != 0) {
+                            icon.setImageResource(resId);
+                        } else {
+                            icon.setImageResource(R.drawable.elixir_greatness); // fallback ikonica
+                        }
+
+                        icon.setPadding(16, 0, 16, 0);
+
+                        // dodaj u layout
+                        layoutActiveEquipment.addView(icon);
+                    }
+                }
+            }
+
+            if (!hasActive) {
+                addNoEquipmentText();
+            }
+        } else {
+            addNoEquipmentText();
+        }
+    }
+
+    private void addNoEquipmentText() {
+        TextView noEq = new TextView(this);
+        noEq.setText("Nema aktivirane opreme.");
+        noEq.setTextSize(16f);
+        noEq.setTextColor(getResources().getColor(android.R.color.darker_gray));
+        layoutActiveEquipment.addView(noEq);
     }
 
 }
