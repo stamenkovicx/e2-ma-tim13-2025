@@ -460,8 +460,13 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
     /**
      * Ažurira status zadatka na URAĐEN i VRAĆA tačan broj osvojenih poena.
      */
+    // Unutar klase TaskRepositoryFirebaseImpl.java
+
+    /**
+     * IZMENA 1: Potpis metode sada prihvata i 'userLevel'
+     */
     @Override
-    public void updateTaskStatusToDone(String taskId, String userId, OnTaskCompletedListener listener) {
+    public void updateTaskStatusToDone(String taskId, String userId, int userLevel, OnTaskCompletedListener listener) {
         final AtomicInteger awardedXp = new AtomicInteger(0);
 
         db.runTransaction(transaction -> {
@@ -478,25 +483,34 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 throw new RuntimeException("Greška pri mapiranju zadatka.");
             }
             if (task.getStatus() == TaskStatus.URAĐEN) {
-                throw new RuntimeException("Zadatak je već završen.");
+                // Vraćamo 0 XP ako je zadatak već urađen, bez bacanja greške.
+                awardedXp.set(0);
+                return null;
             }
             task.setCategory(mapCategory(taskSnapshot.get("category")));
 
-            // 2. DEFINISANJE KVOTA I XP VREDNOSTI
+            // 2. DEFINISANJE KVOTA I PRORAČUN ISPRAVNIH XP VREDNOSTI
             DifficultyType difficulty = task.getDifficultyType();
             ImportanceType importance = task.getImportanceType();
 
+            // --- KLJUČNA IZMENA LOGIKE ---
+            // Težina ima fiksnu XP vrednost
             int difficultyXp = getDifficultyXp(difficulty);
+
+            // Bitnost se računa na osnovu nivoa korisnika
+            int baseImportanceXp = getImportanceXp(importance);
+            int finalImportanceXp = LevelingSystemHelper.getXpForImportance(baseImportanceXp, userLevel);
+            // --- KRAJ IZMENE LOGIKE ---
+
             String difficultyQuotaKey = getDifficultyQuotaKey(difficulty);
             String difficultyQuotaPeriod = getDifficultyQuotaPeriod(difficulty);
             int difficultyQuotaLimit = getDifficultyQuotaLimit(difficulty);
 
-            int importanceXp = getImportanceXp(importance);
             String importanceQuotaKey = getImportanceQuotaKey(importance);
             String importanceQuotaPeriod = getImportanceQuotaPeriod(importance);
             int importanceQuotaLimit = getImportanceQuotaLimit(importance);
 
-            // 3. PROVERA KVOTE ZA TEŽINU
+            // 3. PROVERA KVOTE ZA TEŽINU (logika ostaje ista)
             boolean awardDifficultyXp = false;
             long newDifficultyCount = 0;
             DocumentSnapshot difficultyQuotaSnapshot = null;
@@ -512,16 +526,15 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                         currentCount = difficultyQuotaSnapshot.getLong(difficultyQuotaKey) != null ? difficultyQuotaSnapshot.getLong(difficultyQuotaKey) : 0;
                     }
                 }
-
                 if (currentCount < difficultyQuotaLimit) {
                     awardDifficultyXp = true;
                     newDifficultyCount = currentCount + 1;
                 }
             } else {
-                awardDifficultyXp = true; // Nema kvote za ovu težinu
+                awardDifficultyXp = true;
             }
 
-            // 4. PROVERA KVOTE ZA BITNOST
+            // 4. PROVERA KVOTE ZA BITNOST (logika ostaje ista)
             boolean awardImportanceXp = false;
             long newImportanceCount = 0;
             if (importanceQuotaPeriod != null) {
@@ -533,7 +546,6 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                             .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
                     importanceQuotaSnapshot = transaction.get(importanceQuotaRef);
                 }
-
                 long currentCount = 0;
                 if (importanceQuotaSnapshot != null && importanceQuotaSnapshot.exists()) {
                     Timestamp lastUpdated = importanceQuotaSnapshot.getTimestamp(FIELD_LAST_UPDATED);
@@ -541,18 +553,18 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                         currentCount = importanceQuotaSnapshot.getLong(importanceQuotaKey) != null ? importanceQuotaSnapshot.getLong(importanceQuotaKey) : 0;
                     }
                 }
-
                 if (currentCount < importanceQuotaLimit) {
                     awardImportanceXp = true;
                     newImportanceCount = currentCount + 1;
                 }
             } else {
-                awardImportanceXp = true; // Nema kvote za ovu bitnost
+                awardImportanceXp = true;
             }
 
             // 5. OBRAČUN FINALNOG XP-a I AŽURIRANJE ZADATKA
-            int finalXp = (awardDifficultyXp ? difficultyXp : 0) + (awardImportanceXp ? importanceXp : 0);
-            awardedXp.set(finalXp); // Postavi vrednost koja će biti vraćena
+            // IZMENA 3: Koristimo nove, ispravno izračunate vrednosti
+            int finalXp = (awardDifficultyXp ? difficultyXp : 0) + (awardImportanceXp ? finalImportanceXp : 0);
+            awardedXp.set(finalXp);
 
             Map<String, Object> taskUpdates = new HashMap<>();
             taskUpdates.put(FIELD_STATUS, TaskStatus.URAĐEN.name());
@@ -560,7 +572,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
             taskUpdates.put(FIELD_XP_VALUE, finalXp);
             transaction.update(taskRef, taskUpdates);
 
-            // 6. AŽURIRANJE KVOTA
+            // 6. AŽURIRANJE KVOTA (logika ostaje ista)
             Timestamp now = new Timestamp(new Date());
             if (awardDifficultyXp && difficultyQuotaPeriod != null) {
                 DocumentReference difficultyQuotaRef = db.collection(USERS_COLLECTION).document(userId)
@@ -570,7 +582,6 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 quotaUpdates.put(FIELD_LAST_UPDATED, now);
                 transaction.set(difficultyQuotaRef, quotaUpdates, SetOptions.merge());
             }
-
             if (awardImportanceXp && importanceQuotaPeriod != null) {
                 DocumentReference importanceQuotaRef = db.collection(USERS_COLLECTION).document(userId)
                         .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
@@ -580,7 +591,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 transaction.set(importanceQuotaRef, quotaUpdates, SetOptions.merge());
             }
 
-            return null; // Uspeh transakcije
+            return null;
         }).addOnSuccessListener(aVoid -> {
             listener.onSuccess(awardedXp.get());
         }).addOnFailureListener(e -> {
@@ -597,7 +608,7 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
             case VERY_EASY: return 1;
             case EASY: return 3;
             case HARD: return 7;
-            case EXTREMELY_HARD: return 15;
+            case EXTREMELY_HARD: return 20;
             default: return 0;
         }
     }
@@ -607,8 +618,8 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
         switch (type) {
             case NORMAL: return 1;
             case IMPORTANT: return 3;
-            case EXTREMELY_IMPORTANT: return 7;
-            case SPECIAL: return 20;
+            case EXTREMELY_IMPORTANT: return 10;
+            case SPECIAL: return 100;
             default: return 0;
         }
     }

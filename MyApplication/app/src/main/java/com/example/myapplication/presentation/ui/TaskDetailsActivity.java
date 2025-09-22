@@ -17,7 +17,7 @@ import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.DifficultyType;
-import com.example.myapplication.domain.models.ImportanceType; // Importovan da se izbegne puna putanja
+import com.example.myapplication.domain.models.ImportanceType;
 import com.example.myapplication.domain.models.Task;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
@@ -32,6 +32,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
     private static final String TAG = "TaskDetailsActivity";
     private Task task;
+    private User currentUserObject; // Objekat korisnika kao polje klase
     private TaskRepository taskRepository;
     private UserRepository userRepository;
     private String userId;
@@ -60,44 +61,56 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         String taskId = getIntent().getStringExtra("taskId");
         if (taskId != null) {
-            loadTaskDetails(taskId);
+            loadTaskAndUserDetails(taskId);
         }
     }
 
-    // Metoda za učitavanje podataka, izdvojena radi preglednosti
-    private void loadTaskDetails(String taskId) {
-        taskRepository.checkAndDeactivateExpiredTasks(userId, new TaskRepository.OnTaskUpdatedListener() {
+    /**
+     * Centralna metoda koja učitava i zadatak i korisnika.
+     * Ovo osigurava da uvek imamo sveže podatke za prikaz.
+     */
+    private void loadTaskAndUserDetails(String taskId) {
+        taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
             @Override
-            public void onSuccess() {
-                taskRepository.getTaskById(taskId, userId, new TaskRepository.OnTaskLoadedListener() {
+            public void onSuccess(Task fetchedTask) {
+                if (fetchedTask == null) {
+                    Toast.makeText(TaskDetailsActivity.this, "Zadatak nije pronađen.", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+                task = fetchedTask;
+
+                // Nakon što učitamo zadatak, učitavamo i korisnika
+                userRepository.getUserById(userId, new UserRepository.OnCompleteListener<User>() {
                     @Override
-                    public void onSuccess(Task fetchedTask) {
-                        if (fetchedTask != null) {
-                            task = fetchedTask;
-                            // Inicijalizacija view-ova se radi samo jednom
-                            if (tvTaskName == null) {
-                                initializeViews();
-                            }
-                            displayTaskDetails(task);
-                            updateStatusButtons();
-                        } else {
-                            Toast.makeText(TaskDetailsActivity.this, "Zadatak nije pronađen.", Toast.LENGTH_SHORT).show();
+                    public void onSuccess(User user) {
+                        if (user == null) {
+                            Toast.makeText(TaskDetailsActivity.this, "Korisnik nije pronađen.", Toast.LENGTH_SHORT).show();
                             finish();
+                            return;
                         }
+                        currentUserObject = user;
+
+                        // Tek kada imamo i zadatak i korisnika, inicijalizujemo i prikazujemo
+                        if (tvTaskName == null) {
+                            initializeViews();
+                        }
+                        displayTaskDetails(task, currentUserObject);
+                        updateStatusButtons();
                     }
 
                     @Override
                     public void onFailure(Exception e) {
-                        Log.e(TAG, "Greška pri učitavanju detalja zadatka.", e);
-                        Toast.makeText(TaskDetailsActivity.this, "Greška pri učitavanju detalja zadatka.", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, "Greška pri učitavanju korisnika.", e);
+                        Toast.makeText(TaskDetailsActivity.this, "Greška pri učitavanju korisnika.", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
 
             @Override
             public void onFailure(Exception e) {
-                Log.e(TAG, "Greška pri proveri isteklih zadataka.", e);
-                Toast.makeText(TaskDetailsActivity.this, "Greška pri proveri statusa zadataka.", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Greška pri učitavanju detalja zadatka.", e);
+                Toast.makeText(TaskDetailsActivity.this, "Greška pri učitavanju detalja zadatka.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -127,43 +140,48 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         btnDelete.setOnClickListener(v -> deleteTask());
 
-        btnComplete.setOnClickListener(v -> completeTask()); // Povezano sa novom metodom
+        btnComplete.setOnClickListener(v -> completeTask());
         btnCancel.setOnClickListener(v -> updateTaskStatus(TaskStatus.OTKAZAN));
         btnPause.setOnClickListener(v -> updateTaskStatus(TaskStatus.PAUZIRAN));
         btnActivate.setOnClickListener(v -> updateTaskStatus(TaskStatus.AKTIVAN));
     }
 
-    private void displayTaskDetails(Task task) {
+    /**
+     * Metoda sada prima i 'user' objekat da bi mogla da koristi nivo.
+     */
+    private void displayTaskDetails(Task task, User user) {
         tvTaskName.setText(task.getName());
         tvTaskDescription.setText(task.getDescription());
         if (task.getCategory() != null) {
             vCategoryColor.setBackgroundColor(task.getCategory().getColor());
             tvCategory.setText(String.format("Kategorija: %s", task.getCategory().getName()));
         }
-
         String frequencyText = "Jednokratan";
         if ("recurring".equals(task.getFrequency())) {
             frequencyText = String.format("Ponavljajući (svaki %d. %s)", task.getInterval(), task.getIntervalUnit());
         }
         tvFrequency.setText(String.format("Učestalost: %s", frequencyText));
-
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
         String startDate = task.getStartDate() != null ? dateFormat.format(task.getStartDate()) : "N/A";
         String endDate = task.getEndDate() != null ? dateFormat.format(task.getEndDate()) : "N/A";
         tvDates.setText(String.format("Datum: %s - %s", startDate, endDate));
-
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         String executionTime = task.getExecutionTime() != null ? timeFormat.format(task.getExecutionTime()) : "N/A";
         tvExecutionTime.setText(String.format("Vreme izvršenja: %s", executionTime));
 
+        /**
+         * ISPRAVLJENO: Prikaz TEŽINE sada koristi fiksnu, osnovnu vrednost.
+         */
         DifficultyType difficultyType = task.getDifficultyType();
         if (difficultyType != null) {
             tvDifficulty.setText(String.format("Težina: %s (%d XP)", difficultyType.getSerbianName(), difficultyType.getXpValue()));
         }
 
+        // Prikaz BITNOSTI i dalje koristi vrednost izračunatu na osnovu nivoa korisnika.
         ImportanceType importanceType = task.getImportanceType();
         if (importanceType != null) {
-            tvImportance.setText(String.format("Bitnost: %s (%d XP)", importanceType.getSerbianName(), importanceType.getXpValue()));
+            int finalXpForImportance = LevelingSystemHelper.getXpForImportance(importanceType.getXpValue(), user.getLevel());
+            tvImportance.setText(String.format("Bitnost: %s (%d XP)", importanceType.getSerbianName(), finalXpForImportance));
         }
     }
 
@@ -193,8 +211,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 Toast.makeText(TaskDetailsActivity.this, "Status zadatka promenjen.", Toast.LENGTH_SHORT).show();
-                displayTaskDetails(task);
-                updateStatusButtons();
+                loadTaskAndUserDetails(task.getId());
             }
 
             @Override
@@ -205,20 +222,25 @@ public class TaskDetailsActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Kompletno ispravljena metoda za završavanje zadatka.
-     */
     private void completeTask() {
         if (task.getStatus() == TaskStatus.URAĐEN) {
             Toast.makeText(this, "Zadatak je već završen.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 1. Pozivamo repozitorijum koji će odraditi transakciju i vratiti tačan XP
-        taskRepository.updateTaskStatusToDone(task.getId(), userId, new TaskRepository.OnTaskCompletedListener() {
+        // Provera da li su podaci o korisniku učitani pre nego što ih koristimo
+        if (currentUserObject == null) {
+            Toast.makeText(this, "Greška: Podaci o korisniku nisu dostupni. Pokušajte ponovo.", Toast.LENGTH_SHORT).show();
+            // Opciono, možeš ponovo pozvati učitavanje podataka
+            // loadTaskAndUserDetails(task.getId());
+            return;
+        }
+
+        // Prosleđujemo ID zadatka, ID korisnika, i TRENUTNI NIVO korisnika
+        taskRepository.updateTaskStatusToDone(task.getId(), userId, currentUserObject.getLevel(), new TaskRepository.OnTaskCompletedListener() {
             @Override
             public void onSuccess(int awardedXp) {
-                // 2. Kada dobijemo tačan XP, ažuriramo korisnika
+                // Sada će awardedXp biti ispravno izračunat u pozadini
                 updateUserWithAwardedXp(awardedXp);
             }
 
@@ -240,26 +262,20 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 }
 
                 int previousLevel = user.getLevel();
-                // Koristimo awardedXp direktno, ne moramo više da računamo
                 user.setXp(user.getXp() + awardedXp);
+                int newLevel = LevelingSystemHelper.calculateLevelFromXp(user.getXp());
 
-                // Petlja za proveru level-up-a
-                while (true) {
-                    int requiredXp = LevelingSystemHelper.getRequiredXpForNextLevel(user.getLevel());
-                    if (user.getXp() < requiredXp) {
-                        break;
-                    }
-                    int newLevel = user.getLevel() + 1;
+                if (newLevel > user.getLevel()) {
                     user.setLevel(newLevel);
-                    user.setXp(user.getXp() - requiredXp);
                     user.setTitle(LevelingSystemHelper.getTitleForLevel(newLevel));
-                    user.setPowerPoints(user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel));
+                    user.setPowerPoints(
+                            user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel)
+                    );
                 }
 
                 userRepository.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        // Ažuriramo lokalni objekat zadatka i UI
                         task.setStatus(TaskStatus.URAĐEN);
                         task.setXpValue(awardedXp);
 
@@ -268,16 +284,12 @@ public class TaskDetailsActivity extends AppCompatActivity {
                         } else {
                             Toast.makeText(TaskDetailsActivity.this, "Zadatak završen, ali je kvota za XP ispunjena.", Toast.LENGTH_SHORT).show();
                         }
+
                         if (user.getLevel() > previousLevel) {
-                            // POZIVAMO NOVU METODU UMESTO TOAST-A
                             showBossFightDialog(user.getLevel());
                         } else {
-                            // Ako nema level-upa, samo osveži UI
-                            loadTaskDetails(task.getId());
+                            loadTaskAndUserDetails(task.getId());
                         }
-
-                        displayTaskDetails(task);
-                        updateStatusButtons();
                     }
 
                     @Override
@@ -294,14 +306,11 @@ public class TaskDetailsActivity extends AppCompatActivity {
         });
     }
 
-
     private void updateStatusButtons() {
         if (task == null) return;
-
         boolean isRecurring = "recurring".equals(task.getFrequency());
-        boolean isEditable = !isTaskTimeFinished(task); // Zadatak se može menjati samo ako mu nije prošao rok
+        boolean isEditable = !isTaskTimeFinished(task);
 
-        // Sakrij sve dugmiće pa prikaži samo potrebne
         btnComplete.setVisibility(View.GONE);
         btnCancel.setVisibility(View.GONE);
         btnPause.setVisibility(View.GONE);
@@ -309,7 +318,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
         btnDelete.setVisibility(View.VISIBLE);
         btnEdit.setVisibility(View.VISIBLE);
 
-        // Edit i Delete su uvek (ne)dostupni u zavisnosti od roka
         btnEdit.setEnabled(isEditable);
         btnDelete.setEnabled(isEditable);
 
@@ -327,7 +335,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
             case NEURAĐEN:
             case OTKAZAN:
             case URAĐEN:
-                // Za završene, neurađene ili otkazane zadatke, sakrivamo sve akcione dugmiće
                 btnEdit.setVisibility(View.GONE);
                 btnDelete.setVisibility(View.GONE);
                 break;
@@ -337,20 +344,15 @@ public class TaskDetailsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Osveži podatke o zadatku pri povratku na Activity (npr. nakon izmene)
         if (task != null && task.getId() != null) {
-            loadTaskDetails(task.getId());
+            loadTaskAndUserDetails(task.getId());
         }
     }
 
-    /**
-     * Proverava da li je trenutno vreme posle krajnjeg datuma zadatka.
-     */
     private boolean isTaskTimeFinished(Task task) {
         if (task.getEndDate() == null) {
-            return false; // Ako nema krajnji datum, nikad ne ističe
+            return false;
         }
-        // Zadatak ističe na kraju dana definisanog sa endDate
         Calendar taskEnd = Calendar.getInstance();
         taskEnd.setTime(task.getEndDate());
         taskEnd.set(Calendar.HOUR_OF_DAY, 23);
@@ -359,21 +361,20 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
         return Calendar.getInstance().after(taskEnd);
     }
+
     private void showBossFightDialog(int newLevel) {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Novi Nivo!")
                 .setMessage("Čestitamo, dostigli ste " + newLevel + ". nivo!\n\nPojavio se novi Bos. Da li želite da se borite sada?")
                 .setCancelable(false)
                 .setPositiveButton("Bori se", (dialog, which) -> {
-                    // Pokreni BossFightActivity
                     Intent intent = new Intent(TaskDetailsActivity.this, BossFightActivity.class);
                     startActivity(intent);
-                    finish(); // Zatvori trenutni ekran
+                    finish();
                 })
                 .setNegativeButton("Kasnije", (dialog, which) -> {
-                    // Ako korisnik odbije, samo osveži trenutni ekran
                     dialog.dismiss();
-                    loadTaskDetails(task.getId());
+                    loadTaskAndUserDetails(task.getId());
                 })
                 .show();
     }

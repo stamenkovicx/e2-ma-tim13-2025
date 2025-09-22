@@ -385,7 +385,13 @@ public class BossFightActivity extends AppCompatActivity {
                     Equipment eqDetails = ItemRepository.getEquipmentById(ue.getEquipmentId());
                     if (eqDetails != null) {
                         ImageView icon = new ImageView(this);
-                        icon.setLayoutParams(new LinearLayout.LayoutParams(100, 100));
+                        int sizeInDp = 90; // nova veličina ikone
+                        float scale = getResources().getDisplayMetrics().density;
+                        int sizeInPx = (int) (sizeInDp * scale + 0.5f);
+
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(sizeInPx, sizeInPx);
+                        params.setMargins(8, 0, 8, 0); // dodaj malo margina između ikona
+                        icon.setLayoutParams(params);
                         int resId = getResources().getIdentifier(eqDetails.getIconResourceId(), "drawable", getPackageName());
                         if (resId != 0) icon.setImageResource(resId);
                         layoutActiveEquipment.addView(icon);
@@ -405,35 +411,30 @@ public class BossFightActivity extends AppCompatActivity {
     }
 
     private void loadUserSuccessChance(String userId) {
-        Date lastLevelUpDate = (currentUser != null) ? currentUser.getDateOfLastLevelUp() : null;
-
-        taskRepository.getTasksCreatedAfter(userId, lastLevelUpDate, new TaskRepository.OnTasksLoadedListener() {
+        taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
-            public void onSuccess(List<Task> tasksFromStage) {
-                if (tasksFromStage == null || tasksFromStage.isEmpty()) {
-                    if(playerState != null) playerState.setSuccessChance(0);
+            public void onSuccess(List<Task> allTasks) {
+                if (allTasks == null || allTasks.isEmpty()) {
+                    if (playerState != null) playerState.setSuccessChance(0);
                     updateUI();
                     return;
                 }
 
-                // Ostatak metode ostaje isti, samo koristi 'tasksFromStage'
                 AtomicInteger completed = new AtomicInteger(0);
                 AtomicInteger total = new AtomicInteger(0);
-                int taskCount = tasksFromStage.size();
+                int taskCount = allTasks.size();
                 AtomicInteger processedCount = new AtomicInteger(0);
 
-                if (taskCount == 0) {
-                    calculateAndSetChance(0, 0);
-                    return;
-                }
-
-                for (Task task : tasksFromStage) {
+                for (Task task : allTasks) {
+                    // preskačemo pauzirane i otkazane
                     if (task.getStatus() == TaskStatus.PAUZIRAN || task.getStatus() == TaskStatus.OTKAZAN) {
                         if (processedCount.incrementAndGet() == taskCount) {
                             calculateAndSetChance(completed.get(), total.get());
                         }
                         continue;
                     }
+
+                    // proveravamo da li je preko kvote
                     taskRepository.isTaskOverQuota(task, userId, new TaskRepository.OnQuotaCheckedListener() {
                         @Override
                         public void onResult(boolean overQuota) {
@@ -447,6 +448,7 @@ public class BossFightActivity extends AppCompatActivity {
                                 calculateAndSetChance(completed.get(), total.get());
                             }
                         }
+
                         @Override
                         public void onFailure(Exception e) {
                             if (processedCount.incrementAndGet() == taskCount) {
@@ -456,13 +458,15 @@ public class BossFightActivity extends AppCompatActivity {
                     });
                 }
             }
+
             @Override
             public void onFailure(Exception e) {
-                if(playerState != null) playerState.setSuccessChance(0);
+                if (playerState != null) playerState.setSuccessChance(0);
                 updateUI();
             }
         });
     }
+
 
     private void calculateAndSetChance(int completed, int total) {
         if (playerState != null) {
