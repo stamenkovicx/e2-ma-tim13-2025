@@ -62,23 +62,16 @@ public class LevelingSystemHelper {
         }
         int calculatedXp = baseXpForImportance;
         for (int i = 1; i <= userLevel; i++) {
-            calculatedXp = calculatedXp + calculatedXp / 2;
+            // ISPRAVLJENA LINIJA: Koristimo množenje sa 1.5 i Math.round za pravilno zaokruživanje.
+            calculatedXp = (int) Math.round(calculatedXp * 1.5);
         }
         return calculatedXp;
     }
 
     // Izracunava bonus XP za tezinu na osnovu nivoa korisnika
     public static int getXpForDifficulty(int baseXpForDifficulty, int userLevel) {
-        if (userLevel < 1) {
-            return baseXpForDifficulty;
-        }
-        int calculatedXp = baseXpForDifficulty;
-        for (int i = 1; i <= userLevel; i++) {
-            calculatedXp = calculatedXp + calculatedXp / 2;
-        }
-        return calculatedXp;
+        return baseXpForDifficulty;
     }
-
     // Izracunava konacnu XP vrijednost na osnovu osnovnog XP-a i nivoa korisnika
     public static int calculateFinalXp(ImportanceType importance, DifficultyType difficulty, int userLevel) {
 
@@ -128,5 +121,17 @@ public class LevelingSystemHelper {
 
         // Konacan XP - zbir finalnih vrijednosti za bitnost i tezinu
         return finalXpImportance + finalXpDifficulty;
+    }
+    // Odredi nivo na osnovu ukupnog XP-a (bez resetovanja XP-a)
+    public static int calculateLevelFromXp(int totalXp) {
+        int level = 0;
+        int requiredXpForNext = getRequiredXpForNextLevel(level);
+
+        while (totalXp >= requiredXpForNext) {
+            level++;
+            requiredXpForNext = getRequiredXpForNextLevel(level);
+        }
+
+        return level;
     }
 }

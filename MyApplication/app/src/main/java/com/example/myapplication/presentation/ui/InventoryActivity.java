@@ -142,7 +142,7 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
 
         boolean isNowActive = !foundItem.isActive();
         foundItem.setActive(isNowActive);
-
+        currentUser.getEquipment().set(foundIndex, foundItem);
         Equipment equipmentDetails = ItemRepository.getEquipmentById(foundItem.getEquipmentId());
         if (equipmentDetails == null) {
             Toast.makeText(this, "Equipment details not found.", Toast.LENGTH_SHORT).show();
@@ -163,22 +163,23 @@ public class InventoryActivity extends AppCompatActivity implements InventoryAda
             currentUser.setPowerPoints(currentPowerPoints - bonusToRemove);
             Toast.makeText(this, "Item '" + equipmentDetails.getName() + "' has been deactivated! Power has been restored to normal.", Toast.LENGTH_SHORT).show();
         }
+        setupInventoryLists();
 
         // Ažuriranje korisnika u Firebase-u
         userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
             @Override
             public void onSuccess(Void aVoid) {
                 // Ažuriraj listu nakon uspešnog ažuriranja u bazi
-                setupInventoryLists();
             }
 
             @Override
             public void onFailure(Exception e) {
                 // Vraćanje stanja u slučaju neuspešnog ažuriranja
                 // Koristimo finalni foundItem objekat i finalnu currentPowerPoints vrednost
+                Toast.makeText(InventoryActivity.this, "Failed to update user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 foundItem.setActive(!isNowActive); // Vrati stanje nazad
                 currentUser.setPowerPoints(currentPowerPoints); // Vrati PP nazad
-                Toast.makeText(InventoryActivity.this, "Failed to update user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                setupInventoryLists();
             }
         });
     }

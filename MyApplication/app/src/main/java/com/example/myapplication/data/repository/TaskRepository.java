@@ -82,9 +82,7 @@ public interface TaskRepository {
 
     void updateTasksColor(String categoryId, int newColor, String userId, OnTaskUpdatedListener listener);
 
-    void updateTaskStatusToDone(String taskId, String userId, OnTaskCompletedListener listener);
-
-    void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener);
+    void updateTaskStatusToDone(String taskId, String userId, int userLevel, OnTaskCompletedListener listener);    void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener);
 
     interface OnQuotaCheckedListener {
         void onResult(boolean overQuota);
