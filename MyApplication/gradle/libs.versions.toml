@@ -19,6 +19,7 @@ mpandroidchart = "v3.1.0"
 zxingAndroidEmbedded = "4.3.0"
 zxingCore = "3.5.3"
 firebaseFirestore = "26.0.0"
+firebaseMessaging = "25.0.1"
 
 [libraries]
 cardview = { module = "androidx.cardview:cardview", version.ref = "cardview" }
@@ -39,7 +40,8 @@ material-v1130 = { module = "com.google.android.material:material", version.ref 
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" } # Ispravno referenciranje
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" } # Ispravno referenciranje
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -11,6 +11,8 @@ import com.example.myapplication.presentation.ui.HomeActivity;
 import com.example.myapplication.presentation.ui.RegistrationActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -56,9 +58,7 @@ public class MainActivity extends AppCompatActivity {
                             FirebaseUser user = mAuth.getCurrentUser();
                             if (user != null && user.isEmailVerified()) {
                                 Toast.makeText(MainActivity.this, "Login successful!", Toast.LENGTH_SHORT).show();
-                                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
-                                startActivity(intent);
-                                finish();
+                                updateFcmTokenAndProceed();
                             } else {
                                 Toast.makeText(MainActivity.this, "Please verify your email to log in.", Toast.LENGTH_LONG).show();
                                 mAuth.signOut();
@@ -73,6 +73,42 @@ public class MainActivity extends AppCompatActivity {
         btnRegisterLink.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, RegistrationActivity.class);
             startActivity(intent);
+        });
+    }
+
+    private void updateFcmTokenAndProceed() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+
+        // Dohvati FCM token
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                String fcmToken = task.getResult();
+                FirebaseFirestore.getInstance().collection("users")
+                        .document(user.getUid())
+                        .update("fcmToken", fcmToken)
+                        .addOnSuccessListener(aVoid -> {
+                            // Token uspjesno sacuvan, pokreni HomeActivity
+                            Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                            startActivity(intent);
+                            finish();
+                        })
+                        .addOnFailureListener(e -> {
+                            // Greska pri cuvanju tokena, ali svejedno pokreni HomeActivity
+                            Toast.makeText(MainActivity.this, "Error saving token: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                            startActivity(intent);
+                            finish();
+                        });
+            } else {
+                // Greska pri dobijanju tokena, pokreni HomeActivity
+                Toast.makeText(MainActivity.this, "Failed to get FCM token.", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                startActivity(intent);
+                finish();
+            }
         });
     }
 }

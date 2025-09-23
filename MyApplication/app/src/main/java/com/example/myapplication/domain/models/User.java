@@ -29,6 +29,7 @@ public class User {
     private List<String> allianceInvitationsSent;
     private List<String> allianceInvitationsReceived;
     private Date dateOfLastLevelUp;
+    private String fcmToken; // jedinstveni id uredjaja (za notifikacije)
 
     public User() {
     }
@@ -225,6 +226,14 @@ public class User {
     @PropertyName("equipment")
     public void setEquipment(List<UserEquipment> equipment) {
         this.equipment = equipment;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
     }
 
     public void addEquipment(UserEquipment item) {
