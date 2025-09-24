@@ -19,6 +19,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -731,20 +732,11 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
             Alliance alliance = documentSnapshot.toObject(Alliance.class);
             if (alliance != null && !alliance.isSpecialMissionActive()) {
 
-                //  LOGIKA ZA BROJANJE CLANOVA
                 List<String> members = alliance.getMemberIds();
                 String leaderId = alliance.getLeaderId();
                 int memberCount = members.size();
-
-                // Proveravamo da li je vodja već u listi clanova. Ako nije, dodajemo ga u broj
-                if (leaderId != null && !members.contains(leaderId)) {
-                    memberCount++;
-                }
-
-                // Ako je lista prazna, a imamo vodju, broj clanova je 1.
-                if (members.isEmpty() && leaderId != null) {
-                    memberCount = 1;
-                }
+                if (leaderId != null && !members.contains(leaderId)) memberCount++;
+                if (members.isEmpty() && leaderId != null) memberCount = 1;
 
                 int bossMaxHp = 100 * memberCount;
 
@@ -753,28 +745,26 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 alliance.setSpecialMissionBossMaxHp(bossMaxHp);
                 alliance.setSpecialMissionBossHp(bossMaxHp);
 
-                // Inicijalizacija napretka za sve članove
-                for (String memberId : alliance.getMemberIds()) {
-                    SpecialMissionProgress progress = new SpecialMissionProgress(memberId, allianceId);
-                    String progressDocId = allianceId + "_" + memberId;
+                // Kreiranje progress-a za sve članove + vođu
+                List<String> allUserIds = new ArrayList<>(members);
+                if (leaderId != null && !allUserIds.contains(leaderId)) allUserIds.add(leaderId);
+
+                for (String userId : allUserIds) {
+                    SpecialMissionProgress progress = new SpecialMissionProgress(userId, allianceId);
+                    String progressDocId = allianceId + "_" + userId; // konzistentan ID
                     missionProgressCollection.document(progressDocId).set(progress);
                 }
-                //  Moramo kreirati progress i za vođu ako nije u listi članova
-                if (leaderId != null && !members.contains(leaderId)) {
-                    SpecialMissionProgress leaderProgress = new SpecialMissionProgress(leaderId, allianceId);
-                    String progressDocId = allianceId + "_" + leaderId;
-                    missionProgressCollection.document(progressDocId).set(leaderProgress);
-                }
-
 
                 allianceCollection.document(allianceId).set(alliance)
                         .addOnSuccessListener(aVoid -> listener.onSuccess(null))
                         .addOnFailureListener(listener::onFailure);
+
             } else {
                 listener.onFailure(new Exception("Misija je već aktivna ili savez ne postoji."));
             }
         }).addOnFailureListener(listener::onFailure);
     }
+
     @Override
     public void dealDamageToBoss(String allianceId, String userId, int damageAmount, OnCompleteListener<Void> listener) {
         if (damageAmount <= 0) {
@@ -824,29 +814,67 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 .addOnFailureListener(listener::onFailure);
     }
     @Override
-    public void getMissionProgressForUsers(String allianceId, List<String> userIds, OnCompleteListener<List<SpecialMissionProgress>> listener) {
+    public ListenerRegistration observeMissionProgress(String allianceId, List<String> userIds, MissionProgressListener<List<SpecialMissionProgress>> listener) {
 
-        // Lista Firebase Taskova za dohvat svakog pojedinačnog dokumenta
-        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+        return missionProgressCollection
+                .whereEqualTo("allianceId", allianceId)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        listener.onFailure(error);
+                        return;
+                    }
 
-        // Dokumenti su sačuvani sa ID-jem: allianceId_userId
-        for (String userId : userIds) {
-            String docId = allianceId + "_" + userId;
-            tasks.add(missionProgressCollection.document(docId).get());
-        }
+                    if (value != null && !value.isEmpty()) {
+                        List<SpecialMissionProgress> progressList = new ArrayList<>();
+                        for (DocumentSnapshot doc : value.getDocuments()) {
+                            SpecialMissionProgress progress = doc.toObject(SpecialMissionProgress.class);
 
-        // Kada se svi taskovi završe, obrađujemo rezultate
-        Tasks.whenAllSuccess(tasks).addOnSuccessListener(objects -> {
-            List<SpecialMissionProgress> progressList = new ArrayList<>();
+                            // Filtriramo samo one koji su u listi aktivnih clanova
+                            // Iako Query već radi filtriranje, ovo je dodatna provera
+                            if (progress != null && userIds.contains(progress.getUserId())) {
+                                progressList.add(progress);
+                            }
+                        }
+                        listener.onProgressChange(progressList); // Poziva onProgressChange pri promeni
+                    }
+                });
 
-            for (Object object : objects) {
-                DocumentSnapshot document = (DocumentSnapshot) object;
-                SpecialMissionProgress progress = document.toObject(SpecialMissionProgress.class);
-                if (progress != null) {
-                    progressList.add(progress);
-                }
+        // Napomena: Ovo vraća ListenerRegistration objekat.
+    }
+    public void applyDailyMessageBonus(String allianceId, String userId, OnCompleteListener<Void> listener) {
+        CollectionReference missionRef = db.collection("alliances")
+                .document(allianceId)
+                .collection("specialMissionProgress");
+
+        missionRef.document(userId).get().addOnSuccessListener(snapshot -> {
+            SpecialMissionProgress progress = snapshot.toObject(SpecialMissionProgress.class);
+            if (progress == null) {
+                progress = new SpecialMissionProgress(userId, allianceId);
             }
-            listener.onSuccess(progressList);
+
+            // Datum danas
+            String today = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date());
+
+            // Maksimalan broj dana = 14 (trajanje misije)
+            int maxDays = 14;
+
+            if (!progress.getDaysMessaged().contains(today) && progress.getDaysMessaged().size() < maxDays) {
+                progress.getDaysMessaged().add(today);
+                progress.setDamageDealt(progress.getDamageDealt() + 4); // 4 HP po danu
+
+                missionRef.document(userId).set(progress)
+                        .addOnSuccessListener(aVoid -> {
+                            // Smanjujemo HP bosa u alijansi
+                            db.collection("alliances").document(allianceId)
+                                    .update("specialMissionBossHp", com.google.firebase.firestore.FieldValue.increment(-4))
+                                    .addOnSuccessListener(aVoid1 -> listener.onSuccess(null))
+                                    .addOnFailureListener(listener::onFailure);
+                        })
+                        .addOnFailureListener(listener::onFailure);
+            } else {
+                listener.onSuccess(null); // Već poslao poruku danas ili isteklo maksimalno
+            }
         }).addOnFailureListener(listener::onFailure);
     }
+
 }

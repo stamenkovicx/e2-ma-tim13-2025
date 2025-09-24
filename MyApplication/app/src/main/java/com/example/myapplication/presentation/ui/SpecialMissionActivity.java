@@ -3,6 +3,7 @@ package com.example.myapplication.presentation.ui;
 import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -20,6 +21,7 @@ import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.MissionProgressAdapter;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +41,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
     private MissionProgressAdapter progressAdapter;
     private String currentUserId;
     private ImageView bossImage;
+    private ListenerRegistration missionProgressRegistration;
 
 
 
@@ -97,7 +100,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
 
                     updateBossHpUI(alliance.getSpecialMissionBossHp(), alliance.getSpecialMissionBossMaxHp());
                     startTimer(alliance.getSpecialMissionStartTime());
-                    loadMissionProgress(alliance.getMemberIds(), alliance.getLeaderId());
+                    startMissionProgressListener(alliance.getMemberIds(), alliance.getLeaderId());
                 } else {
                     progressBossHp.setVisibility(ProgressBar.GONE);
                     tvPersonalDamage.setVisibility(TextView.GONE);
@@ -153,67 +156,76 @@ public class SpecialMissionActivity extends AppCompatActivity {
         }.start();
     }
 
-    //  Obavezno zaustavi tajmer kada se aktivnost unisti da se izbegnu problemi
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (countDownTimer != null) {
-            countDownTimer.cancel();
+    private void startMissionProgressListener(List<String> memberIds, String leaderId) {
+        // Logika za kreiranje allUserIds...
+        List<String> allUserIds = new ArrayList<>();
+        if (leaderId != null) {
+            allUserIds.add(leaderId);
         }
-    }
-    private void loadMissionProgress(List<String> memberIds, String leaderId) {
-        // Kreiranje liste svih ID-jeva (članovi + vođa)
-        List<String> allUserIds = new ArrayList<>(memberIds);
-        if (leaderId != null && !allUserIds.contains(leaderId)) {
-            allUserIds.add(0, leaderId);
+        for (String memberId : memberIds) {
+            if (!memberId.equals(leaderId)) {
+                allUserIds.add(memberId);
+            }
         }
+        if (allUserIds.isEmpty()) return;
 
-        // 1. Učitavanje podataka o napretku (SpecialMissionProgress)
-        userRepository.getMissionProgressForUsers(allianceId, allUserIds, new UserRepository.OnCompleteListener<List<SpecialMissionProgress>>() {
-            @Override
-            public void onSuccess(List<SpecialMissionProgress> progressList) {
-                final HashMap<String, SpecialMissionProgress> progressMap = new HashMap<>();
-                // Azuriranje licnog napretka
-                for (SpecialMissionProgress progress : progressList) {
-                    if (progress.getUserId().equals(currentUserId)) {
-                        // Koristimo damageDealt za prikaz licnog doprinosa
-                        tvPersonalDamage.setText(String.format("Nanesena šteta: %d", progress.getDamageDealt()));
-                        break;
-                    }
-                }
 
-                // 2. Ucitavanje korisnickih imena za sve ID-jeve
-                userRepository.getUsersByIds(allUserIds, new UserRepository.OnCompleteListener<List<User>>() {
+        // KLJUČNO: Korišćenje observeMissionProgress metode za real-time slušanje
+        missionProgressRegistration = userRepository.observeMissionProgress(
+                allianceId,
+                allUserIds,
+                new UserRepository.MissionProgressListener<List<SpecialMissionProgress>>() {
                     @Override
-                    public void onSuccess(List<User> users) {
-                        // Spajanje User objekata sa njihovim SpecialMissionProgress podacima
-                        List<MissionProgressItem> combinedList = new ArrayList<>();
+                    public void onProgressChange(List<SpecialMissionProgress> progressList) {
+                        // OVAJ BLOK SE IZVRŠAVA SVAKI PUT KADA SE PODACI PROMENE!
 
-                        for (User user : users) {
-                            for (SpecialMissionProgress progress : progressList) {
-                                if (user.getUserId().equals(progress.getUserId())) {
-                                    // Spajamo ime korisnika i nanesenu štetu
-                                    combinedList.add(new MissionProgressItem(user.getUsername(), progress.getDamageDealt()));
-                                    break;
-                                }
+                        final HashMap<String, SpecialMissionProgress> progressMap = new HashMap<>();
+
+                        // 1. Priprema mape i Ažuriranje ličnog doprinosa
+                        for (SpecialMissionProgress progress : progressList) {
+                            progressMap.put(progress.getUserId(), progress);
+                            Log.d("SpecialMission", "User: " + progress.getUserId() + ", Damage: " + progress.getDamageDealt());
+
+
+                            if (progress.getUserId().equals(currentUserId)) {
+                                tvPersonalDamage.setText(String.format("Nanesena šteta: %d", progress.getDamageDealt()));
                             }
                         }
-                        // Azuriranje RecyclerView-a (Napredak celog saveza po članu)
-                        progressAdapter.setItems(combinedList);
+
+                        // 2. Ažuriranje liste članova (dohvat korisničkih imena)
+                        // Održavamo dohvat korisničkih imena OVDJE. Ako se imena ne menjaju,
+                        // možete razmisliti o keširanju.
+                        userRepository.getUsersByIds(allUserIds, new UserRepository.OnCompleteListener<List<User>>() {
+                            @Override
+                            public void onSuccess(List<User> users) {
+                                List<MissionProgressItem> combinedList = new ArrayList<>();
+
+                                for (User user : users) {
+                                    SpecialMissionProgress progress = progressMap.get(user.getUserId());
+
+                                    if (progress != null) {
+                                        combinedList.add(new MissionProgressItem(user.getUsername(), progress.getDamageDealt()));
+                                    }
+                                }
+                                // AŽURIRANJE LISTE U REALNOM VREMENU
+                                progressAdapter.setItems(combinedList);
+
+                                // Dodatno: Ažuriranje HP Bosa (jer se i on promenio)
+                                refreshBossHp();
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(SpecialMissionActivity.this, "Greška pri učitavanju imena članova.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
 
                     @Override
                     public void onFailure(Exception e) {
-                        Toast.makeText(SpecialMissionActivity.this, "Greška pri učitavanju imena članova.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialMissionActivity.this, "Greška pri slušanju napretka misije.", Toast.LENGTH_SHORT).show();
                     }
                 });
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(SpecialMissionActivity.this, "Greška pri učitavanju napretka misije.", Toast.LENGTH_SHORT).show();
-            }
-        });
     }
     private void playBossHitAnimation() {
         bossImage.setBackgroundResource(R.drawable.boss_hit_animation);
@@ -235,6 +247,36 @@ public class SpecialMissionActivity extends AppCompatActivity {
             duration += anim.getDuration(i);
         }
         return duration;
+    }
+
+    public void refreshBossHp() {
+        userRepository.getAllianceById(allianceId, new UserRepository.OnCompleteListener<Alliance>() {
+            @Override
+            public void onSuccess(Alliance alliance) {
+                if (alliance != null) {
+                    updateBossHpUI(alliance.getSpecialMissionBossHp(), alliance.getSpecialMissionBossMaxHp());
+                }
+            }
+            @Override
+            public void onFailure(Exception e) { }
+        });
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshBossHp(); // osveži HP bosa svaki put kada korisnik vidi ekran
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+        }
+        // KLJUČNO: Uklanjanje slušaoca da bi se izbeglo curenje memorije
+        if (missionProgressRegistration != null) {
+            missionProgressRegistration.remove();
+        }
     }
 
 }
