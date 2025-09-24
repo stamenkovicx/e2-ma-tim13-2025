@@ -35,4 +35,6 @@ public interface UserRepository {
     public void getUnreadNotificationsCount(String userId, OnCompleteListener<Integer> listener);
     public void getAllNotifications(String userId, OnCompleteListener<List<Notification>> listener);
     public void markNotificationAsRead(String notificationId, OnCompleteListener<Void> listener);
+    void startSpecialMission(String allianceId, OnCompleteListener<Void> listener);
+
 }

@@ -1,6 +1,7 @@
 package com.example.myapplication.domain.models;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class Alliance {
@@ -9,6 +10,11 @@ public class Alliance {
     private String leaderId;
     private List<String> memberIds;
     private List<String> pendingInvitations;
+
+    private boolean specialMissionActive = false;
+    private Date specialMissionStartTime;
+    private int specialMissionBossHp;
+    private int specialMissionBossMaxHp;
 
     public Alliance() {
         // Obavezni prazan konstruktor za Firebase
@@ -62,5 +68,36 @@ public class Alliance {
 
     public void setPendingInvitations(List<String> pendingInvitations) {
         this.pendingInvitations = pendingInvitations;
+    }
+    public boolean isSpecialMissionActive() {
+        return specialMissionActive;
+    }
+
+    public void setSpecialMissionActive(boolean specialMissionActive) {
+        this.specialMissionActive = specialMissionActive;
+    }
+
+    public Date getSpecialMissionStartTime() {
+        return specialMissionStartTime;
+    }
+
+    public void setSpecialMissionStartTime(Date specialMissionStartTime) {
+        this.specialMissionStartTime = specialMissionStartTime;
+    }
+
+    public int getSpecialMissionBossHp() {
+        return specialMissionBossHp;
+    }
+
+    public void setSpecialMissionBossHp(int specialMissionBossHp) {
+        this.specialMissionBossHp = specialMissionBossHp;
+    }
+
+    public int getSpecialMissionBossMaxHp() {
+        return specialMissionBossMaxHp;
+    }
+
+    public void setSpecialMissionBossMaxHp(int specialMissionBossMaxHp) {
+        this.specialMissionBossMaxHp = specialMissionBossMaxHp;
     }
 }

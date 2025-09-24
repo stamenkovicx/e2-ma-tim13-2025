@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.Notification;
+import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
@@ -22,6 +23,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +31,14 @@ import java.util.Map;
 public class UserRepositoryFirebaseImpl implements UserRepository {
     private FirebaseFirestore db;
     private CollectionReference usersCollection;
+    private final CollectionReference allianceCollection;
+    private final CollectionReference missionProgressCollection;
 
     public UserRepositoryFirebaseImpl() {
         this.db = FirebaseFirestore.getInstance();
         this.usersCollection = db.collection("users");
+        this.allianceCollection = db.collection("alliances");
+        this.missionProgressCollection = db.collection("specialMissionProgress");
     }
 
     @Override
@@ -716,5 +722,55 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 .update("isRead", true)
                 .addOnSuccessListener(aVoid -> listener.onSuccess(null))
                 .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void startSpecialMission(String allianceId, OnCompleteListener<Void> listener) {
+        allianceCollection.document(allianceId).get().addOnSuccessListener(documentSnapshot -> {
+            Alliance alliance = documentSnapshot.toObject(Alliance.class);
+            if (alliance != null && !alliance.isSpecialMissionActive()) {
+
+                //  LOGIKA ZA BROJANJE CLANOVA
+                List<String> members = alliance.getMemberIds();
+                String leaderId = alliance.getLeaderId();
+                int memberCount = members.size();
+
+                // Proveravamo da li je vodja već u listi clanova. Ako nije, dodajemo ga u broj
+                if (leaderId != null && !members.contains(leaderId)) {
+                    memberCount++;
+                }
+
+                // Ako je lista prazna, a imamo vodju, broj clanova je 1.
+                if (members.isEmpty() && leaderId != null) {
+                    memberCount = 1;
+                }
+
+                int bossMaxHp = 100 * memberCount;
+
+                alliance.setSpecialMissionActive(true);
+                alliance.setSpecialMissionStartTime(new Date());
+                alliance.setSpecialMissionBossMaxHp(bossMaxHp);
+                alliance.setSpecialMissionBossHp(bossMaxHp);
+
+                // Inicijalizacija napretka za sve članove
+                for (String memberId : alliance.getMemberIds()) {
+                    SpecialMissionProgress progress = new SpecialMissionProgress(memberId, allianceId);
+                    String progressDocId = allianceId + "_" + memberId;
+                    missionProgressCollection.document(progressDocId).set(progress);
+                }
+                //  Moramo kreirati progress i za vođu ako nije u listi članova
+                if (leaderId != null && !members.contains(leaderId)) {
+                    SpecialMissionProgress leaderProgress = new SpecialMissionProgress(leaderId, allianceId);
+                    String progressDocId = allianceId + "_" + leaderId;
+                    missionProgressCollection.document(progressDocId).set(leaderProgress);
+                }
+
+
+                allianceCollection.document(allianceId).set(alliance)
+                        .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                        .addOnFailureListener(listener::onFailure);
+            } else {
+                listener.onFailure(new Exception("Misija je već aktivna ili savez ne postoji."));
+            }
+        }).addOnFailureListener(listener::onFailure);
     }
 }

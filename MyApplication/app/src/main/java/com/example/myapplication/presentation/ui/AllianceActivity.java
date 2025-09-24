@@ -33,6 +33,7 @@ public class AllianceActivity extends AppCompatActivity {
     private String currentUserId;
     private String allianceId;
     private MembersAdapter membersAdapter;
+    private Button btnStartSpecialMission, btnViewSpecialMission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +46,9 @@ public class AllianceActivity extends AppCompatActivity {
         btnLeaveAlliance = findViewById(R.id.btnLeaveAlliance);
         btnDisbandAlliance = findViewById(R.id.btnDisbandAlliance);
         btnOpenChat = findViewById(R.id.btnOpenChat);
+
+        btnStartSpecialMission = findViewById(R.id.btnStartSpecialMission);
+        btnViewSpecialMission = findViewById(R.id.btnViewSpecialMission);
 
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
@@ -59,6 +63,9 @@ public class AllianceActivity extends AppCompatActivity {
         btnLeaveAlliance.setOnClickListener(v -> leaveAlliance());
         btnDisbandAlliance.setOnClickListener(v -> disbandAlliance());
         btnOpenChat.setOnClickListener(v -> openChat());
+
+        btnStartSpecialMission.setOnClickListener(v -> startSpecialMission());
+        btnViewSpecialMission.setOnClickListener(v -> viewSpecialMission());
     }
     private void openChat() {
         Intent intent = new Intent(this, ChatActivity.class);
@@ -84,13 +91,29 @@ public class AllianceActivity extends AppCompatActivity {
                             if (leader != null) {
                                 tvAllianceLeader.setText("Leader: " + leader.getUsername());
 
-                                // Logika za prikazivanje/skrivanje dugmadi
-                                if (leader.getUserId().equals(currentUserId)) {
+                                boolean isLeader = leader.getUserId().equals(currentUserId);
+
+                                if (isLeader) {
+                                    // --- LOGIKA SAMO ZA VOĐU ---
                                     btnDisbandAlliance.setVisibility(View.VISIBLE);
                                     btnLeaveAlliance.setVisibility(View.GONE);
+
+                                    // Provera za misiju se radi UNUTAR bloka za vođu
+                                    if (alliance.isSpecialMissionActive()) {
+                                        btnViewSpecialMission.setVisibility(View.VISIBLE);
+                                    } else {
+                                        btnStartSpecialMission.setVisibility(View.VISIBLE);
+                                    }
+
                                 } else {
+                                    // --- LOGIKA ZA OBIČNOG ČLANA ---
                                     btnDisbandAlliance.setVisibility(View.GONE);
                                     btnLeaveAlliance.setVisibility(View.VISIBLE);
+
+                                    // Običan član vidi samo dugme za pregled, i to samo ako je misija aktivna
+                                    if (alliance.isSpecialMissionActive()) {
+                                        btnViewSpecialMission.setVisibility(View.VISIBLE);
+                                    }
                                 }
                             } else {
                                 tvAllianceLeader.setText("Leader: Unknown");
@@ -170,4 +193,39 @@ public class AllianceActivity extends AppCompatActivity {
                 .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
                 .show();
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Osveži podatke svaki put kad se vratiš na ekran
+        loadAllianceDetails();
+    }
+    private void startSpecialMission() {
+        new AlertDialog.Builder(this)
+                .setTitle("Započni Specijalnu Misiju")
+                .setMessage("Da li ste sigurni? Misija traje 2 nedelje i ne može se prekinuti.")
+                .setPositiveButton("Započni", (dialog, which) -> {
+                    userRepository.startSpecialMission(allianceId, new UserRepository.OnCompleteListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            Toast.makeText(AllianceActivity.this, "Specijalna misija je počela!", Toast.LENGTH_LONG).show();
+                            loadAllianceDetails();
+                        }
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(AllianceActivity.this, "Greška: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Odustani", null)
+                .show();
+    }
+
+    // METODA ZA OTVARANJE EKRANA MISIJE
+    private void viewSpecialMission() {
+        Intent intent = new Intent(this, SpecialMissionActivity.class);
+        intent.putExtra("allianceId", allianceId);
+        startActivity(intent);
+    }
+
 }

@@ -42,6 +42,22 @@
         android:layout_weight="1"/>
 
     <Button
+        android:id="@+id/btnStartSpecialMission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Započni Specijalnu Misiju"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnViewSpecialMission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pregled Misije"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+
+    <Button
         android:id="@+id/btnLeaveAlliance"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
