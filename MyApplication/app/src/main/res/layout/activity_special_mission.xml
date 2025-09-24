@@ -45,11 +45,62 @@
         android:id="@+id/progressBossHp"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="0dp"
-        android:layout_height="20dp"
+        android:layout_height="24dp"
         android:layout_marginTop="8dp"
+
+        android:indeterminate="false"
+        android:progressDrawable="@drawable/boss_hp_progress_bar"
+        android:minHeight="24dp"
+        android:maxHeight="24dp"
+
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvBossHp"
         tools:progress="90" />
+
+
+
+    <TextView
+        android:id="@+id/tvPersonalProgressTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Vaš doprinos misiji:"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/progressBossHp" />
+
+    <TextView
+        android:id="@+id/tvPersonalDamage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvPersonalProgressTitle"
+        tools:text="Nanesena šteta: 1500" />
+
+    <TextView
+        android:id="@+id/tvMembersProgressTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Napredak članova saveza:"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvPersonalDamage" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/membersProgressRecyclerView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvMembersProgressTitle"
+        tools:listitem="@layout/item_mission_progress" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

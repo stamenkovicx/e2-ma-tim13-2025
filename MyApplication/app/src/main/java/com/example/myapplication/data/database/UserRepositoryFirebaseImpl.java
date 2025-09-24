@@ -12,6 +12,7 @@ import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
@@ -21,6 +22,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.Transaction;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -771,6 +773,80 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
             } else {
                 listener.onFailure(new Exception("Misija je već aktivna ili savez ne postoji."));
             }
+        }).addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void dealDamageToBoss(String allianceId, String userId, int damageAmount, OnCompleteListener<Void> listener) {
+        if (damageAmount <= 0) {
+            listener.onSuccess(null); // Nema štete za naneti
+            return;
+        }
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        // Koristimo transakciju za sigurno ažuriranje DVA različita dokumenta
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    // 1. Čitanje trenutnog stanja
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Savez ili misija nisu aktivni.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        throw new FirebaseFirestoreException("Progres misije nije pronađen za korisnika.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 2. Ažuriranje individualnog napretka (SpecialMissionProgress)
+                    int newDamageDealt = progress.getDamageDealt() + damageAmount;
+                    progress.setDamageDealt(newDamageDealt);
+                    transaction.set(progressRef, progress); // Zapiši ažurirani progres korisnika
+
+                    // 3. Ažuriranje HP-a Bosa (Alliance)
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - damageAmount); // HP ne sme ići ispod 0
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance); // Zapiši ažurirani HP Bosa
+
+                    // Opciono: Možete dodati proveru za pobedu misije ovde ako je updatedBossHp == 0.
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void getMissionProgressForUsers(String allianceId, List<String> userIds, OnCompleteListener<List<SpecialMissionProgress>> listener) {
+
+        // Lista Firebase Taskova za dohvat svakog pojedinačnog dokumenta
+        List<Task<DocumentSnapshot>> tasks = new ArrayList<>();
+
+        // Dokumenti su sačuvani sa ID-jem: allianceId_userId
+        for (String userId : userIds) {
+            String docId = allianceId + "_" + userId;
+            tasks.add(missionProgressCollection.document(docId).get());
+        }
+
+        // Kada se svi taskovi završe, obrađujemo rezultate
+        Tasks.whenAllSuccess(tasks).addOnSuccessListener(objects -> {
+            List<SpecialMissionProgress> progressList = new ArrayList<>();
+
+            for (Object object : objects) {
+                DocumentSnapshot document = (DocumentSnapshot) object;
+                SpecialMissionProgress progress = document.toObject(SpecialMissionProgress.class);
+                if (progress != null) {
+                    progressList.add(progress);
+                }
+            }
+            listener.onSuccess(progressList);
         }).addOnFailureListener(listener::onFailure);
     }
 }

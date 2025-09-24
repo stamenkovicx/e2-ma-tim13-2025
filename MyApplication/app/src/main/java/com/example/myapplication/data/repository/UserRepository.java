@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository;
 
 import com.example.myapplication.domain.models.Alliance;
+import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.Notification;
 
@@ -36,5 +37,6 @@ public interface UserRepository {
     public void getAllNotifications(String userId, OnCompleteListener<List<Notification>> listener);
     public void markNotificationAsRead(String notificationId, OnCompleteListener<Void> listener);
     void startSpecialMission(String allianceId, OnCompleteListener<Void> listener);
-
+    void dealDamageToBoss(String allianceId, String userId, int damageAmount, OnCompleteListener<Void> listener);
+    void getMissionProgressForUsers(String allianceId, List<String> userIds, OnCompleteListener<List<SpecialMissionProgress>> listener);
 }
