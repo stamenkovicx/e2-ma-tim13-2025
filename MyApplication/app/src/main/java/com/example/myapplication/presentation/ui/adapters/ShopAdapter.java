@@ -1,6 +1,7 @@
 package com.example.myapplication.presentation.ui.adapters;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -129,6 +130,27 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
                     userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
                         @Override
                         public void onSuccess(Void aVoid) {
+                            //  (2 HP, max 5 puta)
+                            // Proverite da li je korisnik u savezu pre pozivanja misije
+                            if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+
+                                userRepository.applyShopPurchaseDamage(
+                                        currentUser.getAllianceId(),
+                                        currentUser.getUserId(),
+                                        new UserRepository.OnCompleteListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void aVoid) {
+                                                // Steta je uspesno naneta ili je limit dostignut
+                                                Log.d("ShopAdapter", "Shop purchase damage processed.");
+                                            }
+
+                                            @Override
+                                            public void onFailure(Exception e) {
+                                                Log.e("ShopAdapter", "Failed to apply shop damage: " + e.getMessage());
+                                            }
+                                        }
+                                );
+                            }
                             if (listener != null) {
                                 listener.onCoinsUpdated(currentUser.getCoins());
                             }

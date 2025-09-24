@@ -877,4 +877,71 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         }).addOnFailureListener(listener::onFailure);
     }
 
+    @Override
+    public void applyShopPurchaseDamage(String allianceId, String userId, OnCompleteListener<Void> listener) {
+
+        final int DAMAGE_PER_PURCHASE = 2;
+        final int PURCHASE_LIMIT = 5;
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        // Koristimo transakciju za sigurno ažuriranje DVA dokumenta
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    // 1. Čitanje trenutnog stanja
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Misija saveza nije aktivna.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        // Ako progres ne postoji, kreirajte ga (iako bi startSpecialMission trebalo da ga kreira)
+                        progress = new SpecialMissionProgress(userId, allianceId);
+                    }
+
+                    // 2. Provera limita kupovine
+                    if (progress.getShopPurchases() >= PURCHASE_LIMIT) {
+                        // Ako je limit dostignut, prekidamo transakciju bez greške (ne nanosimo štetu)
+                        throw new FirebaseFirestoreException("Limit kupovina dostignut.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 3. Ažuriranje individualnog napretka (SpecialMissionProgress)
+
+                    // Povećavamo brojač kupovina
+                    progress.setShopPurchases(progress.getShopPurchases() + 1);
+
+                    // Povećavamo ukupnu nanesenu štetu korisnika
+                    int newDamageDealt = progress.getDamageDealt() + DAMAGE_PER_PURCHASE;
+                    progress.setDamageDealt(newDamageDealt);
+
+                    transaction.set(progressRef, progress); // Zapiši ažurirani progres korisnika
+
+                    // 4. Ažuriranje HP-a Bosa (Alliance)
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - DAMAGE_PER_PURCHASE);
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance); // Zapiši ažurirani HP Bosa
+
+                    return null;
+
+                    // Posebno rukovanje kodom ABORTED da bi se ignorisala poruka "Limit dostignut"
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                        // Ignoriši kod ABORTED (korisnik je dostigao limit ili misija nije aktivna)
+                        listener.onSuccess(null);
+                    } else {
+                        listener.onFailure(e);
+                    }
+                });
+    }
 }
