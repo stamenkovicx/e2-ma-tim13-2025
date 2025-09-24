@@ -1,7 +1,9 @@
 package com.example.myapplication.presentation.ui;
 
+import android.graphics.drawable.AnimationDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 
 public class SpecialMissionActivity extends AppCompatActivity {
 
-    // ✨ Reference na UI elemente, repozitorijum i tajmer ✨
     private TextView tvTimeRemaining, tvBossHp,tvPersonalDamage;
     private ProgressBar progressBossHp;
     private UserRepository userRepository;
@@ -37,12 +38,15 @@ public class SpecialMissionActivity extends AppCompatActivity {
     private RecyclerView membersProgressRecyclerView;
     private MissionProgressAdapter progressAdapter;
     private String currentUserId;
+    private ImageView bossImage;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_special_mission);
+        bossImage = findViewById(R.id.bossImage);
 
         // Dobijamo ID alijanse koji je poslat iz AllianceActivity
         allianceId = getIntent().getStringExtra("allianceId");
@@ -70,6 +74,10 @@ public class SpecialMissionActivity extends AppCompatActivity {
         membersProgressRecyclerView.setVisibility(RecyclerView.GONE);
         findViewById(R.id.tvPersonalProgressTitle).setVisibility(TextView.GONE);
         findViewById(R.id.tvMembersProgressTitle).setVisibility(TextView.GONE);
+
+        bossImage.setBackgroundResource(R.drawable.boss_idle_animation);
+        AnimationDrawable idleAnimation = (AnimationDrawable) bossImage.getBackground();
+        idleAnimation.start();
 
         // Pozivamo metodu za ucitavanje podataka
         loadMissionData();
@@ -207,4 +215,26 @@ public class SpecialMissionActivity extends AppCompatActivity {
             }
         });
     }
+    private void playBossHitAnimation() {
+        bossImage.setBackgroundResource(R.drawable.boss_hit_animation);
+        AnimationDrawable hitAnimation = (AnimationDrawable) bossImage.getBackground();
+        hitAnimation.start();
+
+        // vrati se na idle nakon završetka
+        bossImage.postDelayed(() -> {
+            bossImage.setBackgroundResource(R.drawable.boss_idle_animation);
+            AnimationDrawable idleAnimation = (AnimationDrawable) bossImage.getBackground();
+            idleAnimation.start();
+        }, getAnimationDuration(hitAnimation));
+    }
+
+    // izracunavanje ukupnog trajanja
+    private long getAnimationDuration(AnimationDrawable anim) {
+        long duration = 0;
+        for (int i = 0; i < anim.getNumberOfFrames(); i++) {
+            duration += anim.getDuration(i);
+        }
+        return duration;
+    }
+
 }
