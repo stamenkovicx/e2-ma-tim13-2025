@@ -75,4 +75,6 @@ public interface UserRepository {
             MissionProgressListener<List<SpecialMissionProgress>> listener
     );
     void applyShopPurchaseDamage(String allianceId, String userId, OnCompleteListener<Void> listener);
+    void applyBossHitDamage(String allianceId, String userId, OnCompleteListener<Void> listener);
+
 }

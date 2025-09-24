@@ -944,4 +944,64 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                     }
                 });
     }
+
+    @Override
+    public void applyBossHitDamage(String allianceId, String userId, OnCompleteListener<Void> listener) {
+
+        final int DAMAGE_PER_HIT = 2;
+        final int HIT_LIMIT = 10; // Maksimalno 10 udaraca
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        db.runTransaction((transaction) -> {
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Misija saveza nije aktivna.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        throw new FirebaseFirestoreException("Progres misije nije pronađen.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 1. Provera limita udaraca
+                    if (progress.getRegularBossHits() >= HIT_LIMIT) {
+                        throw new FirebaseFirestoreException("Limit udaraca dostignut.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 2. Ažuriranje individualnog napretka
+                    progress.setRegularBossHits(progress.getRegularBossHits() + 1);
+
+                    int newDamageDealt = progress.getDamageDealt() + DAMAGE_PER_HIT;
+                    progress.setDamageDealt(newDamageDealt);
+
+                    transaction.set(progressRef, progress);
+
+                    // 3. Ažuriranje HP-a Bosa saveza
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - DAMAGE_PER_HIT);
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                        // Ignoriši kod ABORTED (dostignut limit ili misija nije aktivna)
+                        listener.onSuccess(null);
+                    } else {
+                        listener.onFailure(e);
+                    }
+                });
+    }
 }
