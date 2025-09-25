@@ -16,6 +16,8 @@ firebase-analytics = "23.0.0"
 firebaseAuth = "24.0.1"
 materialVersion = "1.13.0"
 mpandroidchart = "v3.1.0"
+onesignal = "4.8.2"
+onesignalNotifications = "4.8.2"
 zxingAndroidEmbedded = "4.3.0"
 zxingCore = "3.5.3"
 firebaseFirestore = "26.0.0"
@@ -37,6 +39,8 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 google-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 material-v1130 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
 mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
+onesignal = { module = "com.onesignal:OneSignal", version.ref = "onesignal" }
+onesignal-notifications = { module = "com.onesignal:OneSignal-Notifications", version.ref = "onesignalNotifications" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" } # Ispravno referenciranje

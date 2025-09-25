@@ -54,4 +54,5 @@ dependencies {
     implementation libs.material.v1130
     implementation libs.colorpickerview
     implementation libs.mpandroidchart
+    implementation libs.onesignal
 }

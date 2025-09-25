@@ -1,6 +1,9 @@
 package com.example.myapplication.presentation.ui;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -17,6 +20,7 @@ import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.example.myapplication.R;
+import com.onesignal.OneSignal;
 
 public class HomeActivity extends AppCompatActivity {
 
@@ -35,6 +39,11 @@ public class HomeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+
+        if (!OneSignal.userProvidedPrivacyConsent()) {
+            // Odloži dijalog dok UI nije spreman
+            new android.os.Handler().post(() -> showPrivacyConsentDialog());
+        }
 
         mAuth = FirebaseAuth.getInstance();
         userRepository = new UserRepositoryFirebaseImpl();
@@ -56,6 +65,9 @@ public class HomeActivity extends AppCompatActivity {
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut(); /* Odjava korisnika s Firebase-a */
+
+            OneSignal.removeExternalUserId();
+            OneSignal.deleteTag("user_id");
 
             // Prelazak na ekran za prijavu i zatvaranje HomeActivity
             Intent intent = new Intent(HomeActivity.this, MainActivity.class);
@@ -148,5 +160,27 @@ public class HomeActivity extends AppCompatActivity {
                 Toast.makeText(HomeActivity.this, "Error checking for alliance invitations.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void showPrivacyConsentDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Notification permission")
+                .setMessage("Our application uses push notifications to inform about news. Do you allow receiving notifications ?")
+                .setCancelable(false)
+                .setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Korisnik je dao pristanak
+                        OneSignal.provideUserConsent(true);
+                    }
+                })
+                .setNegativeButton("No thanks", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Korisnik nije dao pristanak
+                        OneSignal.provideUserConsent(false);
+                    }
+                })
+                .show();
     }
 }
