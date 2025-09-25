@@ -11,6 +11,8 @@ import com.example.myapplication.presentation.ui.HomeActivity;
 import com.example.myapplication.presentation.ui.RegistrationActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.onesignal.Continue;
+import com.onesignal.OneSignal;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -74,5 +76,12 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, RegistrationActivity.class);
             startActivity(intent);
         });
+
+        // --- OneSignal kod ---
+        // Inicijalizacija OneSignal-a sa App ID-om
+        OneSignal.initWithContext(this, "88463ba9-fa9e-4f78-9543-559239f6275a");
+
+        // Prikaži iskačući prozor za dozvolu notifikacija
+        
     }
 }
