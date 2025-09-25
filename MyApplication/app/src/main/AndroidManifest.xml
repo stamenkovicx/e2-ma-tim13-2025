@@ -71,6 +71,9 @@
             android:exported="false"
             android:label="Boss Fight" />
         <activity
+            android:name=".presentation.ui.SpecialMissionActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

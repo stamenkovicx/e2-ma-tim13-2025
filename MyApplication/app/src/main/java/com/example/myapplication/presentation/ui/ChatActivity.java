@@ -126,6 +126,18 @@ public class ChatActivity extends AppCompatActivity {
         db.collection("alliances").document(allianceId).collection("messages").add(message)
                 .addOnSuccessListener(documentReference -> {
                     messageEditText.setText("");
+                    userRepository.applyDailyMessageBonus(allianceId, currentUserId, new UserRepository.OnCompleteListener<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            Toast.makeText(ChatActivity.this, "Specijalni bonus primenjen!", Toast.LENGTH_SHORT).show();
+
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(ChatActivity.this, "Greška pri primeni bonusa: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    });
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to send message: " + e.getMessage(), Toast.LENGTH_LONG).show();

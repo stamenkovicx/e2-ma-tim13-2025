@@ -203,6 +203,20 @@ public class BossFightActivity extends AppCompatActivity {
             playHitAnimation();
             MediaPlayer.create(this, R.raw.crush_boss).start();
             Toast.makeText(this, "Pogodak! -" + playerState.getPowerPoints() + " HP", Toast.LENGTH_SHORT).show();
+            if (currentUser.getAllianceId() != null && !currentUser.getAllianceId().isEmpty()) {
+                userRepository.applyBossHitDamage(
+                        currentUser.getAllianceId(),
+                        currentUserId,
+                        new UserRepository.OnCompleteListener<Void>() {
+                            @Override public void onSuccess(Void result) {
+                                // Šteta registrovana ili je limit dostignut
+                            }
+                            @Override public void onFailure(Exception e) {
+                                // Greška pri primeni štete na specijalnom bosu
+                            }
+                        }
+                );
+            }
         } else {
             Toast.makeText(this, "Promašaj!", Toast.LENGTH_SHORT).show();
         }

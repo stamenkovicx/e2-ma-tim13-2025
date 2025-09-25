@@ -8,20 +8,25 @@ import androidx.annotation.NonNull;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.Notification;
+import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.TaskStatus;
 import com.example.myapplication.domain.models.User;
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.Transaction;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +34,14 @@ import java.util.Map;
 public class UserRepositoryFirebaseImpl implements UserRepository {
     private FirebaseFirestore db;
     private CollectionReference usersCollection;
+    private final CollectionReference allianceCollection;
+    private final CollectionReference missionProgressCollection;
 
     public UserRepositoryFirebaseImpl() {
         this.db = FirebaseFirestore.getInstance();
         this.usersCollection = db.collection("users");
+        this.allianceCollection = db.collection("alliances");
+        this.missionProgressCollection = db.collection("specialMissionProgress");
     }
 
     @Override
@@ -716,5 +725,283 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                 .update("isRead", true)
                 .addOnSuccessListener(aVoid -> listener.onSuccess(null))
                 .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void startSpecialMission(String allianceId, OnCompleteListener<Void> listener) {
+        allianceCollection.document(allianceId).get().addOnSuccessListener(documentSnapshot -> {
+            Alliance alliance = documentSnapshot.toObject(Alliance.class);
+            if (alliance != null && !alliance.isSpecialMissionActive()) {
+
+                List<String> members = alliance.getMemberIds();
+                String leaderId = alliance.getLeaderId();
+                int memberCount = members.size();
+                if (leaderId != null && !members.contains(leaderId)) memberCount++;
+                if (members.isEmpty() && leaderId != null) memberCount = 1;
+
+                int bossMaxHp = 100 * memberCount;
+
+                alliance.setSpecialMissionActive(true);
+                alliance.setSpecialMissionStartTime(new Date());
+                alliance.setSpecialMissionBossMaxHp(bossMaxHp);
+                alliance.setSpecialMissionBossHp(bossMaxHp);
+
+                // Kreiranje progress-a za sve članove + vođu
+                List<String> allUserIds = new ArrayList<>(members);
+                if (leaderId != null && !allUserIds.contains(leaderId)) allUserIds.add(leaderId);
+
+                for (String userId : allUserIds) {
+                    SpecialMissionProgress progress = new SpecialMissionProgress(userId, allianceId);
+                    String progressDocId = allianceId + "_" + userId; // konzistentan ID
+                    missionProgressCollection.document(progressDocId).set(progress);
+                }
+
+                allianceCollection.document(allianceId).set(alliance)
+                        .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                        .addOnFailureListener(listener::onFailure);
+
+            } else {
+                listener.onFailure(new Exception("Misija je već aktivna ili savez ne postoji."));
+            }
+        }).addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void dealDamageToBoss(String allianceId, String userId, int damageAmount, OnCompleteListener<Void> listener) {
+        if (damageAmount <= 0) {
+            listener.onSuccess(null); // Nema štete za naneti
+            return;
+        }
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        // Koristimo transakciju za sigurno ažuriranje DVA različita dokumenta
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    // 1. Čitanje trenutnog stanja
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Savez ili misija nisu aktivni.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        throw new FirebaseFirestoreException("Progres misije nije pronađen za korisnika.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 2. Ažuriranje individualnog napretka (SpecialMissionProgress)
+                    int newDamageDealt = progress.getDamageDealt() + damageAmount;
+                    progress.setDamageDealt(newDamageDealt);
+                    transaction.set(progressRef, progress); // Zapiši ažurirani progres korisnika
+
+                    // 3. Ažuriranje HP-a Bosa (Alliance)
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - damageAmount); // HP ne sme ići ispod 0
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance); // Zapiši ažurirani HP Bosa
+
+                    // Opciono: Možete dodati proveru za pobedu misije ovde ako je updatedBossHp == 0.
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public ListenerRegistration observeMissionProgress(String allianceId, List<String> userIds, MissionProgressListener<List<SpecialMissionProgress>> listener) {
+
+        return missionProgressCollection
+                .whereEqualTo("allianceId", allianceId)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        listener.onFailure(error);
+                        return;
+                    }
+
+                    if (value != null && !value.isEmpty()) {
+                        List<SpecialMissionProgress> progressList = new ArrayList<>();
+                        for (DocumentSnapshot doc : value.getDocuments()) {
+                            SpecialMissionProgress progress = doc.toObject(SpecialMissionProgress.class);
+
+                            // Filtriramo samo one koji su u listi aktivnih clanova
+                            // Iako Query već radi filtriranje, ovo je dodatna provera
+                            if (progress != null && userIds.contains(progress.getUserId())) {
+                                progressList.add(progress);
+                            }
+                        }
+                        listener.onProgressChange(progressList); // Poziva onProgressChange pri promeni
+                    }
+                });
+
+        // Napomena: Ovo vraća ListenerRegistration objekat.
+    }
+    public void applyDailyMessageBonus(String allianceId, String userId, OnCompleteListener<Void> listener) {
+        CollectionReference missionRef = db.collection("alliances")
+                .document(allianceId)
+                .collection("specialMissionProgress");
+
+        missionRef.document(userId).get().addOnSuccessListener(snapshot -> {
+            SpecialMissionProgress progress = snapshot.toObject(SpecialMissionProgress.class);
+            if (progress == null) {
+                progress = new SpecialMissionProgress(userId, allianceId);
+            }
+
+            // Datum danas
+            String today = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date());
+
+            // Maksimalan broj dana = 14 (trajanje misije)
+            int maxDays = 14;
+
+            if (!progress.getDaysMessaged().contains(today) && progress.getDaysMessaged().size() < maxDays) {
+                progress.getDaysMessaged().add(today);
+                progress.setDamageDealt(progress.getDamageDealt() + 4); // 4 HP po danu
+
+                missionRef.document(userId).set(progress)
+                        .addOnSuccessListener(aVoid -> {
+                            // Smanjujemo HP bosa u alijansi
+                            db.collection("alliances").document(allianceId)
+                                    .update("specialMissionBossHp", com.google.firebase.firestore.FieldValue.increment(-4))
+                                    .addOnSuccessListener(aVoid1 -> listener.onSuccess(null))
+                                    .addOnFailureListener(listener::onFailure);
+                        })
+                        .addOnFailureListener(listener::onFailure);
+            } else {
+                listener.onSuccess(null); // Već poslao poruku danas ili isteklo maksimalno
+            }
+        }).addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void applyShopPurchaseDamage(String allianceId, String userId, OnCompleteListener<Void> listener) {
+
+        final int DAMAGE_PER_PURCHASE = 2;
+        final int PURCHASE_LIMIT = 5;
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        // Koristimo transakciju za sigurno ažuriranje DVA dokumenta
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    // 1. Čitanje trenutnog stanja
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Misija saveza nije aktivna.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        // Ako progres ne postoji, kreirajte ga (iako bi startSpecialMission trebalo da ga kreira)
+                        progress = new SpecialMissionProgress(userId, allianceId);
+                    }
+
+                    // 2. Provera limita kupovine
+                    if (progress.getShopPurchases() >= PURCHASE_LIMIT) {
+                        // Ako je limit dostignut, prekidamo transakciju bez greške (ne nanosimo štetu)
+                        throw new FirebaseFirestoreException("Limit kupovina dostignut.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 3. Ažuriranje individualnog napretka (SpecialMissionProgress)
+
+                    // Povećavamo brojač kupovina
+                    progress.setShopPurchases(progress.getShopPurchases() + 1);
+
+                    // Povećavamo ukupnu nanesenu štetu korisnika
+                    int newDamageDealt = progress.getDamageDealt() + DAMAGE_PER_PURCHASE;
+                    progress.setDamageDealt(newDamageDealt);
+
+                    transaction.set(progressRef, progress); // Zapiši ažurirani progres korisnika
+
+                    // 4. Ažuriranje HP-a Bosa (Alliance)
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - DAMAGE_PER_PURCHASE);
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance); // Zapiši ažurirani HP Bosa
+
+                    return null;
+
+                    // Posebno rukovanje kodom ABORTED da bi se ignorisala poruka "Limit dostignut"
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                        // Ignoriši kod ABORTED (korisnik je dostigao limit ili misija nije aktivna)
+                        listener.onSuccess(null);
+                    } else {
+                        listener.onFailure(e);
+                    }
+                });
+    }
+
+    @Override
+    public void applyBossHitDamage(String allianceId, String userId, OnCompleteListener<Void> listener) {
+
+        final int DAMAGE_PER_HIT = 2;
+        final int HIT_LIMIT = 10; // Maksimalno 10 udaraca
+
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId;
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        db.runTransaction((transaction) -> {
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
+
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
+
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Misija saveza nije aktivna.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        throw new FirebaseFirestoreException("Progres misije nije pronađen.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 1. Provera limita udaraca
+                    if (progress.getRegularBossHits() >= HIT_LIMIT) {
+                        throw new FirebaseFirestoreException("Limit udaraca dostignut.",
+                                FirebaseFirestoreException.Code.ABORTED);
+                    }
+
+                    // 2. Ažuriranje individualnog napretka
+                    progress.setRegularBossHits(progress.getRegularBossHits() + 1);
+
+                    int newDamageDealt = progress.getDamageDealt() + DAMAGE_PER_HIT;
+                    progress.setDamageDealt(newDamageDealt);
+
+                    transaction.set(progressRef, progress);
+
+                    // 3. Ažuriranje HP-a Bosa saveza
+                    int currentBossHp = alliance.getSpecialMissionBossHp();
+                    int updatedBossHp = Math.max(0, currentBossHp - DAMAGE_PER_HIT);
+
+                    alliance.setSpecialMissionBossHp(updatedBossHp);
+                    transaction.set(allianceRef, alliance);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> {
+                    if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                        // Ignoriši kod ABORTED (dostignut limit ili misija nije aktivna)
+                        listener.onSuccess(null);
+                    } else {
+                        listener.onFailure(e);
+                    }
+                });
     }
 }
