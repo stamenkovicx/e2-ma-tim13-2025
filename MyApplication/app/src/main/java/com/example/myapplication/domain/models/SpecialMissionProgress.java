@@ -15,6 +15,8 @@ public class SpecialMissionProgress {
     private int simpleTasksSolved = 0;
     private int otherTasksSolved = 0;
     private boolean noUnsolvedTasksBonusApplied = false;
+    private boolean rewardsClaimed = false;
+
     private List<String> daysMessaged;
 
     public SpecialMissionProgress() {
@@ -99,5 +101,12 @@ public class SpecialMissionProgress {
 
     public void setDaysMessaged(List<String> daysMessaged) {
         this.daysMessaged = daysMessaged;
+    }
+    public boolean areRewardsClaimed() {
+        return rewardsClaimed;
+    }
+
+    public void setRewardsClaimed(boolean rewardsClaimed) {
+        this.rewardsClaimed = rewardsClaimed;
     }
 }
