@@ -47,6 +47,11 @@ public class ItemRepository {
         // Luk i strijela (+5% stalno povecanje dobijenog novca)
         allEquipment.add(new Equipment(9,"Bow and Arrow", "Increases gained coins by 5%.", "weapon_bow", EquipmentType.WEAPON, 0.05, 0));
 
+        //  DODAVANJE BEDŽEVA
+        allEquipment.add(new Equipment(201, "Bronzani bedž misije", "Za učešće u specijalnoj misiji.", "bronze_badge", EquipmentType.BADGE, 0, 0));
+        allEquipment.add(new Equipment(202, "Srebrni bedž misije", "Za značajan doprinos u specijalnoj misiji.", "silver_badge", EquipmentType.BADGE, 0, 0));
+        allEquipment.add(new Equipment(203, "Zlatni bedž misije", "Za izvanredan doprinos u specijalnoj misiji.", "medal", EquipmentType.BADGE, 0, 0));
+
         ALL_EQUIPMENT = Collections.unmodifiableList(allEquipment);
     }
     public static List<Badge> getAllBadges() {
@@ -108,5 +113,28 @@ public class ItemRepository {
         }
         Random random = new Random();
         return weaponItems.get(random.nextInt(weaponItems.size()));
+    }
+    public static Equipment getRandomPotion() {
+        List<Equipment> potionItems = new ArrayList<>();
+        for (Equipment item : ALL_EQUIPMENT) {
+            if (item.getType() == EquipmentType.POTION) {
+                potionItems.add(item);
+            }
+        }
+        if (potionItems.isEmpty()) {
+            return null; // Vraća null ako nema definisanih napitaka
+        }
+        Random random = new Random();
+        return potionItems.get(random.nextInt(potionItems.size()));
+    }
+    public static Equipment getBadgeForMissionCount(int missionCount) {
+        // Vraća bedž na osnovu ukupnog broja završenih misija
+        if (missionCount == 1) {
+            return getEquipmentById(201); // Bronzani bedž za prvu završenu misiju
+        } else if (missionCount == 2) {
+            return getEquipmentById(202); // Srebrni bedž za drugu
+        } else { // Za 3 ili više misija
+            return getEquipmentById(203); // Zlatni bedž
+        }
     }
 }

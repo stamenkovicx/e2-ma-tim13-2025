@@ -100,4 +100,9 @@ public class Alliance {
     public void setSpecialMissionBossMaxHp(int specialMissionBossMaxHp) {
         this.specialMissionBossMaxHp = specialMissionBossMaxHp;
     }
+
+    public boolean hasCompletedSpecialMission() {
+        return !specialMissionActive && specialMissionBossMaxHp > 0 && specialMissionBossHp == 0;
+    }
+
 }

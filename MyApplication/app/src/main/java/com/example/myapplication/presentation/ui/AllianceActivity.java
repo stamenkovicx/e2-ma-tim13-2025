@@ -84,7 +84,8 @@ public class AllianceActivity extends AppCompatActivity {
             public void onSuccess(Alliance alliance) {
                 if (alliance != null) {
                     tvAllianceName.setText(alliance.getName());
-
+                    btnStartSpecialMission.setVisibility(View.GONE);
+                    btnViewSpecialMission.setVisibility(View.GONE);
                     userRepository.getUserById(alliance.getLeaderId(), new UserRepository.OnCompleteListener<User>() {
                         @Override
                         public void onSuccess(User leader) {
@@ -94,23 +95,32 @@ public class AllianceActivity extends AppCompatActivity {
                                 boolean isLeader = leader.getUserId().equals(currentUserId);
 
                                 if (isLeader) {
-                                    // --- LOGIKA SAMO ZA VOĐU ---
+                                    // LOGIKA SAMO ZA VODJU
                                     btnDisbandAlliance.setVisibility(View.VISIBLE);
                                     btnLeaveAlliance.setVisibility(View.GONE);
+                                    btnDisbandAlliance.setEnabled(!alliance.isSpecialMissionActive());
 
-                                    // Provera za misiju se radi UNUTAR bloka za vođu
+                                    // Provera za misiju se radi UNUTAR bloka za vodju
                                     if (alliance.isSpecialMissionActive()) {
                                         btnViewSpecialMission.setVisibility(View.VISIBLE);
+                                        btnStartSpecialMission.setVisibility(View.GONE);
+                                    } else if (alliance.hasCompletedSpecialMission()) {
+                                        btnViewSpecialMission.setVisibility(View.VISIBLE);
+                                        btnStartSpecialMission.setVisibility(View.GONE);
                                     } else {
                                         btnStartSpecialMission.setVisibility(View.VISIBLE);
+                                        btnViewSpecialMission.setVisibility(View.GONE);
                                     }
 
+
                                 } else {
-                                    // --- LOGIKA ZA OBIČNOG ČLANA ---
+                                    //LOGIKA ZA OBIČNOG CLANA
                                     btnDisbandAlliance.setVisibility(View.GONE);
                                     btnLeaveAlliance.setVisibility(View.VISIBLE);
+                                    btnLeaveAlliance.setEnabled(!alliance.isSpecialMissionActive());
 
-                                    // Običan član vidi samo dugme za pregled, i to samo ako je misija aktivna
+
+                                    // Obican clan vidi samo dugme za pregled, i to samo ako je misija aktivna
                                     if (alliance.isSpecialMissionActive()) {
                                         btnViewSpecialMission.setVisibility(View.VISIBLE);
                                     }

@@ -29,6 +29,7 @@ public class User {
     private List<String> allianceInvitationsSent;
     private List<String> allianceInvitationsReceived;
     private Date dateOfLastLevelUp;
+    private int specialMissionsCompleted = 0;
 
     public User() {
     }
@@ -318,4 +319,11 @@ public class User {
             int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
             return xpForNextLevel - this.xp;
         }*/
+    public int getSpecialMissionsCompleted() {
+        return specialMissionsCompleted;
+    }
+
+    public void setSpecialMissionsCompleted(int specialMissionsCompleted) {
+        this.specialMissionsCompleted = specialMissionsCompleted;
+    }
     }
