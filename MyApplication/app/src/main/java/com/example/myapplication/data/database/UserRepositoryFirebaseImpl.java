@@ -241,6 +241,7 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         updates.put("level", user.getLevel());
         updates.put("powerPoints", user.getPowerPoints());
         updates.put("dateOfLastLevelUp", user.getDateOfLastLevelUp());
+        updates.put("specialMissionsCompleted", user.getSpecialMissionsCompleted());
 
         userRef.update(updates)
                 .addOnSuccessListener(aVoid -> onCompleteListener.onSuccess(null))
@@ -841,40 +842,57 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
 
         // Napomena: Ovo vraća ListenerRegistration objekat.
     }
+    @Override
     public void applyDailyMessageBonus(String allianceId, String userId, OnCompleteListener<Void> listener) {
-        CollectionReference missionRef = db.collection("alliances")
-                .document(allianceId)
-                .collection("specialMissionProgress");
+        final int DAMAGE_PER_MESSAGE = 4;
+        final int MAX_DAYS = 14;
 
-        missionRef.document(userId).get().addOnSuccessListener(snapshot -> {
-            SpecialMissionProgress progress = snapshot.toObject(SpecialMissionProgress.class);
-            if (progress == null) {
-                progress = new SpecialMissionProgress(userId, allianceId);
-            }
+        DocumentReference allianceRef = allianceCollection.document(allianceId);
+        String progressDocId = allianceId + "_" + userId; // Ispravan ID
+        DocumentReference progressRef = missionProgressCollection.document(progressDocId);
 
-            // Datum danas
-            String today = new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date());
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    // 1. Čitanje trenutnog stanja unutar transakcije
+                    DocumentSnapshot allianceSnapshot = transaction.get(allianceRef);
+                    DocumentSnapshot progressSnapshot = transaction.get(progressRef);
 
-            // Maksimalan broj dana = 14 (trajanje misije)
-            int maxDays = 14;
+                    Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                    SpecialMissionProgress progress = progressSnapshot.toObject(SpecialMissionProgress.class);
 
-            if (!progress.getDaysMessaged().contains(today) && progress.getDaysMessaged().size() < maxDays) {
-                progress.getDaysMessaged().add(today);
-                progress.setDamageDealt(progress.getDamageDealt() + 4); // 4 HP po danu
+                    // Provere
+                    if (alliance == null || !alliance.isSpecialMissionActive()) {
+                        throw new FirebaseFirestoreException("Misija saveza nije aktivna.", FirebaseFirestoreException.Code.ABORTED);
+                    }
+                    if (progress == null) {
+                        throw new FirebaseFirestoreException("Progres misije nije pronađen.", FirebaseFirestoreException.Code.ABORTED);
+                    }
 
-                missionRef.document(userId).set(progress)
-                        .addOnSuccessListener(aVoid -> {
-                            // Smanjujemo HP bosa u alijansi
-                            db.collection("alliances").document(allianceId)
-                                    .update("specialMissionBossHp", com.google.firebase.firestore.FieldValue.increment(-4))
-                                    .addOnSuccessListener(aVoid1 -> listener.onSuccess(null))
-                                    .addOnFailureListener(listener::onFailure);
-                        })
-                        .addOnFailureListener(listener::onFailure);
-            } else {
-                listener.onSuccess(null); // Već poslao poruku danas ili isteklo maksimalno
-            }
-        }).addOnFailureListener(listener::onFailure);
+                    // 2. Provera da li je bonus za današnji dan već primenjen
+                    String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new Date());
+                    if (progress.getDaysMessaged().contains(today) || progress.getDaysMessaged().size() >= MAX_DAYS) {
+                        // Ako jeste, prekini transakciju. Ništa se neće desiti, što je ispravno.
+                        return null;
+                    }
+
+                    // 3. Ažuriranje individualnog napretka
+                    progress.getDaysMessaged().add(today);
+                    progress.setDamageDealt(progress.getDamageDealt() + DAMAGE_PER_MESSAGE);
+                    transaction.set(progressRef, progress);
+
+                    // 4. Ažuriranje HP-a Bosa
+                    int newBossHp = Math.max(0, alliance.getSpecialMissionBossHp() - DAMAGE_PER_MESSAGE);
+                    transaction.update(allianceRef, "specialMissionBossHp", newBossHp);
+
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(e -> {
+                    // Ignorišemo ABORTED greške jer one znače da je uslov namerno prekinuo transakciju
+                    if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                        listener.onSuccess(null);
+                    } else {
+                        listener.onFailure(e);
+                    }
+                });
     }
 
     @Override
@@ -1003,5 +1021,34 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                         listener.onFailure(e);
                     }
                 });
+    }
+    @Override
+    public void endSpecialMission(String allianceId, OnCompleteListener<Void> listener) {
+        allianceCollection.document(allianceId).update("specialMissionActive", false)
+                .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void getSpecialMissionProgress(String userId, String allianceId, OnCompleteListener<SpecialMissionProgress> listener) {
+        String progressDocId = allianceId + "_" + userId;
+        missionProgressCollection.document(progressDocId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        SpecialMissionProgress progress = documentSnapshot.toObject(SpecialMissionProgress.class);
+                        listener.onSuccess(progress);
+                    } else {
+                        // Ako iz nekog razloga ne postoji, vrati novi prazan objekat da ne bi došlo do greške
+                        listener.onSuccess(new SpecialMissionProgress(userId, allianceId));
+                    }
+                })
+                .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void updateSpecialMissionProgress(SpecialMissionProgress progress, OnCompleteListener<Void> listener) {
+        String progressDocId = progress.getAllianceId() + "_" + progress.getUserId();
+        missionProgressCollection.document(progressDocId).set(progress)
+                .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
     }
 }

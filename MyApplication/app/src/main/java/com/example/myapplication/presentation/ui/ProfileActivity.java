@@ -143,6 +143,7 @@ public class ProfileActivity extends AppCompatActivity {
                         Toast.makeText(ProfileActivity.this, "User data not found.", Toast.LENGTH_SHORT).show();
                     }
                 }
+
                 @Override
                 public void onFailure(Exception e) {
                     Toast.makeText(ProfileActivity.this, "Failed to load user data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -227,29 +228,40 @@ public class ProfileActivity extends AppCompatActivity {
         llBadgesContainer.removeAllViews();
         llEquipmentContainer.removeAllViews();
 
-        for (String badgeName : badges) {
-            ImageView badgeView = new ImageView(this);
-            int resourceId = getResources().getIdentifier(badgeName, "drawable", getPackageName());
-            if (resourceId != 0) {
-                badgeView.setImageResource(resourceId);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
-                params.setMargins(0, 0, 16, 0);
-                badgeView.setLayoutParams(params);
-                llBadgesContainer.addView(badgeView);
+        // 1. Prvo prikazujemo "obične" bedževe koje korisnik možda ima
+        if (badges != null) {
+            for (String badgeName : badges) {
+                ImageView badgeView = new ImageView(this);
+                int resourceId = getResources().getIdentifier(badgeName, "drawable", getPackageName());
+                if (resourceId != 0) {
+                    badgeView.setImageResource(resourceId);
+                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
+                    params.setMargins(0, 0, 16, 0);
+                    badgeView.setLayoutParams(params);
+                    llBadgesContainer.addView(badgeView);
+                }
             }
         }
 
-        for (UserEquipment item : userEquipmentList) {
-            Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
-            if (equipment != null) {
-                ImageView equipmentView = new ImageView(this);
-                int resourceId = getResources().getIdentifier(equipment.getIconResourceId(), "drawable", getPackageName());
-                if (resourceId != 0) {
-                    equipmentView.setImageResource(resourceId);
-                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
-                    params.setMargins(0, 0, 16, 0);
-                    equipmentView.setLayoutParams(params);
-                    llEquipmentContainer.addView(equipmentView);
+        // 2.  prolazimo kroz svu opremu i razvrstavamo je
+        if (userEquipmentList != null) {
+            for (UserEquipment item : userEquipmentList) {
+                Equipment equipment = ItemRepository.getEquipmentById(item.getEquipmentId());
+                if (equipment != null) {
+                    ImageView itemView = new ImageView(this);
+                    int resourceId = getResources().getIdentifier(equipment.getIconResourceId(), "drawable", getPackageName());
+                    if (resourceId != 0) {
+                        itemView.setImageResource(resourceId);
+                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
+                        params.setMargins(0, 0, 16, 0);
+                        itemView.setLayoutParams(params);
+
+                        if (equipment.getId() == 201 || equipment.getId() == 202 || equipment.getId() == 203) {
+                            llBadgesContainer.addView(itemView);
+                        } else {
+                            llEquipmentContainer.addView(itemView);
+                        }
+                    }
                 }
             }
         }
