@@ -4,9 +4,11 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
@@ -48,6 +50,7 @@ public class StatisticsActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private FirebaseAuth mAuth;
     private String userId;
+    private TextView tvTotalTasks;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +81,7 @@ public class StatisticsActivity extends AppCompatActivity {
             @Override
             public void onSuccess(User user) {
                 if (user != null) {
+                    setupMissionSuccessGraph();
                     taskRepository.getTotalActiveDays(userId, new TaskRepository.OnStatisticsLoadedListener<Integer>() {
                         @Override
                         public void onSuccess(Integer result) {
@@ -172,6 +176,7 @@ public class StatisticsActivity extends AppCompatActivity {
         if (inProgressCount > 0) entries.add(new PieEntry(inProgressCount, "In Progress"));
         if (canceledCount > 0) entries.add(new PieEntry(canceledCount, "Canceled"));
 
+        int totalTasks = completedCount + inProgressCount + canceledCount;
         PieDataSet dataSet = new PieDataSet(entries, "Task Status");
         dataSet.setSliceSpace(3f);
         dataSet.setSelectionShift(5f);
@@ -192,6 +197,7 @@ public class StatisticsActivity extends AppCompatActivity {
         binding.chartTaskStatus.setHoleColor(Color.TRANSPARENT);
         binding.chartTaskStatus.setTransparentCircleRadius(61f);
         binding.chartTaskStatus.invalidate();
+        binding.chartTaskStatus.setCenterText("Total: " + totalTasks);
     }
 
     private void setupBarChart(Map<String, Pair<Integer, Integer>> categoryCountsAndColors) {
@@ -380,5 +386,51 @@ public class StatisticsActivity extends AppCompatActivity {
         chart.getDescription().setEnabled(false);
         chart.animateX(1000);
         chart.invalidate();
+    }
+
+    private void setupMissionSuccessGraph() {
+        // HARDKODOVANE VRIJEDNOSTI ZA TESTIRANJE:
+        int successfulMissions = 7;
+        int unsuccessfulMissions = 2;
+        int activeMission = 1; // 1 znači da postoji jedna aktivna misija
+
+        List<PieEntry> entries = new ArrayList<>();
+        if (successfulMissions > 0) entries.add(new PieEntry(successfulMissions, "Successful"));
+        if (unsuccessfulMissions > 0) entries.add(new PieEntry(unsuccessfulMissions, "Unsuccessful"));
+        if (activeMission > 0) entries.add(new PieEntry(activeMission, "Active"));
+
+        // Ukupan broj započetih misija: T = S + U + A
+        int totalMissions = successfulMissions + unsuccessfulMissions + activeMission;
+
+        PieDataSet dataSet = new PieDataSet(entries, "Mission Status");
+        dataSet.setSliceSpace(3f);
+        dataSet.setSelectionShift(5f);
+
+        // Preporučene boje za uspeh, neuspeh i aktivno stanje
+        List<Integer> colors = new ArrayList<>();
+        colors.add(Color.parseColor("#4CAF50")); // Zelena za Uspeh
+        colors.add(Color.parseColor("#F44336")); // Crvena za Neuspeh
+        colors.add(Color.parseColor("#FFC107")); // Žuta/Narandžasta za Aktivno
+
+        dataSet.setColors(colors);
+
+        PieData data = new PieData(dataSet);
+        data.setValueTextSize(12f);
+        data.setValueTextColor(Color.BLACK);
+
+        // KLJUČNA IZMJENA: Koristi binding objekat
+        binding.chartMissionSuccess.setData(data);
+        binding.chartMissionSuccess.getDescription().setEnabled(false);
+        binding.chartMissionSuccess.setDrawHoleEnabled(true); // Prikaz donut grafikona
+        binding.chartMissionSuccess.setHoleColor(Color.TRANSPARENT);
+        binding.chartMissionSuccess.setTransparentCircleRadius(61f);
+
+        // Prikaz ukupnog broja u centru Donut Chart-a
+        binding.chartMissionSuccess.setCenterText("Total: " + totalMissions);
+        binding.chartMissionSuccess.setCenterTextSize(14f);
+        binding.chartMissionSuccess.setCenterTextColor(Color.parseColor("#333333"));
+
+        binding.chartMissionSuccess.animateY(1000);
+        binding.chartMissionSuccess.invalidate();
     }
 }

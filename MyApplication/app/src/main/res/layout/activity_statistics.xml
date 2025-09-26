@@ -96,7 +96,8 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="#333333"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="4dp"/>
+
 
         <com.github.mikephil.charting.charts.PieChart
             android:id="@+id/chartTaskStatus"
@@ -155,6 +156,21 @@
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chartXpLast7Days"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Alliance Mission Success Rate"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginBottom="8dp"/>
+
+        <com.github.mikephil.charting.charts.PieChart
+            android:id="@+id/chartMissionSuccess"
             android:layout_width="match_parent"
             android:layout_height="250dp"
             android:layout_marginBottom="16dp" />
