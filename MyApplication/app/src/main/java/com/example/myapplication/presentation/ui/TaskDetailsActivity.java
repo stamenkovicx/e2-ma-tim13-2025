@@ -279,6 +279,18 @@ public class TaskDetailsActivity extends AppCompatActivity {
                         task.setStatus(TaskStatus.URAĐEN);
                         task.setXpValue(awardedXp);
 
+                        userRepository.handleTaskCompletedForSpecialMission(task, userId, new UserRepository.OnCompleteListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                android.util.Log.d("SpecialMission", "Napredak specijalne misije je uspešno ažuriran.");
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                android.util.Log.e("SpecialMission", "Greška pri ažuriranju napretka specijalne misije.", e);
+                            }
+                        });
+
                         if (awardedXp > 0) {
                             Toast.makeText(TaskDetailsActivity.this, "Zadatak završen! Dodeljeno " + awardedXp + " XP.", Toast.LENGTH_SHORT).show();
                         } else {

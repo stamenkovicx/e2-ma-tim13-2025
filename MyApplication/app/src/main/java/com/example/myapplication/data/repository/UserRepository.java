@@ -80,5 +80,5 @@ public interface UserRepository {
     void endSpecialMission(String allianceId, OnCompleteListener<Void> listener);
     void getSpecialMissionProgress(String userId, String allianceId, OnCompleteListener<SpecialMissionProgress> listener);
     void updateSpecialMissionProgress(SpecialMissionProgress progress, OnCompleteListener<Void> listener);
-
+    void handleTaskCompletedForSpecialMission(com.example.myapplication.domain.models.Task completedTask, String userId, OnCompleteListener<Void> listener);
 }
