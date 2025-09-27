@@ -1,5 +1,7 @@
 package com.example.myapplication.domain.models;
 
+import android.util.Pair;
+
 import com.google.firebase.firestore.Exclude;
 import java.io.Serializable;
 import java.util.Date;
@@ -116,4 +118,55 @@ public class Task implements Serializable {
     public void setStatus(TaskStatus status) { this.status = status; }
     public Date getCreationDate() { return creationDate; }
     public void setCreationDate(Date creationDate) { this.creationDate = creationDate; }
+    // U fajlu Task.java
+
+    @Exclude
+    public Pair<Integer, Integer> calculateDamageComponents() {
+        int simpleDamageCount = 0;
+        int otherDamage = 0;
+
+        DifficultyType difficulty = getDifficultyType();
+        ImportanceType importance = getImportanceType();
+
+        // Proveravamo da li imamo specijalni slučaj: LAK + NORMALAN
+        boolean isEasyDifficulty = (difficulty == DifficultyType.EASY);
+        boolean isNormalImportance = (importance == ImportanceType.NORMAL);
+
+        if (isEasyDifficulty && isNormalImportance) {
+            // SPECIJALNO PRAVILO: Ako je zadatak i Lak i Normalan, vredi ukupno 2 HP.
+            simpleDamageCount = 2;
+        } else {
+            // AKO NIJE SPECIJALAN SLUČAJ, ONDA SABIRAMO ODVOJENO
+
+            // --- Prvo, šteta od TEŽINE ---
+            if (difficulty != null) {
+                switch (difficulty) {
+                    case VERY_EASY:
+                    case EASY: // ISPRAVKA: Sada i "Lak" sam po sebi vredi 1
+                        simpleDamageCount += 1;
+                        break;
+                    case HARD:
+                    case EXTREMELY_HARD:
+                        otherDamage += 4;
+                        break;
+                }
+            }
+
+            // --- Drugo, šteta od BITNOSTI ---
+            if (importance != null) {
+                switch (importance) {
+                    case NORMAL: // ISPRAVKA: Sada i "Normalan" sam po sebi vredi 1
+                    case IMPORTANT:
+                        simpleDamageCount += 1;
+                        break;
+                    case EXTREMELY_IMPORTANT:
+                    case SPECIAL:
+                        otherDamage += 4;
+                        break;
+                }
+            }
+        }
+
+        return new Pair<>(simpleDamageCount, otherDamage);
+    }
 }
