@@ -16,6 +16,8 @@ public class SpecialMissionProgress {
     private int otherTasksSolved = 0;
     private boolean noUnsolvedTasksBonusApplied = false;
     private boolean rewardsClaimed = false;
+    private boolean rewardAnimationShown = false; // polje za clanove
+
 
     private List<String> daysMessaged;
 
@@ -108,5 +110,12 @@ public class SpecialMissionProgress {
 
     public void setRewardsClaimed(boolean rewardsClaimed) {
         this.rewardsClaimed = rewardsClaimed;
+    }
+    public boolean isRewardAnimationShown() {
+        return rewardAnimationShown;
+    }
+
+    public void setRewardAnimationShown(boolean rewardAnimationShown) {
+        this.rewardAnimationShown = rewardAnimationShown;
     }
 }
