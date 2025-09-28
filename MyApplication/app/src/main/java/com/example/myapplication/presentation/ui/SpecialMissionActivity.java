@@ -421,10 +421,28 @@ public class SpecialMissionActivity extends AppCompatActivity {
             @Override
             public void onSuccess(SpecialMissionProgress progress) {
                 if (progress != null && progress.areRewardsClaimed()) {
-                    // Ovde prikaži UI nagrada za ulogovanog korisnika
-                    // npr. showRewardAnimation ili statički prikaz "Dobio si nagradu"
-                    tvRewardCoins.setVisibility(View.VISIBLE);
-                    layoutRewardItems.setVisibility(View.VISIBLE);
+                    // Ako je nagrada već upisana u bazu → ponovo pokreni animaciju nagrada
+                    userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+                        @Override
+                        public void onSuccess(User user) {
+                            if (user == null) return;
+
+                            // Ovde možeš izračunati nagradu isto kao u giveRewardToMember
+                            int coinReward = (int) (0.5 * Math.round(240 * Math.pow(1.2, user.getLevel() - 1)));
+
+                            Equipment potion = ItemRepository.getRandomPotion();
+                            Equipment clothing = ItemRepository.getRandomClothing();
+                            Equipment badge = ItemRepository.getBadgeForMissionCount(user.getSpecialMissionsCompleted());
+
+                            // Pokreni animaciju nagrada
+                            showRewardAnimation(coinReward, potion, clothing, badge);
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e("RewardCheck", "Greška pri dohvatanju korisnika za prikaz nagrade", e);
+                        }
+                    });
                 }
             }
 
@@ -434,5 +452,6 @@ public class SpecialMissionActivity extends AppCompatActivity {
             }
         });
     }
+
 
 }

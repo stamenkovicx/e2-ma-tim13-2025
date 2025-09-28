@@ -133,8 +133,8 @@ public class Task implements Serializable {
         boolean isNormalImportance = (importance == ImportanceType.NORMAL);
 
         if (isEasyDifficulty && isNormalImportance) {
-            // SPECIJALNO PRAVILO: Ako je zadatak i Lak i Normalan, vredi ukupno 2 HP.
-            simpleDamageCount = 2;
+            // SPECIJALNO PRAVILO: Ako je zadatak i Lak i Normalan, vredi ukupno 4 HP.
+            simpleDamageCount = 4;
         } else {
             // AKO NIJE SPECIJALAN SLUČAJ, ONDA SABIRAMO ODVOJENO
 
