@@ -227,6 +227,14 @@ public class TaskDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "Zadatak je već završen.", Toast.LENGTH_SHORT).show();
             return;
         }
+        Calendar cutoff = Calendar.getInstance();
+        cutoff.add(Calendar.DAY_OF_YEAR, -3); // Dozvoljeno 3 dana unazad
+        cutoff.set(Calendar.HOUR_OF_DAY, 0);
+
+        if (task.getStartDate().before(cutoff.getTime())) {
+            Toast.makeText(this, "Ovaj zadatak je istekao i ne može se označiti.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         // Provera da li su podaci o korisniku učitani pre nego što ih koristimo
         if (currentUserObject == null) {

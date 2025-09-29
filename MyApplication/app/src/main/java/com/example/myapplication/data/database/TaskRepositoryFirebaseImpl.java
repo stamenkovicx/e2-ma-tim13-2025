@@ -719,49 +719,47 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
 
 
     public void checkAndDeactivateExpiredTasks(String userId, OnTaskUpdatedListener listener) {
+        // Definišemo granicu: danas - 4 dana. Ako je danas 29.09, granica je 25.09.
+        Calendar cutoff = Calendar.getInstance();
+        cutoff.add(Calendar.DAY_OF_YEAR, -4);
+        cutoff.set(Calendar.HOUR_OF_DAY, 23);
+        cutoff.set(Calendar.MINUTE, 59);
+        cutoff.set(Calendar.SECOND, 59);
+        Timestamp cutoffTimestamp = new Timestamp(cutoff.getTime());
+
         getTasksCollection(userId)
                 .whereEqualTo("status", TaskStatus.AKTIVAN.name())
+                // Upit traži zadatke čiji je DATUM POČETKA (startDate) pre graničnog datuma
+                .whereLessThanOrEqualTo("startDate", cutoffTimestamp)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && task.getResult() != null) {
                         WriteBatch batch = db.batch();
-                        AtomicInteger tasksToUpdate = new AtomicInteger(0);
-                        Calendar now = Calendar.getInstance();
+                        int tasksToUpdate = 0;
 
                         for (QueryDocumentSnapshot document : task.getResult()) {
-                            Task currentTask = document.toObject(Task.class);
-
-                            if (currentTask.getEndDate() != null) {
-                                Calendar expiryCalendar = Calendar.getInstance();
-                                expiryCalendar.setTime(currentTask.getEndDate());
-                                expiryCalendar.add(Calendar.DAY_OF_YEAR, TASK_EXPIRATION_GRACE_PERIOD_DAYS);
-
-                                if (now.after(expiryCalendar)) {
-                                    DocumentReference taskRef = document.getReference();
-                                    batch.update(taskRef, "status", TaskStatus.NEURAĐEN.name());
-                                    tasksToUpdate.incrementAndGet();
-                                }
-                            }
+                            batch.update(document.getReference(), "status", TaskStatus.NEURAĐEN.name());
+                            tasksToUpdate++;
                         }
 
-                        if (tasksToUpdate.get() > 0) {
+                        if (tasksToUpdate > 0) {
+                            final int finalTasksToUpdate = tasksToUpdate;
                             batch.commit()
                                     .addOnSuccessListener(aVoid -> {
-                                        Log.d(TAG, "Successfully deactivated " + tasksToUpdate.get() + " expired tasks.");
+                                        Log.d("TaskRepoFirebaseImpl", "Uspešno deaktivirano " + finalTasksToUpdate + " isteklih zadataka.");
                                         listener.onSuccess();
                                     })
                                     .addOnFailureListener(e -> {
-                                        Log.e(TAG, "Greška pri masovnom ažuriranju neaktivnih zadataka.", e);
+                                        Log.e("TaskRepoFirebaseImpl", "Greška pri masovnom ažuriranju.", e);
                                         listener.onFailure(e);
                                     });
                         } else {
-                            Log.d(TAG, "Nema isteklih zadataka za deaktivaciju.");
+                            Log.d("TaskRepoFirebaseImpl", "Nema isteklih zadataka za deaktivaciju.");
                             listener.onSuccess();
                         }
-
                     } else {
-                        Log.e(TAG, "Greška pri dohvatanju isteklih zadataka", task.getException());
-                        listener.onFailure(task.getException() != null ? task.getException() : new Exception("Unknown error fetching tasks."));
+                        Log.e("TaskRepoFirebaseImpl", "Greška pri dohvatanju isteklih zadataka.", task.getException());
+                        listener.onFailure(task.getException());
                     }
                 });
     }
