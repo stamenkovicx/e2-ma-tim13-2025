@@ -352,9 +352,7 @@ public class BossFightActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(shakeDetector, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        if (currentUser == null) {
-            loadBossAndUser();
-        }
+        loadBossAndUser();
     }
 
     @Override
