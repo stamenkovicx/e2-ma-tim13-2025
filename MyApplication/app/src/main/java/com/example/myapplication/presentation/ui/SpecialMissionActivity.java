@@ -105,17 +105,52 @@ public class SpecialMissionActivity extends AppCompatActivity {
         userRepository.getAllianceById(allianceId, new UserRepository.OnCompleteListener<Alliance>() {
             @Override
             public void onSuccess(Alliance alliance) {
-                if (alliance != null) {
-                    if (alliance.isSpecialMissionActive()) {
-                        missionLayoutGroup.setVisibility(View.VISIBLE);
-                        updateBossHpUI(alliance.getSpecialMissionBossHp(), alliance.getSpecialMissionBossMaxHp());
-                        startTimer(alliance.getSpecialMissionStartTime());
-                        startMissionProgressListener(alliance.getMemberIds(), alliance.getLeaderId());
-                        checkForCompletionAndGiveRewards(alliance);
-                    } else {
-                        tvTimeRemaining.setText("Misija je završena.");
-                        checkForCompletionAndGiveRewards(alliance);
+                if (alliance == null) {
+                    Toast.makeText(SpecialMissionActivity.this, "Greška: Savez nije pronađen.", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+
+                missionLayoutGroup.setVisibility(View.VISIBLE);
+
+                if (alliance.isSpecialMissionActive()) {
+                    // Misija je u toku
+                    updateBossHpUI(alliance.getSpecialMissionBossHp(), alliance.getSpecialMissionBossMaxHp());
+                    startTimer(alliance.getSpecialMissionStartTime());
+
+                    // Sastavi listu svih članova
+                    List<String> allMemberIds = new ArrayList<>(alliance.getMemberIds());
+                    if (alliance.getLeaderId() != null && !allMemberIds.contains(alliance.getLeaderId())) {
+                        allMemberIds.add(alliance.getLeaderId());
                     }
+                    startMissionProgressListener(allMemberIds, alliance.getLeaderId()); // Originalna metoda za praćenje
+
+                    // Pokaži sve UI elemente
+                    progressBossHp.setVisibility(View.VISIBLE);
+                    membersProgressRecyclerView.setVisibility(View.VISIBLE);
+                    tvMembersProgressTitle.setVisibility(View.VISIBLE);
+                    bossImage.setVisibility(View.VISIBLE);
+
+                } else {
+                    // Misija je završena
+                    tvTimeRemaining.setText("Misija je uspešno završena!");
+                    updateBossHpUI(0, alliance.getSpecialMissionBossMaxHp());
+
+                    // Pokazi listu i naslov, nemoj ih više sakrivati
+                    membersProgressRecyclerView.setVisibility(View.VISIBLE);
+                    tvMembersProgressTitle.setVisibility(View.VISIBLE);
+                    progressBossHp.setVisibility(View.INVISIBLE);
+
+                    // Sastavi listu svih clanova za dohvat konačnih rezultata
+                    List<String> allMemberIds = new ArrayList<>(alliance.getMemberIds());
+                    if (alliance.getLeaderId() != null && !allMemberIds.contains(alliance.getLeaderId())) {
+                        allMemberIds.add(alliance.getLeaderId());
+                    }
+
+                    //Ucitaj konačne rezultate
+                    loadFinalMissionProgress(allMemberIds);
+
+                    // Proveri status nagrade i prikaži animaciju
                     checkForUserRewardStatus();
                 }
             }
@@ -196,7 +231,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
                                 }
                                 // AŽURIRANJE LISTE U REALNOM VREMENU
                                 progressAdapter.setItems(combinedList);
-                                // Dodatno: Ažuriranje HP Bosa
+                                //  Ažuriranje HP Bosa
                                 refreshBossHp();
                             }
                             @Override
@@ -365,9 +400,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
         tvRewardCoins.setText("+" + coinReward + " coins");
         tvRewardCoins.setVisibility(View.VISIBLE);
 
-        // Određujemo koliko nisko se inicijalno nalaze (npr. direktno iznad kovčega)
-        // I koliko visoko treba da idu (npr. samo malo iznad početne pozicije)
-        // Ove vrednosti su relativne u odnosu na njihovu trenutnu poziciju definisanu u XML-u.
+
         ObjectAnimator coinAnimator = ObjectAnimator.ofFloat(tvRewardCoins, "translationY", 0f, -10f);        coinAnimator.setDuration(1500);
 
         // Layout za iteme
@@ -421,10 +454,30 @@ public class SpecialMissionActivity extends AppCompatActivity {
             @Override
             public void onSuccess(SpecialMissionProgress progress) {
                 if (progress != null && progress.areRewardsClaimed()) {
-                    // Ovde prikaži UI nagrada za ulogovanog korisnika
-                    // npr. showRewardAnimation ili statički prikaz "Dobio si nagradu"
-                    tvRewardCoins.setVisibility(View.VISIBLE);
-                    layoutRewardItems.setVisibility(View.VISIBLE);
+                    // Ako je nagrada već upisana u bazu → ponovo pokreni animaciju nagrada
+                    bossImage.setVisibility(View.INVISIBLE);
+
+                    userRepository.getUserById(currentUserId, new UserRepository.OnCompleteListener<User>() {
+                        @Override
+                        public void onSuccess(User user) {
+                            if (user == null) return;
+
+                            // Ovde možeš izračunati nagradu isto kao u giveRewardToMember
+                            int coinReward = (int) (0.5 * Math.round(240 * Math.pow(1.2, user.getLevel() - 1)));
+
+                            Equipment potion = ItemRepository.getRandomPotion();
+                            Equipment clothing = ItemRepository.getRandomClothing();
+                            Equipment badge = ItemRepository.getBadgeForMissionCount(user.getSpecialMissionsCompleted());
+
+                            // Pokreni animaciju nagrada
+                            showRewardAnimation(coinReward, potion, clothing, badge);
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e("RewardCheck", "Greška pri dohvatanju korisnika za prikaz nagrade", e);
+                        }
+                    });
                 }
             }
 
@@ -435,4 +488,59 @@ public class SpecialMissionActivity extends AppCompatActivity {
         });
     }
 
+
+    //Metoda za učitavanje KONAČNOG stanja misije
+    private void loadFinalMissionProgress(List<String> allUserIds) {
+        if (allUserIds.isEmpty()) return;
+
+        // Dohvatamo podatke o progresu za sve članove
+        userRepository.observeMissionProgress(
+                allianceId,
+                allUserIds,
+                new UserRepository.MissionProgressListener<List<SpecialMissionProgress>>() {
+                    @Override
+                    public void onProgressChange(List<SpecialMissionProgress> progressList) {
+                        // Pošto je misija gotova, ovaj listener će se verovatno okinuti samo jednom
+                        // sa konačnim podacima. Ugasimo listener odmah da ne troši resurse.
+                        if (missionProgressRegistration != null) {
+                            missionProgressRegistration.remove();
+                            missionProgressRegistration = null; // Postavi na null da se ne bi ponovo gasio
+                        }
+
+                        HashMap<String, SpecialMissionProgress> progressMap = new HashMap<>();
+                        for (SpecialMissionProgress progress : progressList) {
+                            progressMap.put(progress.getUserId(), progress);
+                        }
+
+                        // Sada dohvatamo imena korisnika da bismo ih prikazali u listi
+                        userRepository.getUsersByIds(allUserIds, new UserRepository.OnCompleteListener<List<User>>() {
+                            @Override
+                            public void onSuccess(List<User> users) {
+                                List<MissionProgressItem> combinedList = new ArrayList<>();
+                                for (User user : users) {
+                                    SpecialMissionProgress progress = progressMap.get(user.getUserId());
+                                    if (progress != null) {
+                                        combinedList.add(new MissionProgressItem(user.getUsername(), progress.getDamageDealt()));
+                                    } else {
+                                        // Ako neki korisnik nema progres (npr. nije učestvovao), prikaži ga sa 0 štete
+                                        combinedList.add(new MissionProgressItem(user.getUsername(), 0));
+                                    }
+                                }
+                                // Postavi konačne podatke u adapter
+                                progressAdapter.setItems(combinedList);
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(SpecialMissionActivity.this, "Greška pri učitavanju imena članova.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(SpecialMissionActivity.this, "Greška pri učitavanju konačnog progresa.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
 }
