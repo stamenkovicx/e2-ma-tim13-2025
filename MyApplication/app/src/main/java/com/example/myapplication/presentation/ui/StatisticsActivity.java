@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import com.github.mikephil.charting.data.Entry;
+import com.example.myapplication.domain.models.MissionStats;
 
 public class StatisticsActivity extends AppCompatActivity {
 
@@ -389,48 +390,53 @@ public class StatisticsActivity extends AppCompatActivity {
     }
 
     private void setupMissionSuccessGraph() {
-        // HARDKODOVANE VRIJEDNOSTI ZA TESTIRANJE:
-        int successfulMissions = 7;
-        int unsuccessfulMissions = 2;
-        int activeMission = 1; // 1 znači da postoji jedna aktivna misija
+        userRepository.getUserMissionStats(userId, new UserRepository.OnCompleteListener<MissionStats>() {
+            @Override
+            public void onSuccess(MissionStats missionStats) {
+                int successfulMissions = missionStats.getSuccessfulMissions();
+                int failedMissions = missionStats.getFailedMissions();
+                int activeMissions = missionStats.getActiveMissions();
 
-        List<PieEntry> entries = new ArrayList<>();
-        if (successfulMissions > 0) entries.add(new PieEntry(successfulMissions, "Successful"));
-        if (unsuccessfulMissions > 0) entries.add(new PieEntry(unsuccessfulMissions, "Unsuccessful"));
-        if (activeMission > 0) entries.add(new PieEntry(activeMission, "Active"));
+                List<PieEntry> entries = new ArrayList<>();
+                if (successfulMissions > 0) entries.add(new PieEntry(successfulMissions, "Successful"));
+                if (failedMissions > 0) entries.add(new PieEntry(failedMissions, "Unsuccessful"));
+                if (activeMissions > 0) entries.add(new PieEntry(activeMissions, "Active"));
 
-        // Ukupan broj započetih misija: T = S + U + A
-        int totalMissions = successfulMissions + unsuccessfulMissions + activeMission;
+                int totalMissions = successfulMissions + failedMissions + activeMissions;
 
-        PieDataSet dataSet = new PieDataSet(entries, "Mission Status");
-        dataSet.setSliceSpace(3f);
-        dataSet.setSelectionShift(5f);
+                PieDataSet dataSet = new PieDataSet(entries, "Mission Status");
+                dataSet.setSliceSpace(3f);
+                dataSet.setSelectionShift(5f);
 
-        // Preporučene boje za uspeh, neuspeh i aktivno stanje
-        List<Integer> colors = new ArrayList<>();
-        colors.add(Color.parseColor("#4CAF50")); // Zelena za Uspeh
-        colors.add(Color.parseColor("#F44336")); // Crvena za Neuspeh
-        colors.add(Color.parseColor("#FFC107")); // Žuta/Narandžasta za Aktivno
+                List<Integer> colors = new ArrayList<>();
+                colors.add(Color.parseColor("#4CAF50"));
+                colors.add(Color.parseColor("#F44336"));
+                colors.add(Color.parseColor("#FFC107"));
 
-        dataSet.setColors(colors);
+                dataSet.setColors(colors);
 
-        PieData data = new PieData(dataSet);
-        data.setValueTextSize(12f);
-        data.setValueTextColor(Color.BLACK);
+                PieData data = new PieData(dataSet);
+                data.setValueTextSize(12f);
+                data.setValueTextColor(Color.BLACK);
 
-        // KLJUČNA IZMJENA: Koristi binding objekat
-        binding.chartMissionSuccess.setData(data);
-        binding.chartMissionSuccess.getDescription().setEnabled(false);
-        binding.chartMissionSuccess.setDrawHoleEnabled(true); // Prikaz donut grafikona
-        binding.chartMissionSuccess.setHoleColor(Color.TRANSPARENT);
-        binding.chartMissionSuccess.setTransparentCircleRadius(61f);
+                binding.chartMissionSuccess.setData(data);
+                binding.chartMissionSuccess.getDescription().setEnabled(false);
+                binding.chartMissionSuccess.setDrawHoleEnabled(true);
+                binding.chartMissionSuccess.setHoleColor(Color.TRANSPARENT);
+                binding.chartMissionSuccess.setTransparentCircleRadius(61f);
+                binding.chartMissionSuccess.setCenterText("Total: " + totalMissions);
+                binding.chartMissionSuccess.setCenterTextSize(14f);
+                binding.chartMissionSuccess.setCenterTextColor(Color.parseColor("#333333"));
+                binding.chartMissionSuccess.animateY(1000);
+                binding.chartMissionSuccess.invalidate();
+            }
 
-        // Prikaz ukupnog broja u centru Donut Chart-a
-        binding.chartMissionSuccess.setCenterText("Total: " + totalMissions);
-        binding.chartMissionSuccess.setCenterTextSize(14f);
-        binding.chartMissionSuccess.setCenterTextColor(Color.parseColor("#333333"));
-
-        binding.chartMissionSuccess.animateY(1000);
-        binding.chartMissionSuccess.invalidate();
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("StatisticsActivity", "Failed to load mission stats", e);
+                binding.chartMissionSuccess.setNoDataText("Failed to load mission data");
+                binding.chartMissionSuccess.invalidate();
+            }
+        });
     }
 }

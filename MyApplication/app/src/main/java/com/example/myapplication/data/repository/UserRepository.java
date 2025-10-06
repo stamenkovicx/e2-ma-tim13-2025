@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository;
 
 import com.example.myapplication.domain.models.Alliance;
+import com.example.myapplication.domain.models.MissionStats;
 import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.domain.models.Notification;
@@ -81,4 +82,5 @@ public interface UserRepository {
     void getSpecialMissionProgress(String userId, String allianceId, OnCompleteListener<SpecialMissionProgress> listener);
     void updateSpecialMissionProgress(SpecialMissionProgress progress, OnCompleteListener<Void> listener);
     void handleTaskCompletedForSpecialMission(com.example.myapplication.domain.models.Task completedTask, String userId, OnCompleteListener<Void> listener);
+    void getUserMissionStats(String userId, OnCompleteListener<MissionStats> listener);
 }
