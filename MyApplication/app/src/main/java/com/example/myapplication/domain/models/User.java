@@ -1,14 +1,20 @@
 package com.example.myapplication.domain.models;
 
+import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
+
 import com.example.myapplication.data.database.LevelingSystemHelper;
 import com.example.myapplication.data.repository.ItemRepository;
 import com.google.firebase.firestore.Exclude;
+import com.google.firebase.firestore.IgnoreExtraProperties;
 import com.google.firebase.firestore.PropertyName;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+@Keep
+@IgnoreExtraProperties
 public class User {
     private String userId;
     private String username;
@@ -30,6 +36,7 @@ public class User {
     private List<String> allianceInvitationsReceived;
     private Date dateOfLastLevelUp;
     private int specialMissionsCompleted = 0;
+    private int specialMissionsFailed = 0;
 
     public User() {
     }
@@ -319,11 +326,29 @@ public class User {
             int xpForNextLevel = LevelingSystemHelper.getRequiredXpForNextLevel(this.level);
             return xpForNextLevel - this.xp;
         }*/
+    @PropertyName("specialMissionsCompleted")
     public int getSpecialMissionsCompleted() {
         return specialMissionsCompleted;
     }
 
+    @PropertyName("specialMissionsCompleted")
     public void setSpecialMissionsCompleted(int specialMissionsCompleted) {
         this.specialMissionsCompleted = specialMissionsCompleted;
     }
+
+    @PropertyName("specialMissionsFailed")
+    public int getSpecialMissionsFailed() {
+        return specialMissionsFailed;
     }
+
+    @PropertyName("specialMissionsFailed")
+    public void setSpecialMissionsFailed(int specialMissionsFailed) {
+        this.specialMissionsFailed = specialMissionsFailed;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "User{userId='" + userId + "', failedMissions=" + specialMissionsFailed + "}";
+    }
+}

@@ -4,9 +4,11 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.myapplication.R;
 import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
 import com.example.myapplication.data.repository.TaskRepository;
@@ -40,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import com.github.mikephil.charting.data.Entry;
+import com.example.myapplication.domain.models.MissionStats;
 
 public class StatisticsActivity extends AppCompatActivity {
 
@@ -48,6 +51,7 @@ public class StatisticsActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private FirebaseAuth mAuth;
     private String userId;
+    private TextView tvTotalTasks;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +82,7 @@ public class StatisticsActivity extends AppCompatActivity {
             @Override
             public void onSuccess(User user) {
                 if (user != null) {
+                    setupMissionSuccessGraph();
                     taskRepository.getTotalActiveDays(userId, new TaskRepository.OnStatisticsLoadedListener<Integer>() {
                         @Override
                         public void onSuccess(Integer result) {
@@ -172,6 +177,7 @@ public class StatisticsActivity extends AppCompatActivity {
         if (inProgressCount > 0) entries.add(new PieEntry(inProgressCount, "In Progress"));
         if (canceledCount > 0) entries.add(new PieEntry(canceledCount, "Canceled"));
 
+        int totalTasks = completedCount + inProgressCount + canceledCount;
         PieDataSet dataSet = new PieDataSet(entries, "Task Status");
         dataSet.setSliceSpace(3f);
         dataSet.setSelectionShift(5f);
@@ -192,6 +198,7 @@ public class StatisticsActivity extends AppCompatActivity {
         binding.chartTaskStatus.setHoleColor(Color.TRANSPARENT);
         binding.chartTaskStatus.setTransparentCircleRadius(61f);
         binding.chartTaskStatus.invalidate();
+        binding.chartTaskStatus.setCenterText("Total: " + totalTasks);
     }
 
     private void setupBarChart(Map<String, Pair<Integer, Integer>> categoryCountsAndColors) {
@@ -380,5 +387,56 @@ public class StatisticsActivity extends AppCompatActivity {
         chart.getDescription().setEnabled(false);
         chart.animateX(1000);
         chart.invalidate();
+    }
+
+    private void setupMissionSuccessGraph() {
+        userRepository.getUserMissionStats(userId, new UserRepository.OnCompleteListener<MissionStats>() {
+            @Override
+            public void onSuccess(MissionStats missionStats) {
+                int successfulMissions = missionStats.getSuccessfulMissions();
+                int failedMissions = missionStats.getFailedMissions();
+                int activeMissions = missionStats.getActiveMissions();
+
+                List<PieEntry> entries = new ArrayList<>();
+                if (successfulMissions > 0) entries.add(new PieEntry(successfulMissions, "Successful"));
+                if (failedMissions > 0) entries.add(new PieEntry(failedMissions, "Unsuccessful"));
+                if (activeMissions > 0) entries.add(new PieEntry(activeMissions, "Active"));
+
+                int totalMissions = successfulMissions + failedMissions + activeMissions;
+
+                PieDataSet dataSet = new PieDataSet(entries, "Mission Status");
+                dataSet.setSliceSpace(3f);
+                dataSet.setSelectionShift(5f);
+
+                List<Integer> colors = new ArrayList<>();
+                colors.add(Color.parseColor("#4CAF50"));
+                colors.add(Color.parseColor("#F44336"));
+                colors.add(Color.parseColor("#FFC107"));
+
+                dataSet.setColors(colors);
+
+                PieData data = new PieData(dataSet);
+                data.setValueTextSize(12f);
+                data.setValueTextColor(Color.BLACK);
+
+                binding.chartMissionSuccess.setData(data);
+                binding.chartMissionSuccess.getDescription().setEnabled(false);
+                binding.chartMissionSuccess.setDrawHoleEnabled(true);
+                binding.chartMissionSuccess.setHoleColor(Color.TRANSPARENT);
+                binding.chartMissionSuccess.setTransparentCircleRadius(61f);
+                binding.chartMissionSuccess.setCenterText("Total: " + totalMissions);
+                binding.chartMissionSuccess.setCenterTextSize(14f);
+                binding.chartMissionSuccess.setCenterTextColor(Color.parseColor("#333333"));
+                binding.chartMissionSuccess.animateY(1000);
+                binding.chartMissionSuccess.invalidate();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("StatisticsActivity", "Failed to load mission stats", e);
+                binding.chartMissionSuccess.setNoDataText("Failed to load mission data");
+                binding.chartMissionSuccess.invalidate();
+            }
+        });
     }
 }

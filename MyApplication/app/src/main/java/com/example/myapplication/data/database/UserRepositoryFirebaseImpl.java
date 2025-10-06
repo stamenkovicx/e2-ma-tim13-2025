@@ -2,12 +2,14 @@ package com.example.myapplication.data.database;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
+import com.example.myapplication.domain.models.MissionStats;
 import com.example.myapplication.domain.models.Notification;
 import com.example.myapplication.domain.models.SpecialMissionProgress;
 import com.example.myapplication.domain.models.TaskStatus;
@@ -243,6 +245,7 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         updates.put("powerPoints", user.getPowerPoints());
         updates.put("dateOfLastLevelUp", user.getDateOfLastLevelUp());
         updates.put("specialMissionsCompleted", user.getSpecialMissionsCompleted());
+        updates.put("specialMissionsFailed", user.getSpecialMissionsFailed());
 
         userRef.update(updates)
                 .addOnSuccessListener(aVoid -> onCompleteListener.onSuccess(null))
@@ -1023,12 +1026,104 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                     }
                 });
     }
+
     @Override
     public void endSpecialMission(String allianceId, OnCompleteListener<Void> listener) {
-        allianceCollection.document(allianceId).update("specialMissionActive", false)
-                .addOnSuccessListener(aVoid -> listener.onSuccess(null))
-                .addOnFailureListener(listener::onFailure);
+        // Prvo provjeri da li je boss poražen
+        getAllianceById(allianceId, new OnCompleteListener<Alliance>() {
+            @Override
+            public void onSuccess(Alliance alliance) {
+                if (alliance != null) {
+                    boolean bossDefeated = alliance.getSpecialMissionBossHp() <= 0;
+
+                    if (!bossDefeated) {
+                        // Boss NIJE poražen - misija je neuspješna
+                        markMissionAsFailedForAllMembers(allianceId);
+                    }
+
+                    // Nastavi sa završetkom misije
+                    allianceCollection.document(allianceId).update("specialMissionActive", false)
+                            .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                            .addOnFailureListener(listener::onFailure);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                listener.onFailure(e);
+            }
+        });
     }
+
+    private void markMissionAsFailedForAllMembers(String allianceId) {
+        getAllianceById(allianceId, new OnCompleteListener<Alliance>() {
+            @Override
+            public void onSuccess(Alliance alliance) {
+                if (alliance != null) {
+                    List<String> allMemberIds = new ArrayList<>(alliance.getMemberIds());
+                    if (alliance.getLeaderId() != null && !allMemberIds.contains(alliance.getLeaderId())) {
+                        allMemberIds.add(alliance.getLeaderId());
+                    }
+
+                    for (String memberId : allMemberIds) {
+                        incrementFailedMissions(memberId);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("Mission", "Failed to get alliance for marking failed mission", e);
+            }
+        });
+    }
+
+    private void incrementFailedMissions(String userId) {
+        Log.d("DEBUG_MISSION", "🟡 incrementFailedMissions CALLED for user: " + userId);
+
+        getUserById(userId, new OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                if (user != null) {
+                    int currentFailed = user.getSpecialMissionsFailed();
+
+                    user.setSpecialMissionsFailed(currentFailed + 1);
+
+                    updateUser(user, new OnCompleteListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            getUserById(userId, new OnCompleteListener<User>() {
+                                @Override
+                                public void onSuccess(User updatedUser) {
+                                    if (updatedUser != null) {
+                                        Log.d("DEBUG_MISSION", "CONFIRMED: User " + userId + " now has failed missions: " + updatedUser.getSpecialMissionsFailed());
+                                    } else {
+                                        Log.e("DEBUG_MISSION", "ONFIRMATION FAILED: User is null");
+                                    }
+                                }
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Log.e("DEBUG_MISSION", "CONFIRMATION FAILED: " + e.getMessage());
+                                }
+                            });
+                        }
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e("DEBUG_MISSION", "FAILED to update user: " + userId, e);
+                        }
+                    });
+                } else {
+                    Log.e("DEBUG_MISSION", "User is null!");
+                }
+            }
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("DEBUG_MISSION", "❌ FAILED to get user: " + userId, e);
+            }
+        });
+    }
+
+
     @Override
     public void getSpecialMissionProgress(String userId, String allianceId, OnCompleteListener<SpecialMissionProgress> listener) {
         String progressDocId = allianceId + "_" + userId;
@@ -1206,5 +1301,56 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
                     return null;
                 }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
                 .addOnFailureListener(listener::onFailure);
+    }
+
+    @Override
+    public void getUserMissionStats(String userId, OnCompleteListener<MissionStats> listener) {
+        // Prvo dobijamo korisnika da uzmemo completed i failed misije
+        getUserById(userId, new OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                if (user != null) {
+                    int successfulMissions = user.getSpecialMissionsCompleted();
+                    int failedMissions = user.getSpecialMissionsFailed();
+
+                    // Provjeravamo da li korisnik ima aktivnu misiju
+                    checkForActiveMission(user, successfulMissions, failedMissions, listener);
+                } else {
+                    listener.onFailure(new Exception("User not found"));
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                listener.onFailure(e);
+            }
+        });
+    }
+
+    private void checkForActiveMission(User user, int successfulMissions, int failedMissions,
+                                       OnCompleteListener<MissionStats> listener) {
+        // Provjeravamo da li korisnik ima savez
+        if (user.getAllianceId() != null && !user.getAllianceId().isEmpty()) {
+            // Korisnik je u savezu, provjeravamo da li je misija aktivna
+            getAllianceById(user.getAllianceId(), new OnCompleteListener<Alliance>() {
+                @Override
+                public void onSuccess(Alliance alliance) {
+                    int activeMissions = (alliance != null && alliance.isSpecialMissionActive()) ? 1 : 0;
+                    MissionStats stats = new MissionStats(successfulMissions, failedMissions, activeMissions);
+                    listener.onSuccess(stats);
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    // Ako ne možemo dobiti savez, pretpostavljamo da nema aktivne misije
+                    MissionStats stats = new MissionStats(successfulMissions, failedMissions, 0);
+                    listener.onSuccess(stats);
+                }
+            });
+        } else {
+            // Korisnik nije u savezu, nema aktivne misije
+            MissionStats stats = new MissionStats(successfulMissions, failedMissions, 0);
+            listener.onSuccess(stats);
+        }
     }
 }

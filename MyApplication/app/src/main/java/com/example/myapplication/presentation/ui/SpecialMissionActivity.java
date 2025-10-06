@@ -133,7 +133,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
 
                 } else {
                     // Misija je završena
-                    tvTimeRemaining.setText("Misija je uspešno završena!");
+                    //tvTimeRemaining.setText("Misija je uspešno završena!");
                     updateBossHpUI(0, alliance.getSpecialMissionBossMaxHp());
 
                     // Pokazi listu i naslov, nemoj ih više sakrivati
@@ -169,7 +169,19 @@ public class SpecialMissionActivity extends AppCompatActivity {
 
         if (remainingTimeMillis <= 0) {
             tvTimeRemaining.setText("Misija je završena.");
-            loadMissionData();
+            // DODAJ OVO: Automatski završi misiju kada istekne vrijeme
+            userRepository.endSpecialMission(allianceId, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d("MISSION_TIMER", "Mission automatically ended due to timeout");
+                    loadMissionData(); // Osvježi prikaz
+                }
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e("MISSION_TIMER", "Failed to auto-end mission", e);
+                    loadMissionData(); // Osvježi prikaz bez obzira
+                }
+            });
             return;
         }
 
@@ -187,7 +199,19 @@ public class SpecialMissionActivity extends AppCompatActivity {
             @Override
             public void onFinish() {
                 tvTimeRemaining.setText("Misija je završena.");
-                loadMissionData();
+                // DODAJ OVO I OVDJE: Automatski završi misiju
+                userRepository.endSpecialMission(allianceId, new UserRepository.OnCompleteListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("MISSION_TIMER", "Mission automatically ended - timer finished");
+                        loadMissionData();
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e("MISSION_TIMER", "Failed to auto-end mission", e);
+                        loadMissionData();
+                    }
+                });
             }
         }.start();
     }
