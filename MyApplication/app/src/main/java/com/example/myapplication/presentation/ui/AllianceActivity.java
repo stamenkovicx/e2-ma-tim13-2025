@@ -120,9 +120,11 @@ public class AllianceActivity extends AppCompatActivity {
                                     btnLeaveAlliance.setEnabled(!alliance.isSpecialMissionActive());
 
 
-                                    // Obican clan vidi samo dugme za pregled, i to samo ako je misija aktivna
-                                    if (alliance.isSpecialMissionActive()) {
+                                // Običan član vidi pregled ako je misija aktivna ILI završena
+                                    if (alliance.isSpecialMissionActive() || alliance.hasCompletedSpecialMission()) {
                                         btnViewSpecialMission.setVisibility(View.VISIBLE);
+                                    } else {
+                                        btnViewSpecialMission.setVisibility(View.GONE);
                                     }
                                 }
                             } else {

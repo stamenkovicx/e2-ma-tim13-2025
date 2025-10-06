@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 
 import androidx.annotation.NonNull;
 
+import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.Notification;
@@ -1049,6 +1050,161 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         String progressDocId = progress.getAllianceId() + "_" + progress.getUserId();
         missionProgressCollection.document(progressDocId).set(progress)
                 .addOnSuccessListener(aVoid -> listener.onSuccess(null))
+                .addOnFailureListener(listener::onFailure);
+    }
+    @Override
+    public void handleTaskCompletedForSpecialMission(com.example.myapplication.domain.models.Task completedTask, String userId, OnCompleteListener<Void> listener) {
+        getUserById(userId, new OnCompleteListener<User>() {
+            @Override
+            public void onSuccess(User user) {
+                if (user == null || user.getAllianceId() == null || user.getAllianceId().isEmpty()) {
+                    listener.onSuccess(null); // Korisnik nije u savezu, ne radi ništa
+                    return;
+                }
+                String allianceId = user.getAllianceId();
+                processTaskCompletion(userId, allianceId, completedTask, listener);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                listener.onFailure(e);
+            }
+        });
+    }
+
+    private void processTaskCompletion(String userId, String allianceId, com.example.myapplication.domain.models.Task completedTask, OnCompleteListener<Void> listener) {
+        final DocumentReference allianceRef = allianceCollection.document(allianceId);
+        final String progressDocId = allianceId + "_" + userId;
+        final DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+            DocumentSnapshot allianceSnap = transaction.get(allianceRef);
+            DocumentSnapshot progressSnap = transaction.get(progressRef);
+
+            Alliance alliance = allianceSnap.toObject(Alliance.class);
+            if (alliance == null || !alliance.isSpecialMissionActive()) {
+                return null; // Misija nije aktivna, prekini
+            }
+
+            SpecialMissionProgress progress = progressSnap.exists()
+                    ? progressSnap.toObject(SpecialMissionProgress.class)
+                    : new SpecialMissionProgress(userId, allianceId);
+
+            if (progress == null) throw new FirebaseFirestoreException("Progress object is null", FirebaseFirestoreException.Code.INTERNAL);
+
+            int totalDamageToDeal = 0;
+
+            // Pozivamo metodu iz Task.java koja vraća obe komponente štete
+            android.util.Pair<Integer, Integer> damageComponents = completedTask.calculateDamageComponents();
+            int simpleDamageCount = damageComponents.first;
+            int otherDamage = damageComponents.second;
+
+            // 1. Obračunaj štetu od "jednostavnih" zadataka (max 10)
+            if (simpleDamageCount > 0 && progress.getSimpleTasksSolved() < 10) {
+                int remainingSimpleSlots = 10 - progress.getSimpleTasksSolved();
+                int actualSimpleHits = Math.min(simpleDamageCount, remainingSimpleSlots);
+                totalDamageToDeal += actualSimpleHits; // Svaki "hit" je 1 HP
+                progress.setSimpleTasksSolved(progress.getSimpleTasksSolved() + actualSimpleHits);
+            }
+
+            // 2. Obračunaj štetu od "ostalih" zadataka (max 6)
+            if (otherDamage > 0 && progress.getOtherTasksSolved() < 6) {
+                int numberOfOtherTasks = otherDamage / 4;
+                int remainingOtherSlots = 6 - progress.getOtherTasksSolved();
+                int actualOtherTasks = Math.min(numberOfOtherTasks, remainingOtherSlots);
+                totalDamageToDeal += actualOtherTasks * 4;
+                progress.setOtherTasksSolved(progress.getOtherTasksSolved() + actualOtherTasks);
+            }
+
+            // 3. Ažuriraj bazu ako je naneta bilo kakva šteta
+            if (totalDamageToDeal > 0) {
+                progress.setDamageDealt(progress.getDamageDealt() + totalDamageToDeal);
+                alliance.setSpecialMissionBossHp(Math.max(0, alliance.getSpecialMissionBossHp() - totalDamageToDeal));
+            }
+
+            transaction.set(progressRef, progress);
+            transaction.update(allianceRef, "specialMissionBossHp", alliance.getSpecialMissionBossHp());
+            return null;
+        }).addOnSuccessListener(aVoid -> {
+            checkForNoUnsolvedTasksBonus(userId, allianceId, listener);
+        }).addOnFailureListener(listener::onFailure);
+    }
+
+    private void checkForNoUnsolvedTasksBonus(String userId, String allianceId, OnCompleteListener<Void> listener) {
+        final String progressDocId = allianceId + "_" + userId;
+        final DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        // Prvo dohvatamo podatke i o progresu i o savezu
+        progressRef.get().addOnSuccessListener(progressSnap -> {
+            SpecialMissionProgress progress = progressSnap.toObject(SpecialMissionProgress.class);
+            if (progress == null || progress.isNoUnsolvedTasksBonusApplied()) {
+                listener.onSuccess(null); // Bonus već primenjen ili nema progresa
+                return;
+            }
+
+            // Sada dohvatamo savez da bismo znali kada je misija počela
+            allianceCollection.document(allianceId).get().addOnSuccessListener(allianceSnapshot -> {
+                Alliance alliance = allianceSnapshot.toObject(Alliance.class);
+                if (alliance == null || !alliance.isSpecialMissionActive() || alliance.getSpecialMissionStartTime() == null) {
+                    listener.onSuccess(null); // Misija nije aktivna ili nema startno vreme
+                    return;
+                }
+                Date missionStartTime = alliance.getSpecialMissionStartTime();
+                final int MINIMUM_TASKS_FOR_BONUS = 5; // Minimalan broj rešenih zadataka za bonus
+
+                // Dohvatamo SVE zadatke korisnika da proverimo uslove
+                new TaskRepositoryFirebaseImpl().getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
+                    @Override
+                    public void onSuccess(List<com.example.myapplication.domain.models.Task> allTasks) {
+                        boolean allTasksAreSolved = true;
+                        int tasksSolvedDuringMission = 0;
+
+                        for (com.example.myapplication.domain.models.Task task : allTasks) {
+                            // 1. Proveravamo da li postoji ijedan nerešen zadatak
+                            if (task.getStatus() != TaskStatus.URAĐEN && task.getStatus() != TaskStatus.OTKAZAN) {
+                                allTasksAreSolved = false;
+                                break; // Ako nađemo bar jedan, prekidamo proveru
+                            }
+                            // 2. Brojimo koliko je zadataka rešeno od početka misije
+                            if (task.getStatus() == TaskStatus.URAĐEN && task.getCompletionDate() != null && task.getCompletionDate().after(missionStartTime)) {
+                                tasksSolvedDuringMission++;
+                            }
+                        }
+
+                        // FINALNA PROVERA: Da li su SVI zadaci rešeni I da li je rešeno DOVOLJNO zadataka?
+                        if (allTasksAreSolved && tasksSolvedDuringMission >= MINIMUM_TASKS_FOR_BONUS) {
+                            applyNoUnsolvedBonus(userId, allianceId, progress, listener);
+                        } else {
+                            listener.onSuccess(null); // Uslovi za bonus nisu ispunjeni
+                        }
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        listener.onFailure(e);
+                    }
+                });
+            }).addOnFailureListener(listener::onFailure);
+        }).addOnFailureListener(listener::onFailure);
+    }
+
+    private void applyNoUnsolvedBonus(String userId, String allianceId, SpecialMissionProgress progress, OnCompleteListener<Void> listener) {
+        final DocumentReference allianceRef = allianceCollection.document(allianceId);
+        final String progressDocId = allianceId + "_" + userId;
+        final DocumentReference progressRef = missionProgressCollection.document(progressDocId);
+
+        db.runTransaction(transaction -> {
+                    Alliance alliance = transaction.get(allianceRef).toObject(Alliance.class);
+                    if (alliance == null || !alliance.isSpecialMissionActive()) return null;
+
+                    int bonusDamage = 10;
+                    progress.setNoUnsolvedTasksBonusApplied(true);
+                    progress.setDamageDealt(progress.getDamageDealt() + bonusDamage);
+                    alliance.setSpecialMissionBossHp(Math.max(0, alliance.getSpecialMissionBossHp() - bonusDamage));
+
+                    transaction.set(progressRef, progress);
+                    transaction.update(allianceRef, "specialMissionBossHp", alliance.getSpecialMissionBossHp());
+                    return null;
+                }).addOnSuccessListener(aVoid -> listener.onSuccess(null))
                 .addOnFailureListener(listener::onFailure);
     }
 }

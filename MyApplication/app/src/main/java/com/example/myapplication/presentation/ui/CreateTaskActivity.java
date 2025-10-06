@@ -112,11 +112,13 @@ public class CreateTaskActivity extends AppCompatActivity {
 
         rgFrequency.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.rbRecurring) {
+                // Ako je ponavljajući, prikaži grupu za interval i krajnji datum
                 recurringGroup.setVisibility(View.VISIBLE);
             } else {
+                // Ako je jednokratni, sakrij samo tu grupu
                 recurringGroup.setVisibility(View.GONE);
+                // Ne čistimo startDate, jer nam treba!
                 etInterval.setText("");
-                etStartDate.setText("");
                 etEndDate.setText("");
                 spIntervalUnit.setSelection(0);
             }
@@ -177,102 +179,113 @@ public class CreateTaskActivity extends AppCompatActivity {
     }
 
     private void createTask() {
+        // --- Provera osnovnih polja koja su uvek obavezna ---
         String name = etTaskName.getText().toString().trim();
         if (name.isEmpty()) {
-            Toast.makeText(this, "Task name is required.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Naziv zadatka je obavezan.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String description = etTaskDescription.getText().toString().trim();
         Category selectedCategory = (Category) spCategory.getSelectedItem();
-
         if (selectedCategory == null) {
-            Toast.makeText(this, "Please select a category.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Molimo izaberite kategoriju.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Provera vremena izvršenja, jer je potrebno za oba tipa zadatka
+        if (etExecutionTime.getText().toString().isEmpty()) {
+            Toast.makeText(this, "Vreme izvršenja je obavezno.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        DifficultyType difficulty = DifficultyType.fromSerbianName(spDifficulty.getSelectedItem().toString());
+        ImportanceType importance = ImportanceType.fromSerbianName(spImportance.getSelectedItem().toString());
+
+        // --- POČETAK NOVE LOGIKE ---
+
+        // Definišemo promenljive koje će se popuniti u zavisnosti od tipa zadatka
+        Date startDate;
+        Date endDate;
+        Date executionTime;
+        Integer interval = null;
+        String intervalUnit = null;
+
+        // Formati za parsiranje
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        try {
+            // Vreme izvršenja parsiramo odmah, jer je zajedničko za oba slučaja
+            executionTime = timeFormat.parse(etExecutionTime.getText().toString());
+        } catch (ParseException e) {
+            Log.e(TAG, "Greška pri parsiranju vremena", e);
+            Toast.makeText(this, "Neispravan format vremena.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
-        DifficultyType difficulty = DifficultyType.fromSerbianName(spDifficulty.getSelectedItem().toString());
-        ImportanceType importance = ImportanceType.fromSerbianName(spImportance.getSelectedItem().toString());
-
-        if (difficulty == null || importance == null) {
-            Toast.makeText(this, "Error selecting difficulty or importance.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Integer interval = null;
-        String intervalUnit = null;
-        Date startDate = null;
-        Date endDate = null;
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
-
         if (frequency.equals("recurring")) {
+            // --- LOGIKA ZA PONAVLJAJUĆI ZADATAK ---
+            // Za ponavljajući, sva polja u `recurringGroup` moraju biti popunjena
+            if (etStartDate.getText().toString().isEmpty() ||
+                    etEndDate.getText().toString().isEmpty() ||
+                    etInterval.getText().toString().isEmpty()) {
+                Toast.makeText(this, "Početni datum, krajnji datum i interval su obavezni za ponavljajuće zadatke.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             try {
-                if (etInterval.getText().toString().isEmpty()) {
-                    Toast.makeText(this, "Interval is required for recurring tasks.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (etStartDate.getText().toString().isEmpty() || etEndDate.getText().toString().isEmpty()) {
-                    Toast.makeText(this, "Start and end dates are required for recurring tasks.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                interval = Integer.parseInt(etInterval.getText().toString());
-                intervalUnit = spIntervalUnit.getSelectedItem().toString();
+                // Parsiramo vrednosti iz EditText polja
                 startDate = dateFormat.parse(etStartDate.getText().toString());
                 endDate = dateFormat.parse(etEndDate.getText().toString());
-            } catch (NumberFormatException | ParseException e) {
-                Log.e(TAG, "Error parsing recurring task fields", e);
-                Toast.makeText(this, "Invalid format for recurring task.", Toast.LENGTH_SHORT).show();
+                interval = Integer.parseInt(etInterval.getText().toString());
+                intervalUnit = spIntervalUnit.getSelectedItem().toString();
+
+                // Proveravamo logiku datuma
+                if(startDate.after(endDate)) {
+                    Toast.makeText(this, "Početni datum ne može biti posle krajnjeg datuma.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Greška pri parsiranju polja za ponavljajući zadatak", e);
+                Toast.makeText(this, "Neispravan format za ponavljajući zadatak.", Toast.LENGTH_SHORT).show();
                 return;
             }
         } else {
-            startDate = Calendar.getInstance().getTime();
+            // --- LOGIKA ZA JEDNOKRATNI ZADATAK ---
+            // Datum se postavlja automatski na današnji dan
+            startDate = new Date();
+            // Krajnji datum je isti kao početni za jednokratne zadatke
             endDate = startDate;
+            // Interval i jedinica ostaju null
         }
 
-        Date executionTime = null;
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        try {
-            executionTime = timeFormat.parse(etExecutionTime.getText().toString());
-        } catch (ParseException e) {
-            Log.e(TAG, "Error parsing time format", e);
-            Toast.makeText(this, "Invalid time format.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        int xpValue = (difficulty != null ? difficulty.getXpValue() : 0) + (importance != null ? importance.getXpValue() : 0);
 
-        int xpValue = difficulty.getXpValue() + importance.getXpValue();
-
+        // Kreiramo objekat sa ispravno postavljenim vrednostima
         Task newTask = new Task(
-                name,
-                description,
-                selectedCategory,
-                frequency,
-                interval,
-                intervalUnit,
-                startDate,
-                endDate,
-                executionTime,
-                difficulty.name(),
-                importance.name(),
-                xpValue,
-                userId
+                name, description, selectedCategory, frequency,
+                interval, intervalUnit, startDate, endDate, executionTime,
+                difficulty != null ? difficulty.name() : null,
+                importance != null ? importance.name() : null,
+                xpValue, userId
         );
 
+        // Upis u bazu ostaje isti
         taskRepository.insertTask(newTask, userId, new TaskRepository.OnTaskAddedListener() {
             @Override
             public void onSuccess(String taskId) {
-                newTask.setId(taskId);
-                runOnUiThread(() -> {
-                    Toast.makeText(CreateTaskActivity.this, "Task created successfully!", Toast.LENGTH_SHORT).show();
-                    finish();
-                });
+                Toast.makeText(CreateTaskActivity.this, "Zadatak uspešno kreiran!", Toast.LENGTH_SHORT).show();
+                finish();
             }
 
             @Override
             public void onFailure(Exception e) {
-                Log.e(TAG, "Error creating task", e);
-                Toast.makeText(CreateTaskActivity.this, "Error creating task: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Greška pri kreiranju zadatka", e);
+                Toast.makeText(CreateTaskActivity.this, "Greška: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

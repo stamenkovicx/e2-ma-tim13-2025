@@ -227,6 +227,14 @@ public class TaskDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "Zadatak je već završen.", Toast.LENGTH_SHORT).show();
             return;
         }
+        Calendar cutoff = Calendar.getInstance();
+        cutoff.add(Calendar.DAY_OF_YEAR, -3); // Dozvoljeno 3 dana unazad
+        cutoff.set(Calendar.HOUR_OF_DAY, 0);
+
+        if (task.getStartDate().before(cutoff.getTime())) {
+            Toast.makeText(this, "Ovaj zadatak je istekao i ne može se označiti.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         // Provera da li su podaci o korisniku učitani pre nego što ih koristimo
         if (currentUserObject == null) {
@@ -278,6 +286,18 @@ public class TaskDetailsActivity extends AppCompatActivity {
                     public void onSuccess(Void aVoid) {
                         task.setStatus(TaskStatus.URAĐEN);
                         task.setXpValue(awardedXp);
+
+                        userRepository.handleTaskCompletedForSpecialMission(task, userId, new UserRepository.OnCompleteListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                android.util.Log.d("SpecialMission", "Napredak specijalne misije je uspešno ažuriran.");
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                android.util.Log.e("SpecialMission", "Greška pri ažuriranju napretka specijalne misije.", e);
+                            }
+                        });
 
                         if (awardedXp > 0) {
                             Toast.makeText(TaskDetailsActivity.this, "Zadatak završen! Dodeljeno " + awardedXp + " XP.", Toast.LENGTH_SHORT).show();

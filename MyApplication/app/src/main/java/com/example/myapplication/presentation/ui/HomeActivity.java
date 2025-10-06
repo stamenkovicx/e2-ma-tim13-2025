@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -15,7 +16,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myapplication.MainActivity;
+import com.example.myapplication.data.database.TaskRepositoryFirebaseImpl;
 import com.example.myapplication.data.database.UserRepositoryFirebaseImpl;
+import com.example.myapplication.data.repository.TaskRepository;
 import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.User;
 import com.google.firebase.auth.FirebaseAuth;
@@ -34,6 +37,8 @@ public class HomeActivity extends AppCompatActivity {
     private RelativeLayout notificationsButtonContainer;
     private ImageButton btnNotifications;
     private TextView tvUnreadNotificationsCount;
+    private TaskRepository taskRepository;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +53,8 @@ public class HomeActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         userRepository = new UserRepositoryFirebaseImpl();
         currentUserId = mAuth.getCurrentUser().getUid();
+        taskRepository = new TaskRepositoryFirebaseImpl();
+        checkExpiredTasks();
 
         btnLogout = findViewById(R.id.btnLogout);
         btnProfile = findViewById(R.id.btnProfile);
@@ -182,5 +189,21 @@ public class HomeActivity extends AppCompatActivity {
                     }
                 })
                 .show();
+    }
+    private void checkExpiredTasks() {
+        if (currentUserId == null || currentUserId.isEmpty()) return;
+
+        Log.d("HomeActivity", "Pokrećem proveru isteklih zadataka...");
+        taskRepository.checkAndDeactivateExpiredTasks(currentUserId, new TaskRepository.OnTaskUpdatedListener() {
+            @Override
+            public void onSuccess() {
+                Log.d("HomeActivity", "Provera isteklih zadataka završena uspešno.");
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("HomeActivity", "Greška pri proveri isteklih zadataka.", e);
+            }
+        });
     }
 }
