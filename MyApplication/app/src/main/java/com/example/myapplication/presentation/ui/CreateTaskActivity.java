@@ -179,102 +179,113 @@ public class CreateTaskActivity extends AppCompatActivity {
     }
 
     private void createTask() {
-        // --- Provera osnovnih polja (isto kao pre) ---
+        // --- Provera osnovnih polja koja su uvek obavezna ---
         String name = etTaskName.getText().toString().trim();
         if (name.isEmpty()) {
-            Toast.makeText(this, "Task name is required.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Naziv zadatka je obavezan.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String description = etTaskDescription.getText().toString().trim();
         Category selectedCategory = (Category) spCategory.getSelectedItem();
         if (selectedCategory == null) {
-            Toast.makeText(this, "Please select a category.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Molimo izaberite kategoriju.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Provera vremena izvršenja, jer je potrebno za oba tipa zadatka
+        if (etExecutionTime.getText().toString().isEmpty()) {
+            Toast.makeText(this, "Vreme izvršenja je obavezno.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         DifficultyType difficulty = DifficultyType.fromSerbianName(spDifficulty.getSelectedItem().toString());
         ImportanceType importance = ImportanceType.fromSerbianName(spImportance.getSelectedItem().toString());
-        if (difficulty == null || importance == null) {
-            Toast.makeText(this, "Error selecting difficulty or importance.", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
-        // --- POČETAK ISPRAVLJENE LOGIKE ---
+        // --- POČETAK NOVE LOGIKE ---
 
-        // 1. OBAVEZNA PROVERA: Datum početka je sada obavezan za SVE zadatke.
-        if (etStartDate.getText().toString().isEmpty()) {
-            Toast.makeText(this, "Start date is required for all tasks.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (etExecutionTime.getText().toString().isEmpty()) {
-            Toast.makeText(this, "Execution time is required.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        // Definišemo promenljive koje će se popuniti u zavisnosti od tipa zadatka
+        Date startDate;
+        Date endDate;
+        Date executionTime;
+        Integer interval = null;
+        String intervalUnit = null;
 
-        // 2. Parsiranje datuma i vremena se radi pre if/else bloka.
+        // Formati za parsiranje
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-        Date startDate;
-        Date executionTime;
-
         try {
-            startDate = dateFormat.parse(etStartDate.getText().toString());
+            // Vreme izvršenja parsiramo odmah, jer je zajedničko za oba slučaja
             executionTime = timeFormat.parse(etExecutionTime.getText().toString());
         } catch (ParseException e) {
-            Log.e(TAG, "Error parsing date or time", e);
-            Toast.makeText(this, "Invalid date or time format.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Greška pri parsiranju vremena", e);
+            Toast.makeText(this, "Neispravan format vremena.", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String frequency = (rgFrequency.getCheckedRadioButtonId() == R.id.rbRecurring) ? "recurring" : "one-time";
 
-        Integer interval = null;
-        String intervalUnit = null;
-        Date endDate = null;
-
         if (frequency.equals("recurring")) {
-            // Logika za ponavljajuće, ali koristi već parsirani startDate
+            // --- LOGIKA ZA PONAVLJAJUĆI ZADATAK ---
+            // Za ponavljajući, sva polja u `recurringGroup` moraju biti popunjena
+            if (etStartDate.getText().toString().isEmpty() ||
+                    etEndDate.getText().toString().isEmpty() ||
+                    etInterval.getText().toString().isEmpty()) {
+                Toast.makeText(this, "Početni datum, krajnji datum i interval su obavezni za ponavljajuće zadatke.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             try {
-                if (etInterval.getText().toString().isEmpty() || etEndDate.getText().toString().isEmpty()) {
-                    Toast.makeText(this, "Interval and end date are required for recurring tasks.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                // Parsiramo vrednosti iz EditText polja
+                startDate = dateFormat.parse(etStartDate.getText().toString());
+                endDate = dateFormat.parse(etEndDate.getText().toString());
                 interval = Integer.parseInt(etInterval.getText().toString());
                 intervalUnit = spIntervalUnit.getSelectedItem().toString();
-                endDate = dateFormat.parse(etEndDate.getText().toString());
+
+                // Proveravamo logiku datuma
+                if(startDate.after(endDate)) {
+                    Toast.makeText(this, "Početni datum ne može biti posle krajnjeg datuma.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
             } catch (Exception e) {
-                Log.e(TAG, "Error parsing recurring fields", e);
-                Toast.makeText(this, "Invalid format for recurring task.", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Greška pri parsiranju polja za ponavljajući zadatak", e);
+                Toast.makeText(this, "Neispravan format za ponavljajući zadatak.", Toast.LENGTH_SHORT).show();
                 return;
             }
         } else {
-            // 3. ISPRAVKA: Za jednokratne, endDate je isti kao uneti startDate.
+            // --- LOGIKA ZA JEDNOKRATNI ZADATAK ---
+            // Datum se postavlja automatski na današnji dan
+            startDate = new Date();
+            // Krajnji datum je isti kao početni za jednokratne zadatke
             endDate = startDate;
+            // Interval i jedinica ostaju null
         }
 
-        int xpValue = difficulty.getXpValue() + importance.getXpValue();
+        int xpValue = (difficulty != null ? difficulty.getXpValue() : 0) + (importance != null ? importance.getXpValue() : 0);
 
-        // 4. Kreiramo objekat sa ispravnim `startDate` bez obzira na tip
+        // Kreiramo objekat sa ispravno postavljenim vrednostima
         Task newTask = new Task(
                 name, description, selectedCategory, frequency,
                 interval, intervalUnit, startDate, endDate, executionTime,
-                difficulty.name(), importance.name(), xpValue, userId
+                difficulty != null ? difficulty.name() : null,
+                importance != null ? importance.name() : null,
+                xpValue, userId
         );
 
-        // Upis u bazu (ostaje isto)
+        // Upis u bazu ostaje isti
         taskRepository.insertTask(newTask, userId, new TaskRepository.OnTaskAddedListener() {
             @Override
             public void onSuccess(String taskId) {
-                Toast.makeText(CreateTaskActivity.this, "Task created successfully!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(CreateTaskActivity.this, "Zadatak uspešno kreiran!", Toast.LENGTH_SHORT).show();
                 finish();
             }
 
             @Override
             public void onFailure(Exception e) {
-                Log.e(TAG, "Error creating task", e);
-                Toast.makeText(CreateTaskActivity.this, "Error creating task: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Greška pri kreiranju zadatka", e);
+                Toast.makeText(CreateTaskActivity.this, "Greška: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
