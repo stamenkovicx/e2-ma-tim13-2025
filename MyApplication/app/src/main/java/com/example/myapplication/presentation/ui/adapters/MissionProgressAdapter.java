@@ -33,7 +33,7 @@ public class MissionProgressAdapter extends RecyclerView.Adapter<MissionProgress
 
         // Postavljanje korisnickog imena i nanete stete
         holder.tvUsername.setText(item.getUsername());
-        holder.tvDamage.setText(String.format("Šteta: %d", item.getDamageDealt()));
+        holder.tvDamage.setText(String.format("Damage: %d", item.getDamageDealt()));
     }
 
     @Override

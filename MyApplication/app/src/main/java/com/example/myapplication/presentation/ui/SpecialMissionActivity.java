@@ -133,7 +133,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
 
                 } else {
                     // Misija je završena
-                    tvTimeRemaining.setText("Misija je uspešno završena!");
+                    tvTimeRemaining.setText("Mission successfully completed!");
                     updateBossHpUI(0, alliance.getSpecialMissionBossMaxHp());
 
                     // Pokazi listu i naslov, nemoj ih više sakrivati
@@ -278,7 +278,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
         if (bossDefeated && (userMissionEnded == null || !userMissionEnded)) {
             missionEndedMap.put(currentUserId, true); // Postavi samo za ovog korisnika
             if (countDownTimer != null) countDownTimer.cancel();
-            tvTimeRemaining.setText("Misija Uspešno Završena!");
+            tvTimeRemaining.setText("Mission Successfully Completed!");
 
             distributeRewards(); // Ako je pobeđen, pokreni dodelu nagrada
         }

@@ -19,7 +19,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Naziv zadatka:"
+                android:text="The name of the task:"
                 android:textStyle="bold" />
 
             <EditText
@@ -27,14 +27,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="Unesite naziv zadatka"
+                android:hint="Enter a task name"
                 android:inputType="text" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Opis (opciono):"
+                android:text="Description (optional):"
                 android:textStyle="bold" />
 
             <EditText
@@ -42,14 +42,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="Unesite opis zadatka"
+                android:hint="Enter a description of the task"
                 android:inputType="textMultiLine" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Kategorija:"
+                android:text="Category:"
                 android:textStyle="bold" />
 
             <Spinner
@@ -62,7 +62,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Učestalost:"
+                android:text="Frequency:"
                 android:textStyle="bold" />
 
             <RadioGroup
@@ -76,14 +76,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checked="true"
-                    android:text="Jednokratan" />
+                    android:text="One time" />
 
                 <RadioButton
                     android:id="@+id/rbRecurring"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
-                    android:text="Ponavljajući" />
+                    android:text="Repeating" />
 
             </RadioGroup>
 
@@ -98,7 +98,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Interval ponavljanja:"
+                    android:text="Repetition interval:"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -111,7 +111,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:hint="Npr. 2"
+                        android:hint="Eg 2"
                         android:inputType="number" />
 
                     <Spinner
@@ -126,7 +126,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Datum početka:"
+                    android:text="Start date:"
                     android:textStyle="bold" />
 
                 <EditText
@@ -135,13 +135,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:focusable="false"
-                    android:hint="Izaberite datum početka" />
+                    android:hint="Choose a start date" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Datum završetka:"
+                    android:text="Completion date:"
                     android:textStyle="bold" />
 
                 <EditText
@@ -150,14 +150,14 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:focusable="false"
-                    android:hint="Izaberite datum završetka" />
+                    android:hint="Choose an end date" />
             </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Vreme izvršenja:"
+                android:text="Execution time:"
                 android:textStyle="bold" />
 
             <EditText
@@ -166,13 +166,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:focusable="false"
-                android:hint="Izaberite vreme" />
+                android:hint="Choose the time" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Težina:"
+                android:text="Weight:"
                 android:textStyle="bold" />
 
             <Spinner
@@ -186,7 +186,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Bitnost:"
+                android:text="Importance:"
                 android:textStyle="bold" />
 
             <Spinner
@@ -201,7 +201,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="Kreiraj zadatak" />
+                android:text="Create a task" />
 
         </LinearLayout>
     </ScrollView>
