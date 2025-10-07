@@ -182,6 +182,8 @@ public class BossFightActivity extends AppCompatActivity {
             Toast.makeText(BossFightActivity.this, "Neporaženi bos se vratio sa punom snagom!", Toast.LENGTH_LONG).show();
         }
 
+        initializeRemainingBattlesForExistingEquipment();
+
         playerState = new PlayerState(currentUserId, currentUser.getPowerPoints(), 0, 0);
 
         updateActiveEquipment(currentUser);
@@ -303,6 +305,7 @@ public class BossFightActivity extends AppCompatActivity {
         }
 
         consumeSingleUsePotions();
+        updateClothingDurability();
     }
 
     private void openChestAnimation(int reward, Equipment item) {
@@ -527,6 +530,79 @@ public class BossFightActivity extends AppCompatActivity {
                     Log.e("BossFight", "Failed to update user equipment: " + e.getMessage());
                 }
             });
+        }
+    }
+
+    private void updateClothingDurability() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        List<UserEquipment> equipmentToRemove = new ArrayList<>();
+        boolean needsUpdate = false;
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            if (userEq.isActive()) {
+                Equipment equipment = ItemRepository.getEquipmentById(userEq.getEquipmentId());
+                if (equipment != null && equipment.getType() == EquipmentType.CLOTHING) {
+
+                    // Proveri da li je remainingBattles inicijalizovan
+                    if (userEq.getRemainingBattles() == 0) {
+                        userEq.setRemainingBattles(userEq.getDuration());
+                        needsUpdate = true;
+                        Log.d("BossFight", "Fixed remaining battles for: " + equipment.getName());
+                    }
+
+                    // Smanji broj preostalih borbi
+                    int oldRemaining = userEq.getRemainingBattles();
+                    userEq.decrementRemainingBattles();
+
+                    // Ako se vrednost promenila, označi da treba ažurirati
+                    if (userEq.getRemainingBattles() != oldRemaining) {
+                        needsUpdate = true;
+                    }
+
+                    Log.d("BossFight", "Clothing durability: " + equipment.getName() +
+                            " - " + userEq.getRemainingBattles() + " battles remaining");
+
+                    // Provjeri da li treba ukloniti
+                    if (userEq.shouldBeRemoved()) {
+                        equipmentToRemove.add(userEq);
+                        Log.d("BossFight", "Clothing expired: " + equipment.getName());
+                    }
+                }
+            }
+        }
+
+        // Ukloni istrošenu odeću
+        currentUser.getEquipment().removeAll(equipmentToRemove);
+
+        if (!equipmentToRemove.isEmpty()) {
+            Toast.makeText(this, "Some clothing items have expired", Toast.LENGTH_SHORT).show();
+        }
+
+        if (needsUpdate || !equipmentToRemove.isEmpty()) {
+            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Log.d("BossFight", "Clothing durability updated in Firebase");
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e("BossFight", "Failed to update clothing durability: " + e.getMessage());
+                }
+            });
+        }
+    }
+
+    private void initializeRemainingBattlesForExistingEquipment() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            // Ako remainingBattles nije postavljen (0 je default vrednost), postavi ga na duration
+            if (userEq.getRemainingBattles() == 0 && userEq.getDuration() > 0) {
+                userEq.setRemainingBattles(userEq.getDuration());
+                Log.d("BossFight", "Initialized remaining battles for equipment: " + userEq.getEquipmentId());
+            }
         }
     }
 }
