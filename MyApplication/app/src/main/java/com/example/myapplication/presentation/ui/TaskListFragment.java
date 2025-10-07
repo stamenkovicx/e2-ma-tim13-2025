@@ -145,7 +145,7 @@ public class TaskListFragment extends Fragment {
 
                 // Primena filtera po tipu
                 List<Task> filteredTasks;
-                if ("One-time".equals(filter)) {
+                if ("Jednokratni".equals(filter)) {
                     filteredTasks = visibleTasks.stream()
                             .filter(task -> "one-time".equals(task.getFrequency()))
                             .collect(Collectors.toList());

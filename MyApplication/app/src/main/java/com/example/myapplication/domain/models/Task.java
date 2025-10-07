@@ -27,6 +27,14 @@ public class Task implements Serializable {
     private String userId;
     private TaskStatus status;
     private Date creationDate;
+    private boolean countsForSuccess = true;
+    public boolean isCountsForSuccess() {
+        return countsForSuccess;
+    }
+
+    public void setCountsForSuccess(boolean countsForSuccess) {
+        this.countsForSuccess = countsForSuccess;
+    }
 
     public Task() {
         this.status = TaskStatus.AKTIVAN;

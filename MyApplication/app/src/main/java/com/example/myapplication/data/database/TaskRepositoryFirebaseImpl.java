@@ -566,10 +566,13 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
             int finalXp = (awardDifficultyXp ? difficultyXp : 0) + (awardImportanceXp ? finalImportanceXp : 0);
             awardedXp.set(finalXp);
 
+            boolean countsForSuccess = awardDifficultyXp && awardImportanceXp;
+
             Map<String, Object> taskUpdates = new HashMap<>();
             taskUpdates.put(FIELD_STATUS, TaskStatus.URAĐEN.name());
             taskUpdates.put(FIELD_COMPLETION_DATE, new Timestamp(new Date()));
             taskUpdates.put(FIELD_XP_VALUE, finalXp);
+            taskUpdates.put("countsForSuccess", countsForSuccess);
             transaction.update(taskRef, taskUpdates);
 
             // 6. AŽURIRANJE KVOTA (logika ostaje ista)
@@ -770,25 +773,31 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
      */
     @Override
     public void isTaskOverQuota(Task task, String userId, OnQuotaCheckedListener listener) {
+        Log.d("QuotaDebug", "--- Provera kvote za zadatak: '" + task.getName() + "' ---");
+
         DifficultyType difficulty = task.getDifficultyType();
         String difficultyQuotaKey = getDifficultyQuotaKey(difficulty);
         String difficultyQuotaPeriod = getDifficultyQuotaPeriod(difficulty);
         int difficultyQuotaLimit = getDifficultyQuotaLimit(difficulty);
 
-        AtomicBoolean isOverQuota = new AtomicBoolean(false);
+        ImportanceType importance = task.getImportanceType();
+        String importanceQuotaKey = getImportanceQuotaKey(importance);
+        String importanceQuotaPeriod = getImportanceQuotaPeriod(importance);
+        int importanceQuotaLimit = getImportanceQuotaLimit(importance);
 
-        // 1. Proveri kvotu za težinu
+        // 1. Provera kvote za TEŽINU
         if (difficultyQuotaPeriod == null) {
-            checkImportanceQuota(task, userId, listener, false);
+            Log.d("QuotaDebug", "TEŽINA: Nema kvote za " + difficulty);
+            checkImportanceQuotaOnly(task, userId, importance, importanceQuotaKey, importanceQuotaPeriod, importanceQuotaLimit, listener);
             return;
         }
 
         DocumentReference difficultyQuotaRef = db.collection(USERS_COLLECTION).document(userId)
                 .collection(QUOTAS_COLLECTION).document(difficultyQuotaPeriod);
 
-        difficultyQuotaRef.get().addOnCompleteListener(task1 -> {
-            if (task1.isSuccessful()) {
-                DocumentSnapshot snapshot = task1.getResult();
+        difficultyQuotaRef.get().addOnCompleteListener(difficultyTask -> {
+            if (difficultyTask.isSuccessful()) {
+                DocumentSnapshot snapshot = difficultyTask.getResult();
                 long currentCount = 0;
                 if (snapshot != null && snapshot.exists()) {
                     Timestamp lastUpdated = snapshot.getTimestamp(FIELD_LAST_UPDATED);
@@ -796,51 +805,53 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                         currentCount = snapshot.getLong(difficultyQuotaKey) != null ? snapshot.getLong(difficultyQuotaKey) : 0;
                     }
                 }
+
+                Log.d("QuotaDebug", "TEŽINA: " + difficulty + " | Rešeno: " + currentCount + " | Limit: " + difficultyQuotaLimit);
+
                 if (currentCount >= difficultyQuotaLimit) {
-                    isOverQuota.set(true);
+                    Log.d("QuotaDebug", "--> REZULTAT: PREKO KVOTE (zbog težine)");
+                    listener.onResult(true);
+                } else {
+                    Log.d("QuotaDebug", "TEŽINA: OK, proveravam bitnost...");
+                    checkImportanceQuotaOnly(task, userId, importance, importanceQuotaKey, importanceQuotaPeriod, importanceQuotaLimit, listener);
                 }
-                // 2. Bez obzira na rezultat, proveri i kvotu za bitnost
-                checkImportanceQuota(task, userId, listener, isOverQuota.get());
             } else {
-                listener.onFailure(task1.getException());
+                Log.e("QuotaDebug", "Greška pri proveri kvote za težinu.", difficultyTask.getException());
+                listener.onFailure(difficultyTask.getException());
             }
         });
     }
 
-    private void checkImportanceQuota(Task task, String userId, OnQuotaCheckedListener listener, boolean isAlreadyOverQuota) {
-        // Ako je kvota za težinu već prekoračena, odmah vrati true.
-        if (isAlreadyOverQuota) {
-            listener.onResult(true);
-            return;
-        }
-
-        ImportanceType importance = task.getImportanceType();
-        String importanceQuotaKey = getImportanceQuotaKey(importance);
-        String importanceQuotaPeriod = getImportanceQuotaPeriod(importance);
-        int importanceQuotaLimit = getImportanceQuotaLimit(importance);
-
-        if (importanceQuotaPeriod == null) {
-            listener.onResult(false); // Ni težina ni bitnost nemaju kvotu
+    // NOVA POMOĆNA METODA - samo za proveru bitnosti
+    private void checkImportanceQuotaOnly(Task task, String userId, ImportanceType importance, String key, String period, int limit, OnQuotaCheckedListener listener) {
+        if (period == null) {
+            Log.d("QuotaDebug", "BITNOST: Nema kvote za " + importance);
+            Log.d("QuotaDebug", "--> REZULTAT: OK (zadatak se računa)");
+            listener.onResult(false);
             return;
         }
 
         DocumentReference importanceQuotaRef = db.collection(USERS_COLLECTION).document(userId)
-                .collection(QUOTAS_COLLECTION).document(importanceQuotaPeriod);
+                .collection(QUOTAS_COLLECTION).document(period);
 
-        importanceQuotaRef.get().addOnCompleteListener(task2 -> {
-            if (task2.isSuccessful()) {
-                DocumentSnapshot snapshot = task2.getResult();
+        importanceQuotaRef.get().addOnCompleteListener(importanceTask -> {
+            if (importanceTask.isSuccessful()) {
+                DocumentSnapshot snapshot = importanceTask.getResult();
                 long currentCount = 0;
                 if (snapshot != null && snapshot.exists()) {
                     Timestamp lastUpdated = snapshot.getTimestamp(FIELD_LAST_UPDATED);
-                    if (!isQuotaPeriodExpired(lastUpdated, importanceQuotaPeriod)) {
-                        currentCount = snapshot.getLong(importanceQuotaKey) != null ? snapshot.getLong(importanceQuotaKey) : 0;
+                    if (!isQuotaPeriodExpired(lastUpdated, period)) {
+                        currentCount = snapshot.getLong(key) != null ? snapshot.getLong(key) : 0;
                     }
                 }
-                // Finalni rezultat je true ako je BILO KOJA kvota prekoračena
-                listener.onResult(currentCount >= importanceQuotaLimit);
+
+                Log.d("QuotaDebug", "BITNOST: " + importance + " | Rešeno: " + currentCount + " | Limit: " + limit);
+                boolean isOver = currentCount >= limit;
+                Log.d("QuotaDebug", "--> REZULTAT: " + (isOver ? "PREKO KVOTE (zbog bitnosti)" : "OK (zadatak se računa)"));
+                listener.onResult(isOver);
             } else {
-                listener.onFailure(task2.getException());
+                Log.e("QuotaDebug", "Greška pri proveri kvote za bitnost.", importanceTask.getException());
+                listener.onFailure(importanceTask.getException());
             }
         });
     }
