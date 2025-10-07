@@ -52,7 +52,7 @@ public class ProfileActivity extends AppCompatActivity {
     private UserRepository userRepository;
     private FirebaseAuth mAuth;
     private MaterialButton btnGoToShop;
-    private Button btnInventory;
+    //private Button btnInventory;
     private ProgressBar xpProgressBar;
     private TextView tvXpProgress;
 
@@ -89,12 +89,12 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        btnInventory = findViewById(R.id.btnInventory);
+        /*btnInventory = findViewById(R.id.btnInventory);
 
         btnInventory.setOnClickListener(v -> {
             Intent intent = new Intent(ProfileActivity.this, InventoryActivity.class);
             startActivity(intent);
-        });
+        });*/
     }
 
     @Override
