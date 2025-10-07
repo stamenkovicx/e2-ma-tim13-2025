@@ -1,3 +1,56 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">Questify</string>
+    <string name="login_title">Login to your account</string>
+    <string name="register_title">Create your account</string>
+    <string name="login_button">Login</string>
+    <string name="register_link">Don\'t have an account? Register</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="welcome_message">Welcome! You are logged in.</string>
+    <string name="logout_button">Logout</string>
+
+    <string name="profile_title">User Profile</string>
+    <string name="profile_username">Username</string>
+    <string name="profile_stats">Stats:</string>
+    <string name="profile_level">Level:</string>
+    <string name="profile_title_label">Title:</string>
+    <string name="profile_title_beginner">Beginner</string>
+    <string name="profile_power_points">Power Points:</string>
+    <string name="profile_xp">XP:</string>
+    <string name="profile_coins">Coins:</string>
+    <string name="profile_badges">Badges:</string>
+    <string name="profile_equipment">Equipment:</string>
+    <string name="profile_change_password">Change Password</string>
+    <string name="profile_qr_code">QR Code</string>
+
+    <string name="shop">Shop</string>
+    <string-array name="task_filter_options">
+        <item>All task</item>
+        <item>Jednokratni</item>
+        <item>Recurring</item>
+    </string-array>
+
+    <string name="view_statistics">View statistics</string>
+    <string name="view_friends">View friends</string>
+    <string name="xp_in_7_days">XP Gained in Last 7 Days</string>
+    <string name="average_difficulty">Average Difficulty XP</string>
+
+    <string name="find_friends_title">Find new Friends</string>
+    <string name="search_username_hint">Enter username</string>
+    <string name="search_button_description">Search</string>
+
+    <string name="user_avatar_description">User avatar</string>
+    <string name="add_friend_button">Add Friend</string>
+
+    <string name="qr_code_title">QR Code</string>
+    <string name="qr_code_description">QR code for adding as a friend</string>
+    <string name="badges_title">Badges</string>
+    <string name="equipment_title">Equipment</string>
+
+    <string name="level_label">Level: %d</string>
+    <string name="request_sent">Request sent</string>
+    <string name="friend_request_sent">Friend request sent!</string>
+    <string name="already_friends">Already friends</string>
+    <string name="accept_friend">Accept Friend</string>
+
 </resources>

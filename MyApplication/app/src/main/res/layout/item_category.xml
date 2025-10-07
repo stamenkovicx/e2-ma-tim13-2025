@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="@android:color/white"
+    android:layout_marginBottom="8dp"
+    android:elevation="2dp"
+    android:gravity="center_vertical">
+
+    <!-- Redni broj -->
+    <TextView
+        android:id="@+id/tvCategoryIndex"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1."
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        android:layout_marginEnd="8dp"/>
+
+    <!-- Name label i ime kategorije -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Name:"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginEnd="4dp"/>
+
+    <TextView
+        android:id="@+id/tvCategoryName"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:text="Zdravlje"
+        android:textSize="16sp"
+        android:textColor="@android:color/black" />
+
+    <!-- Color label i kvadratić -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Color:"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginEnd="4dp"/>
+
+    <View
+        android:id="@+id/vCategoryColor"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/chromatic"/>
+</LinearLayout>

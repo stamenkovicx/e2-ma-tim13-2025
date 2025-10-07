@@ -2,4 +2,24 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="text_color_primary">#000000</color>
+
+    <color name="red">#800000</color>
+    <color name="blue">#000080</color>
+    <color name="green">#008000</color>
+
+    <color name="purple_progress">#631194</color>
+
+    <color name="transparent">#00000000</color>
+    <color name="my_light_primary">#E6D4F5</color>
+
+    <!-- Card Colors -->
+    <color name="card_level">#FF6B6B</color>
+    <color name="card_xp">#4ECDC4</color>
+    <color name="card_primary">#45B7D1</color>
+    <color name="card_secondary">#96CEB4</color>
+    <color name="card_accent">#FECA57</color>
+    <color name="card_boss">#FF9FF3</color>
+    <color name="card_social">#54A0FF</color>
+    <color name="card_categories">#5F27CD</color>
 </resources>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    tools:context=".presentation.ui.FriendsActivity">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:gravity="center_vertical">
+
+    <ImageView
+        android:id="@+id/imageViewUserAvatar"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@mipmap/ic_launcher_round"
+        android:contentDescription="User Avatar" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="16dp">
+
+        <TextView
+            android:id="@+id/textViewUsername"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:text="Username" />
+
+        <TextView
+            android:id="@+id/textViewUserLevel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:text="Level: 1" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnInviteFriend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Invite to Alliance"
+        android:visibility="gone" />
+
+</LinearLayout>
+
+<View
+android:layout_width="match_parent"
+android:layout_height="1dp"
+android:background="?android:attr/listDivider"/>
+
+</LinearLayout>

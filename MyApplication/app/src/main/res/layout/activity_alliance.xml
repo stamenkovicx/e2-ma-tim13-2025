@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".presentation.ui.AllianceActivity">
+
+    <TextView
+        android:id="@+id/tvAllianceName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Alliance Name"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tvAllianceLeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Leader: "
+        android:textSize="18sp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Members:"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/membersRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+    <Button
+        android:id="@+id/btnStartSpecialMission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start a Special Mission"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnViewSpecialMission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mission Overview"
+        android:layout_marginTop="8dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnLeaveAlliance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Leave Alliance"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btnDisbandAlliance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Disband Alliance"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btnOpenChat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Alliance Chat"
+        android:layout_marginTop="16dp"
+        style="?attr/materialButtonOutlinedStyle"/>
+
+</LinearLayout>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="interval_units">
+        <item>dan</item>
+        <item>nedelja</item>
+    </string-array>
+
+    <string-array name="difficulty_options">
+        <item>Veoma lak</item>
+        <item>Lak</item>
+        <item>Tezak</item>
+        <item>Ekstremno tezak</item>
+    </string-array>
+
+    <string-array name="importance_options">
+        <item>Normalan</item>
+        <item>Vazan</item>
+        <item>Ekstremno vazan</item>
+        <item>Specijalan</item>
+    </string-array>
+</resources>
