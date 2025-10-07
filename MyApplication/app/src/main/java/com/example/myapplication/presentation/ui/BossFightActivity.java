@@ -8,6 +8,7 @@ import android.graphics.drawable.AnimationDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -29,6 +30,7 @@ import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.*;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -299,6 +301,8 @@ public class BossFightActivity extends AppCompatActivity {
             chestImage.setVisibility(View.VISIBLE);
             Toast.makeText(this, "Otvori kovčeg!", Toast.LENGTH_SHORT).show();
         }
+
+        consumeSingleUsePotions();
     }
 
     private void openChestAnimation(int reward, Equipment item) {
@@ -485,6 +489,44 @@ public class BossFightActivity extends AppCompatActivity {
             int chance = total == 0 ? 0 : (int) ((completed * 100.0) / total);
             playerState.setSuccessChance(chance);
             updateUI();
+        }
+    }
+
+    private void consumeSingleUsePotions() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        List<UserEquipment> equipmentToRemove = new ArrayList<>();
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            if (userEq.isActive()) {
+                Equipment equipment = ItemRepository.getEquipmentById(userEq.getEquipmentId());
+                if (equipment != null && equipment.getType() == EquipmentType.POTION) {
+                    // Provjeravamo da li je jednokratni napitak (Minor ili Greater)
+                    if (equipment.getName().contains("Minor Potion") || equipment.getName().contains("Greater Potion")) {
+                        equipmentToRemove.add(userEq);
+                        Log.d("BossFight", "Consumed single-use potion: " + equipment.getName());
+                    }
+                }
+            }
+        }
+
+        // Ukloni potrošene napitke
+        currentUser.getEquipment().removeAll(equipmentToRemove);
+
+        if (!equipmentToRemove.isEmpty()) {
+            Toast.makeText(this, "Single-use potions consumed", Toast.LENGTH_SHORT).show();
+
+            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Log.d("BossFight", "User equipment updated in Firebase");
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e("BossFight", "Failed to update user equipment: " + e.getMessage());
+                }
+            });
         }
     }
 }
