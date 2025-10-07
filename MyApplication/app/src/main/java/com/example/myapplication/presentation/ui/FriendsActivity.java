@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -26,8 +27,15 @@ import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.FriendsAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class FriendsActivity extends AppCompatActivity {
 
@@ -41,6 +49,7 @@ public class FriendsActivity extends AppCompatActivity {
     private String currentUserId;
     private ActivityResultLauncher<Intent> qrCodeScannerLauncher;
     private User currentUser;
+    private String ONE_SIGNAL_REST_API_KEY = "os_v2_app_rbddxkp2tzhxrfkdkwjdt5rhllrqq2pdtnlu6f5xteinwr25gxkn2gq5olsnsqxpichbhkx2iytjrjbgaiqoxzwzbfybx4vz22xggja";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -336,6 +345,7 @@ public class FriendsActivity extends AppCompatActivity {
             userRepository.sendAllianceInvitation(allianceId, invitedUserId, new UserRepository.OnCompleteListener<Void>() {
                 @Override
                 public void onSuccess(Void aVoid) {
+                    sendOneSignalNotification(invitedFriend.getUserId());
                     Toast.makeText(FriendsActivity.this, "Invitation sent to " + invitedFriend.getUsername() + "!", Toast.LENGTH_SHORT).show();
                     loadFriends();
                 }
@@ -348,5 +358,68 @@ public class FriendsActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "You must be in an alliance to invite friends.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void sendOneSignalNotification(String userId) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("https://onesignal.com/api/v1/notifications");
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setUseCaches(false);
+                con.setDoOutput(true);
+                con.setDoInput(true);
+
+                con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                con.setRequestProperty("Authorization", "Basic " + ONE_SIGNAL_REST_API_KEY);
+                con.setRequestMethod("POST");
+
+                JSONObject jsonBody = new JSONObject();
+                jsonBody.put("app_id", "88463ba9-fa9e-4f78-9543-559239f6275a");
+
+                JSONObject contents = new JSONObject();
+                contents.put("en", "You have 1 new alliance invitations!");
+                jsonBody.put("contents", contents);
+
+                JSONObject headings = new JSONObject();
+                headings.put("en", "Alliance notification");
+                jsonBody.put("headings", headings);
+
+                JSONArray filters = new JSONArray();
+
+                // Filter: Ciljaj samo po user_id tagu
+                JSONObject leaderFilter = new JSONObject();
+                leaderFilter.put("field", "tag");
+                leaderFilter.put("key", "user_id");
+                leaderFilter.put("relation", "=");
+                leaderFilter.put("value", userId);
+                filters.put(leaderFilter);
+
+                jsonBody.put("filters", filters);
+
+                byte[] sendBytes = jsonBody.toString().getBytes("UTF-8");
+                con.setFixedLengthStreamingMode(sendBytes.length);
+
+                OutputStream os = con.getOutputStream();
+                os.write(sendBytes);
+
+                int httpResponse = con.getResponseCode();
+                Log.d("OneSignal", "HTTP Response Code: " + httpResponse);
+
+                String jsonResponse;
+                if (httpResponse >= HttpURLConnection.HTTP_OK && httpResponse < HttpURLConnection.HTTP_BAD_REQUEST) {
+                    Scanner scanner = new Scanner(con.getInputStream(), "UTF-8");
+                    jsonResponse = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    scanner.close();
+                } else {
+                    Scanner scanner = new Scanner(con.getErrorStream(), "UTF-8");
+                    jsonResponse = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    scanner.close();
+                }
+                Log.d("OneSignal", "JSON Response: " + jsonResponse);
+
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }).start();
     }
 }

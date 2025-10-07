@@ -210,7 +210,7 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
                 leaderFilter.put("field", "tag");
                 leaderFilter.put("key", "user_id");
                 leaderFilter.put("relation", "=");
-                leaderFilter.put("value", leaderId); 
+                leaderFilter.put("value", leaderId);
                 filters.put(leaderFilter);
 
                 jsonBody.put("filters", filters);
