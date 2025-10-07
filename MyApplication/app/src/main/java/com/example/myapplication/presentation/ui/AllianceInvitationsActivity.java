@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,10 +19,20 @@ import com.example.myapplication.domain.models.Alliance;
 import com.example.myapplication.domain.models.User;
 import com.example.myapplication.presentation.ui.adapters.AllianceInvitationsAdapter;
 import com.google.firebase.auth.FirebaseAuth;
+
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
 import com.example.myapplication.domain.models.Notification;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class AllianceInvitationsActivity extends AppCompatActivity {
 
@@ -30,6 +41,8 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
     private TextView tvNoInvitations;
     private UserRepository userRepository;
     private String currentUserId;
+    private String ONE_SIGNAL_REST_API_KEY = "os_v2_app_rbddxkp2tzhxrfkdkwjdt5rhllrqq2pdtnlu6f5xteinwr25gxkn2gq5olsnsqxpichbhkx2iytjrjbgaiqoxzwzbfybx4vz22xggja";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,6 +125,8 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
                                 @Override
                                 public void onSuccess(User user) {
                                     if (user != null) {
+                                        sendOneSignalNotification(user.getUsername(), leaderId);
+
                                         String notificationMessage = user.getUsername() + " has accepted your alliance invitation!";
                                         Notification notification = new Notification(
                                                 leaderId,
@@ -160,6 +175,74 @@ public class AllianceInvitationsActivity extends AppCompatActivity {
             }
         });
     }
+
+
+
+
+    private void sendOneSignalNotification(String userName, String leaderId) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("https://onesignal.com/api/v1/notifications");
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setUseCaches(false);
+                con.setDoOutput(true);
+                con.setDoInput(true);
+
+                con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                con.setRequestProperty("Authorization", "Basic " + ONE_SIGNAL_REST_API_KEY);
+                con.setRequestMethod("POST");
+
+                JSONObject jsonBody = new JSONObject();
+                jsonBody.put("app_id", "88463ba9-fa9e-4f78-9543-559239f6275a");
+
+                JSONObject contents = new JSONObject();
+                contents.put("en", userName + " has accepted your alliance invitation!");
+                jsonBody.put("contents", contents);
+
+                JSONObject headings = new JSONObject();
+                headings.put("en", "Alliance notification");
+                jsonBody.put("headings", headings);
+
+                JSONArray filters = new JSONArray();
+
+                // Filter: Ciljaj samo leader-a po user_id tagu
+                JSONObject leaderFilter = new JSONObject();
+                leaderFilter.put("field", "tag");
+                leaderFilter.put("key", "user_id");
+                leaderFilter.put("relation", "=");
+                leaderFilter.put("value", leaderId);
+                filters.put(leaderFilter);
+
+                jsonBody.put("filters", filters);
+
+                byte[] sendBytes = jsonBody.toString().getBytes("UTF-8");
+                con.setFixedLengthStreamingMode(sendBytes.length);
+
+                OutputStream os = con.getOutputStream();
+                os.write(sendBytes);
+
+                int httpResponse = con.getResponseCode();
+                Log.d("OneSignal", "HTTP Response Code: " + httpResponse);
+
+                String jsonResponse;
+                if (httpResponse >= HttpURLConnection.HTTP_OK && httpResponse < HttpURLConnection.HTTP_BAD_REQUEST) {
+                    Scanner scanner = new Scanner(con.getInputStream(), "UTF-8");
+                    jsonResponse = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    scanner.close();
+                } else {
+                    Scanner scanner = new Scanner(con.getErrorStream(), "UTF-8");
+                    jsonResponse = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    scanner.close();
+                }
+                Log.d("OneSignal", "JSON Response: " + jsonResponse);
+
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }).start();
+    }
+
+
 
     private void showSwitchAllianceDialog(User currentUser, Alliance newAlliance) {
         new AlertDialog.Builder(this)
