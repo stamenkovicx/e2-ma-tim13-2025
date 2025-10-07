@@ -26,8 +26,8 @@
     <string name="shop">Shop</string>
     <string-array name="task_filter_options">
         <item>All task</item>
-        <item>One-time</item>
-        <item>Recuriing</item>
+        <item>Jednokratni</item>
+        <item>Recurring</item>
     </string-array>
 
     <string name="view_statistics">View statistics</string>

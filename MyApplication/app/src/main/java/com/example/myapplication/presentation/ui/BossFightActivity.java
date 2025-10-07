@@ -423,6 +423,7 @@ public class BossFightActivity extends AppCompatActivity {
     }
 
     private void loadUserSuccessChance(String userId) {
+        // Koristimo istu metodu za dohvatanje zadataka kao i pre
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
             public void onSuccess(List<Task> allTasks) {
@@ -432,43 +433,29 @@ public class BossFightActivity extends AppCompatActivity {
                     return;
                 }
 
-                AtomicInteger completed = new AtomicInteger(0);
-                AtomicInteger total = new AtomicInteger(0);
-                int taskCount = allTasks.size();
-                AtomicInteger processedCount = new AtomicInteger(0);
+                // Nema više potrebe za AtomicInteger, koristimo obične brojače
+                int total = 0;
+                int completed = 0;
 
+                // Prolazimo kroz sve zadatke
                 for (Task task : allTasks) {
-                    // preskačemo pauzirane i otkazane
+                    // Preskačemo pauzirane i otkazane, kao i pre
                     if (task.getStatus() == TaskStatus.PAUZIRAN || task.getStatus() == TaskStatus.OTKAZAN) {
-                        if (processedCount.incrementAndGet() == taskCount) {
-                            calculateAndSetChance(completed.get(), total.get());
-                        }
                         continue;
                     }
 
-                    // proveravamo da li je preko kvote
-                    taskRepository.isTaskOverQuota(task, userId, new TaskRepository.OnQuotaCheckedListener() {
-                        @Override
-                        public void onResult(boolean overQuota) {
-                            if (!overQuota) {
-                                total.incrementAndGet();
-                                if (task.getCompletionDate() != null) {
-                                    completed.incrementAndGet();
-                                }
-                            }
-                            if (processedCount.incrementAndGet() == taskCount) {
-                                calculateAndSetChance(completed.get(), total.get());
-                            }
+                    // KLJUČNA PROMENA: Proveravamo samo "pečat"!
+                    // Nema više komplikovanih asinhronih poziva odavde.
+                    if (task.isCountsForSuccess()) {
+                        total++;
+                        // Proveravamo da li je zadatak zaista rešen da bismo ga brojali u 'completed'
+                        if (task.getCompletionDate() != null) {
+                            completed++;
                         }
-
-                        @Override
-                        public void onFailure(Exception e) {
-                            if (processedCount.incrementAndGet() == taskCount) {
-                                calculateAndSetChance(completed.get(), total.get());
-                            }
-                        }
-                    });
+                    }
                 }
+
+                calculateAndSetChance(completed, total);
             }
 
             @Override
