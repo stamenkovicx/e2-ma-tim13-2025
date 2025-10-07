@@ -422,8 +422,9 @@ public class BossFightActivity extends AppCompatActivity {
         layoutActiveEquipment.addView(noEq);
     }
 
+// U BossFightActivity.java
+
     private void loadUserSuccessChance(String userId) {
-        // Koristimo istu metodu za dohvatanje zadataka kao i pre
         taskRepository.getAllTasks(userId, new TaskRepository.OnTasksLoadedListener() {
             @Override
             public void onSuccess(List<Task> allTasks) {
@@ -433,25 +434,21 @@ public class BossFightActivity extends AppCompatActivity {
                     return;
                 }
 
-                // Nema više potrebe za AtomicInteger, koristimo obične brojače
                 int total = 0;
                 int completed = 0;
 
-                // Prolazimo kroz sve zadatke
                 for (Task task : allTasks) {
-                    // Preskačemo pauzirane i otkazane, kao i pre
+                    // Preskačemo pauzirane i otkazane. Svi ostali ulaze u 'total'.
                     if (task.getStatus() == TaskStatus.PAUZIRAN || task.getStatus() == TaskStatus.OTKAZAN) {
                         continue;
                     }
 
-                    // KLJUČNA PROMENA: Proveravamo samo "pečat"!
-                    // Nema više komplikovanih asinhronih poziva odavde.
-                    if (task.isCountsForSuccess()) {
-                        total++;
-                        // Proveravamo da li je zadatak zaista rešen da bismo ga brojali u 'completed'
-                        if (task.getCompletionDate() != null) {
-                            completed++;
-                        }
+                    // Svi zadaci koji nisu preskočeni se broje u 'total'.
+                    total++;
+
+                    // A u 'completed' se broje samo oni koji su uspešni I nisu preko kvote.
+                    if (task.isCountsForSuccess() && task.getCompletionDate() != null) {
+                        completed++;
                     }
                 }
 
