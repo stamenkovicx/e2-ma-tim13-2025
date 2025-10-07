@@ -11,7 +11,7 @@
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Upravljanje kategorijama"
+        android:text="Category management"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
@@ -44,7 +44,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Unesite naziv kategorije"/>
+            android:hint="Enter a category name"/>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -71,7 +71,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="Dodaj"/>
+            android:text="Add"/>
 
     </LinearLayout>
 

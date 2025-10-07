@@ -32,10 +32,10 @@ public class TaskViewerActivity extends AppCompatActivity {
                 (tab, position) -> {
                     switch (position) {
                         case 0:
-                            tab.setText("Lista");
+                            tab.setText("List");
                             break;
                         case 1:
-                            tab.setText("Kalendar");
+                            tab.setText("Calendar");
                             break;
                     }
                 }).attach();

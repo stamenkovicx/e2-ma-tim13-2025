@@ -214,13 +214,13 @@ public class AllianceActivity extends AppCompatActivity {
     }
     private void startSpecialMission() {
         new AlertDialog.Builder(this)
-                .setTitle("Započni Specijalnu Misiju")
-                .setMessage("Da li ste sigurni? Misija traje 2 nedelje i ne može se prekinuti.")
-                .setPositiveButton("Započni", (dialog, which) -> {
+                .setTitle("Start a Special Mission")
+                .setMessage("Are you sure? The mission lasts 2 weeks and cannot be interrupted..")
+                .setPositiveButton("Start", (dialog, which) -> {
                     userRepository.startSpecialMission(allianceId, new UserRepository.OnCompleteListener<Void>() {
                         @Override
                         public void onSuccess(Void aVoid) {
-                            Toast.makeText(AllianceActivity.this, "Specijalna misija je počela!", Toast.LENGTH_LONG).show();
+                            Toast.makeText(AllianceActivity.this, "The special mission has begun.!", Toast.LENGTH_LONG).show();
                             loadAllianceDetails();
                         }
                         @Override
@@ -229,7 +229,7 @@ public class AllianceActivity extends AppCompatActivity {
                         }
                     });
                 })
-                .setNegativeButton("Odustani", null)
+                .setNegativeButton("Give up", null)
                 .show();
     }
 

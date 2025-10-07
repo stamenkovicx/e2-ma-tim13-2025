@@ -154,34 +154,34 @@ public class TaskDetailsActivity extends AppCompatActivity {
         tvTaskDescription.setText(task.getDescription());
         if (task.getCategory() != null) {
             vCategoryColor.setBackgroundColor(task.getCategory().getColor());
-            tvCategory.setText(String.format("Kategorija: %s", task.getCategory().getName()));
+            tvCategory.setText(String.format("Category: %s", task.getCategory().getName()));
         }
         String frequencyText = "Jednokratan";
         if ("recurring".equals(task.getFrequency())) {
             frequencyText = String.format("Ponavljajući (svaki %d. %s)", task.getInterval(), task.getIntervalUnit());
         }
-        tvFrequency.setText(String.format("Učestalost: %s", frequencyText));
+        tvFrequency.setText(String.format("Frequency: %s", frequencyText));
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
         String startDate = task.getStartDate() != null ? dateFormat.format(task.getStartDate()) : "N/A";
         String endDate = task.getEndDate() != null ? dateFormat.format(task.getEndDate()) : "N/A";
-        tvDates.setText(String.format("Datum: %s - %s", startDate, endDate));
+        tvDates.setText(String.format("Date: %s - %s", startDate, endDate));
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
         String executionTime = task.getExecutionTime() != null ? timeFormat.format(task.getExecutionTime()) : "N/A";
-        tvExecutionTime.setText(String.format("Vreme izvršenja: %s", executionTime));
+        tvExecutionTime.setText(String.format("Execution time: %s", executionTime));
 
         /**
          * ISPRAVLJENO: Prikaz TEŽINE sada koristi fiksnu, osnovnu vrednost.
          */
         DifficultyType difficultyType = task.getDifficultyType();
         if (difficultyType != null) {
-            tvDifficulty.setText(String.format("Težina: %s (%d XP)", difficultyType.getSerbianName(), difficultyType.getXpValue()));
+            tvDifficulty.setText(String.format("Weight: %s (%d XP)", difficultyType.getSerbianName(), difficultyType.getXpValue()));
         }
 
         // Prikaz BITNOSTI i dalje koristi vrednost izračunatu na osnovu nivoa korisnika.
         ImportanceType importanceType = task.getImportanceType();
         if (importanceType != null) {
             int finalXpForImportance = LevelingSystemHelper.getXpForImportance(importanceType.getXpValue(), user.getLevel());
-            tvImportance.setText(String.format("Bitnost: %s (%d XP)", importanceType.getSerbianName(), finalXpForImportance));
+            tvImportance.setText(String.format("Importnace: %s (%d XP)", importanceType.getSerbianName(), finalXpForImportance));
         }
     }
 
