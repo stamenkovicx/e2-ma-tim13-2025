@@ -82,7 +82,7 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
                 ivItemIcon.setImageResource(resourceId);
             }
 
-            int potentialCoinsFromPreviousLevel = 240;
+            int potentialCoinsFromPreviousLevel = calculatePotentialReward(currentUser.getLevel());
             final int finalCost;
 
             switch (item.getName()) {
@@ -169,5 +169,23 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
                 }
             });
         }
+    }
+
+    private int calculatePotentialReward(int userLevel) {
+        // Bazna nagrada za nivo 1 je 200
+        int baseReward = 200;
+
+        // Računamo nagradu za SLEDEĆI nivo (userLevel + 1)
+        // Formula: baseReward * (1.2)^(level - 1)
+        if (userLevel <= 0) {
+            return baseReward; // Ako je nivo 0 ili manji, vrati baznu nagradu
+        }
+
+        // Nagrada za naredni nivo = baseReward * (1.2)^(userLevel)
+        // jer za nivo 1: 200 * (1.2)^0 = 200
+        // za nivo 2: 200 * (1.2)^1 = 240
+        // za nivo 3: 200 * (1.2)^2 = 288 itd.
+        double reward = baseReward * Math.pow(1.2, userLevel);
+        return (int) Math.round(reward);
     }
 }

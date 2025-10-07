@@ -8,6 +8,7 @@ import android.graphics.drawable.AnimationDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -29,6 +30,7 @@ import com.example.myapplication.data.repository.UserRepository;
 import com.example.myapplication.domain.models.*;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -180,6 +182,8 @@ public class BossFightActivity extends AppCompatActivity {
             Toast.makeText(BossFightActivity.this, "Neporaženi bos se vratio sa punom snagom!", Toast.LENGTH_LONG).show();
         }
 
+        initializeRemainingBattlesForExistingEquipment();
+
         playerState = new PlayerState(currentUserId, currentUser.getPowerPoints(), 0, 0);
 
         updateActiveEquipment(currentUser);
@@ -299,6 +303,9 @@ public class BossFightActivity extends AppCompatActivity {
             chestImage.setVisibility(View.VISIBLE);
             Toast.makeText(this, "Otvori kovčeg!", Toast.LENGTH_SHORT).show();
         }
+
+        consumeSingleUsePotions();
+        updateClothingDurability();
     }
 
     private void openChestAnimation(int reward, Equipment item) {
@@ -472,6 +479,117 @@ public class BossFightActivity extends AppCompatActivity {
             int chance = total == 0 ? 0 : (int) ((completed * 100.0) / total);
             playerState.setSuccessChance(chance);
             updateUI();
+        }
+    }
+
+    private void consumeSingleUsePotions() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        List<UserEquipment> equipmentToRemove = new ArrayList<>();
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            if (userEq.isActive()) {
+                Equipment equipment = ItemRepository.getEquipmentById(userEq.getEquipmentId());
+                if (equipment != null && equipment.getType() == EquipmentType.POTION) {
+                    // Provjeravamo da li je jednokratni napitak (Minor ili Greater)
+                    if (equipment.getName().contains("Minor Potion") || equipment.getName().contains("Greater Potion")) {
+                        equipmentToRemove.add(userEq);
+                        Log.d("BossFight", "Consumed single-use potion: " + equipment.getName());
+                    }
+                }
+            }
+        }
+
+        // Ukloni potrošene napitke
+        currentUser.getEquipment().removeAll(equipmentToRemove);
+
+        if (!equipmentToRemove.isEmpty()) {
+            Toast.makeText(this, "Single-use potions consumed", Toast.LENGTH_SHORT).show();
+
+            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Log.d("BossFight", "User equipment updated in Firebase");
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e("BossFight", "Failed to update user equipment: " + e.getMessage());
+                }
+            });
+        }
+    }
+
+    private void updateClothingDurability() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        List<UserEquipment> equipmentToRemove = new ArrayList<>();
+        boolean needsUpdate = false;
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            if (userEq.isActive()) {
+                Equipment equipment = ItemRepository.getEquipmentById(userEq.getEquipmentId());
+                if (equipment != null && equipment.getType() == EquipmentType.CLOTHING) {
+
+                    // Proveri da li je remainingBattles inicijalizovan
+                    if (userEq.getRemainingBattles() == 0) {
+                        userEq.setRemainingBattles(userEq.getDuration());
+                        needsUpdate = true;
+                        Log.d("BossFight", "Fixed remaining battles for: " + equipment.getName());
+                    }
+
+                    // Smanji broj preostalih borbi
+                    int oldRemaining = userEq.getRemainingBattles();
+                    userEq.decrementRemainingBattles();
+
+                    // Ako se vrednost promenila, označi da treba ažurirati
+                    if (userEq.getRemainingBattles() != oldRemaining) {
+                        needsUpdate = true;
+                    }
+
+                    Log.d("BossFight", "Clothing durability: " + equipment.getName() +
+                            " - " + userEq.getRemainingBattles() + " battles remaining");
+
+                    // Provjeri da li treba ukloniti
+                    if (userEq.shouldBeRemoved()) {
+                        equipmentToRemove.add(userEq);
+                        Log.d("BossFight", "Clothing expired: " + equipment.getName());
+                    }
+                }
+            }
+        }
+
+        // Ukloni istrošenu odeću
+        currentUser.getEquipment().removeAll(equipmentToRemove);
+
+        if (!equipmentToRemove.isEmpty()) {
+            Toast.makeText(this, "Some clothing items have expired", Toast.LENGTH_SHORT).show();
+        }
+
+        if (needsUpdate || !equipmentToRemove.isEmpty()) {
+            userRepository.updateUser(currentUser, new UserRepository.OnCompleteListener<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Log.d("BossFight", "Clothing durability updated in Firebase");
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Log.e("BossFight", "Failed to update clothing durability: " + e.getMessage());
+                }
+            });
+        }
+    }
+
+    private void initializeRemainingBattlesForExistingEquipment() {
+        if (currentUser == null || currentUser.getEquipment() == null) return;
+
+        for (UserEquipment userEq : currentUser.getEquipment()) {
+            // Ako remainingBattles nije postavljen (0 je default vrednost), postavi ga na duration
+            if (userEq.getRemainingBattles() == 0 && userEq.getDuration() > 0) {
+                userEq.setRemainingBattles(userEq.getDuration());
+                Log.d("BossFight", "Initialized remaining battles for equipment: " + userEq.getEquipmentId());
+            }
         }
     }
 }

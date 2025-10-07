@@ -126,7 +126,8 @@
                         android:entries="@array/interval_units"
                         android:background="@android:drawable/btn_default"
                         android:popupBackground="@android:color/white"
-                        android:textColor="@android:color/black"/>
+                        android:textColor="@android:color/black"
+                        android:backgroundTint="#9A6BC5"/>
                 </LinearLayout>
 
                 <TextView
