@@ -730,9 +730,8 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
         cutoff.set(Calendar.SECOND, 59);
         Timestamp cutoffTimestamp = new Timestamp(cutoff.getTime());
 
-        getTasksCollection(userId)
+        db.collectionGroup("tasks")
                 .whereEqualTo("status", TaskStatus.AKTIVAN.name())
-                // Upit traži zadatke čiji je DATUM POČETKA (startDate) pre graničnog datuma
                 .whereLessThanOrEqualTo("startDate", cutoffTimestamp)
                 .get()
                 .addOnCompleteListener(task -> {
