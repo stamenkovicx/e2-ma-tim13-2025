@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.0"
+appcompatVersion = "1.7.0"
 cardview = "1.0.0"
 colorpickerview = "2.3.0"
 core = "3.5.3"
@@ -23,6 +24,7 @@ zxingCore = "3.5.3"
 firebaseFirestore = "26.0.0"
 
 [libraries]
+appcompat-v170 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
 cardview = { module = "androidx.cardview:cardview", version.ref = "cardview" }
 colorpickerview = { module = "com.github.skydoves:colorpickerview", version.ref = "colorpickerview" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }

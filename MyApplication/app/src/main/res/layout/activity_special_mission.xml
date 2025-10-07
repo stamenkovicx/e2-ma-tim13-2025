@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    tools:context=".presentation.ui.SpecialMissionActivity">
+    tools:context=".presentation.ui.SpecialMissionActivity"
+    android:background="@android:color/white">
 
     <androidx.constraintlayout.widget.Group
         android:id="@+id/missionLayoutGroup"
