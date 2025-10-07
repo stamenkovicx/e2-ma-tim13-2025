@@ -38,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Detalji zadatka:"
+            android:text="Task details:"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -60,7 +60,7 @@
                 android:id="@+id/tvCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="Kategorija: Zdravlje" />
+                tools:text="Category: Zdravlje" />
         </LinearLayout>
 
         <TextView
@@ -75,28 +75,28 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            tools:text="Datum: 12.09.2025. - 12.10.2025." />
+            tools:text="Date: 12.09.2025. - 12.10.2025." />
 
         <TextView
             android:id="@+id/tvExecutionTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            tools:text="Vreme izvršenja: 18:00" />
+            tools:text="Execution time: 18:00" />
 
         <TextView
             android:id="@+id/tvDifficulty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            tools:text="Težina: Težak (7 XP)" />
+            tools:text="Weight: Težak (7 XP)" />
 
         <TextView
             android:id="@+id/tvImportance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            tools:text="Bitnost: Ekstremno važan (10 XP)" />
+            tools:text="Importance: Ekstremno važan (10 XP)" />
 
         <LinearLayout
             android:id="@+id/statusButtons"
@@ -111,7 +111,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Urađeno" />
+                android:text="Done" />
 
             <Button
                 android:id="@+id/btnCancel"
@@ -119,7 +119,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Otkazano" />
+                android:text="Cancelled" />
 
             <Button
                 android:id="@+id/btnPause"
@@ -127,7 +127,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Pauzirano" />
+                android:text="Paused" />
 
             <Button
                 android:id="@+id/btnActivate"
@@ -135,7 +135,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:text="Aktiviraj"
+                android:text="Activate"
                 android:visibility="gone"/>
         </LinearLayout>
 
@@ -151,14 +151,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
-                android:text="Izmeni" />
+                android:text="Edit" />
 
             <Button
                 android:id="@+id/btnDelete"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@android:color/holo_red_light"
-                android:text="Obriši" />
+                android:text="Delete" />
 
         </LinearLayout>
 

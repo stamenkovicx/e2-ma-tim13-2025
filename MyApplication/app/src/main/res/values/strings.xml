@@ -25,9 +25,9 @@
 
     <string name="shop">Shop</string>
     <string-array name="task_filter_options">
-        <item>Svi zadaci</item>
-        <item>Jednokratni</item>
-        <item>Ponavljajući</item>
+        <item>All task</item>
+        <item>One-time</item>
+        <item>Recuriing</item>
     </string-array>
 
     <string name="view_statistics">View statistics</string>

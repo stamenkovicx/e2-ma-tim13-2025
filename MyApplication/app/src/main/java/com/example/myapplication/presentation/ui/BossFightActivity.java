@@ -127,11 +127,11 @@ public class BossFightActivity extends AppCompatActivity {
 
     private void showEquipmentDialog() {
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Priprema za borbu")
-                .setMessage("Da li želiš da aktiviraš opremu pre borbe?")
+                .setTitle("Preparing for battle")
+                .setMessage("Do you want to activate the equipment before the fight??")
                 .setCancelable(false)
-                .setPositiveButton("Da", (dialog, which) -> startActivity(new Intent(BossFightActivity.this, InventoryActivity.class)))
-                .setNegativeButton("Ne", (dialog, which) -> Toast.makeText(BossFightActivity.this, "Napadni dugmetom ili protresi telefon!", Toast.LENGTH_LONG).show())
+                .setPositiveButton("Yes", (dialog, which) -> startActivity(new Intent(BossFightActivity.this, InventoryActivity.class)))
+                .setNegativeButton("No", (dialog, which) -> Toast.makeText(BossFightActivity.this, "Napadni dugmetom ili protresi telefon!", Toast.LENGTH_LONG).show())
                 .show();
     }
 
@@ -344,8 +344,8 @@ public class BossFightActivity extends AppCompatActivity {
         userPPBar.setMax(currentUser.getTotalPowerPoints());
         userPPBar.setProgress(playerState.getPowerPoints());
         userPPText.setText("PP: " + playerState.getPowerPoints() + "/" + currentUser.getTotalPowerPoints());
-        attemptsText.setText("Pokušaji: " + boss.getAttemptsLeft() + "/5");
-        successChanceText.setText("Šansa za pogodak: " + playerState.getSuccessChance() + "%");
+        attemptsText.setText("Attempts: " + boss.getAttemptsLeft() + "/5");
+        successChanceText.setText("Chance of a hit: " + playerState.getSuccessChance() + "%");
     }
 
     @Override
@@ -418,7 +418,7 @@ public class BossFightActivity extends AppCompatActivity {
 
     private void addNoEquipmentText() {
         TextView noEq = new TextView(this);
-        noEq.setText("Nema aktivne opreme.");
+        noEq.setText("No active equipment.");
         layoutActiveEquipment.addView(noEq);
     }
 

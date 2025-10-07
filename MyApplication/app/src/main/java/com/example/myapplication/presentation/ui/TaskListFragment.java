@@ -145,11 +145,11 @@ public class TaskListFragment extends Fragment {
 
                 // Primena filtera po tipu
                 List<Task> filteredTasks;
-                if ("Jednokratni".equals(filter)) {
+                if ("One-time".equals(filter)) {
                     filteredTasks = visibleTasks.stream()
                             .filter(task -> "one-time".equals(task.getFrequency()))
                             .collect(Collectors.toList());
-                } else if ("Ponavljajući".equals(filter)) {
+                } else if ("Recurring".equals(filter)) {
                     filteredTasks = visibleTasks.stream()
                             .filter(task -> "recurring".equals(task.getFrequency()))
                             .collect(Collectors.toList());

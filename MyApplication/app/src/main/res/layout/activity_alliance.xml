@@ -45,7 +45,7 @@
         android:id="@+id/btnStartSpecialMission"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Započni Specijalnu Misiju"
+        android:text="Start a Special Mission"
         android:layout_marginTop="8dp"
         android:visibility="gone" />
 
@@ -53,7 +53,7 @@
         android:id="@+id/btnViewSpecialMission"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Pregled Misije"
+        android:text="Mission Overview"
         android:layout_marginTop="8dp"
         android:visibility="gone" />
 

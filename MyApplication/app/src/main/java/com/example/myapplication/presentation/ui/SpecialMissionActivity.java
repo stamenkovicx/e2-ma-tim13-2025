@@ -192,7 +192,7 @@ public class SpecialMissionActivity extends AppCompatActivity {
                 long hours = TimeUnit.MILLISECONDS.toHours(millisUntilFinished) % 24;
                 long minutes = TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished) % 60;
                 long seconds = TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished) % 60;
-                String timeText = String.format("Ostalo još: %d dana %02d:%02d:%02d", days, hours, minutes, seconds);
+                String timeText = String.format("Remaining: %d dana %02d:%02d:%02d", days, hours, minutes, seconds);
                 tvTimeRemaining.setText(timeText);
             }
 
