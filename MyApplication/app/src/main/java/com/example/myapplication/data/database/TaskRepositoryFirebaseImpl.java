@@ -278,12 +278,16 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && task.getResult() != null) {
-                        List<Double> xpValues = new ArrayList<>();
+                        List<Double> difficultyXpValues = new ArrayList<>();
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Task t = document.toObject(Task.class);
-                            xpValues.add((double) t.getXpValue());
+                            // Dobijamo XP vrednost samo za težinu, ne ukupan XP
+                            DifficultyType difficultyType = t.getDifficultyType();
+                            if (difficultyType != null) {
+                                difficultyXpValues.add((double) difficultyType.getXpValue());
+                            }
                         }
-                        double average = xpValues.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+                        double average = difficultyXpValues.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
                         listener.onSuccess(average);
                     } else {
                         Log.e(TAG, "Greška pri getAverageDifficultyXp", task.getException());
@@ -309,8 +313,13 @@ public class TaskRepositoryFirebaseImpl implements TaskRepository {
 
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Task t = document.toObject(Task.class);
-                            String day = dateFormat.format(t.getCompletionDate());
-                            dailyXp.computeIfAbsent(day, k -> new ArrayList<>()).add((double) t.getXpValue());
+                            DifficultyType difficultyType = t.getDifficultyType();
+                            if (difficultyType != null) {
+                                String day = dateFormat.format(t.getCompletionDate());
+                                // Koristimo getXpValue() iz DifficultyType enuma
+                                dailyXp.computeIfAbsent(day, k -> new ArrayList<>())
+                                        .add((double) difficultyType.getXpValue());
+                            }
                         }
 
                         Map<String, Double> result = new LinkedHashMap<>();
