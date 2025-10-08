@@ -242,6 +242,7 @@ public class UserRepositoryFirebaseImpl implements UserRepository {
         updates.put("equipment", user.getEquipment());
         updates.put("xp", user.getXp());
         updates.put("level", user.getLevel());
+        updates.put("title", user.getTitle());
         updates.put("powerPoints", user.getPowerPoints());
         updates.put("dateOfLastLevelUp", user.getDateOfLastLevelUp());
         updates.put("specialMissionsCompleted", user.getSpecialMissionsCompleted());

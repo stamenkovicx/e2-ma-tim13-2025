@@ -271,15 +271,6 @@ public class TaskDetailsActivity extends AppCompatActivity {
 
                 int previousLevel = user.getLevel();
                 user.addXp(awardedXp);
-                int newLevel = LevelingSystemHelper.calculateLevelFromXp(user.getXp());
-
-                if (newLevel > user.getLevel()) {
-                    user.setLevel(newLevel);
-                    user.setTitle(LevelingSystemHelper.getTitleForLevel(newLevel));
-                    user.setPowerPoints(
-                            user.getPowerPoints() + LevelingSystemHelper.getPowerPointsRewardForLevel(newLevel)
-                    );
-                }
 
                 userRepository.updateUser(user, new UserRepository.OnCompleteListener<Void>() {
                     @Override
