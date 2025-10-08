@@ -270,7 +270,7 @@ public class TaskDetailsActivity extends AppCompatActivity {
                 }
 
                 int previousLevel = user.getLevel();
-                user.setXp(user.getXp() + awardedXp);
+                user.addXp(awardedXp);
                 int newLevel = LevelingSystemHelper.calculateLevelFromXp(user.getXp());
 
                 if (newLevel > user.getLevel()) {
