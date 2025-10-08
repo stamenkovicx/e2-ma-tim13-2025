@@ -140,7 +140,8 @@ public class TaskListFragment extends Fragment {
                 List<Task> visibleTasks = allTasks.stream()
                         .filter(task -> task.getStartDate() != null &&
                                 (task.getEndDate() == null || !task.getEndDate().before(today)) &&
-                                task.getStatus() != TaskStatus.OTKAZAN)
+                                task.getStatus() != TaskStatus.OTKAZAN &&
+                                task.getStatus() != TaskStatus.NEURAĐEN)
                         .collect(Collectors.toList());
 
                 // Primena filtera po tipu
