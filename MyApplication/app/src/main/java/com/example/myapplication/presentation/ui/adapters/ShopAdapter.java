@@ -177,7 +177,7 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
 
         // Računamo nagradu za SLEDEĆI nivo (userLevel + 1)
         // Formula: baseReward * (1.2)^(level - 1)
-        if (userLevel <= 0) {
+        if (userLevel <= 1) {
             return baseReward; // Ako je nivo 0 ili manji, vrati baznu nagradu
         }
 
@@ -185,7 +185,7 @@ public class ShopAdapter extends RecyclerView.Adapter<ShopAdapter.ShopViewHolder
         // jer za nivo 1: 200 * (1.2)^0 = 200
         // za nivo 2: 200 * (1.2)^1 = 240
         // za nivo 3: 200 * (1.2)^2 = 288 itd.
-        double reward = baseReward * Math.pow(1.2, userLevel);
+        double reward = baseReward * Math.pow(1.2, userLevel-1);
         return (int) Math.round(reward);
     }
 }
